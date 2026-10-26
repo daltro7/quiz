@@ -1,6 +1,7 @@
 /**
  * APLICAÇÃO PRINCIPAL: QuizForge App
- * Gerencia o estado dos quizzes, o editor visual, o preview em tempo real e as exportações.
+ * Gerencia o estado dos quizzes, o editor visual baseado em BLOCOS MODULARES por etapa,
+ * o preview em tempo real nativo e as exportações autônomas.
  */
 
 const STORAGE_KEY = 'quizforge_quizzes_data';
@@ -15,9 +16,17 @@ const App = {
   currentEditingStepIndex: 0,
   refreshTimeout: null,
 
+  // Estado interativo do celular de preview
+  preview: {
+    currentStepIndex: 0,
+    userAnswers: {},
+    totalScore: 0,
+    leadData: {},
+    delayTimeout: null
+  },
+
   init() {
     this.loadQuizzesFromStorage();
-    // Inicia diretamente no editor com o primeiro quiz carregado
     if (this.quizzes && this.quizzes.length > 0) {
       this.openEditor(this.quizzes[0].id);
     } else {
@@ -38,10 +47,17 @@ const App = {
       console.error('Erro ao carregar quizzes do localStorage:', err);
     }
 
-    // Se estiver vazio pela primeira vez, cria um quiz de exemplo super completo
+    // Se estiver vazio, inicia com o quiz de demonstração montado em blocos
     if (!this.quizzes || this.quizzes.length === 0) {
       this.quizzes = [this.getSampleQuizData()];
       this.saveQuizzesToStorage();
+    } else {
+      // Garante que todos os quizzes estejam normalizados para a estrutura de blocos
+      this.quizzes.forEach(q => {
+        if (q.steps) {
+          q.steps = q.steps.map(s => QuizTemplateEngine.normalizeStep(s));
+        }
+      });
     }
   },
 
@@ -110,7 +126,6 @@ const App = {
             </p>
           </div>
 
-          <!-- Ações do Cartão -->
           <div class="border-t border-slate-800/80 pt-4 flex items-center justify-between gap-2">
             <div class="flex items-center gap-1.5">
               <button onclick="App.openEditor('${quiz.id}')" class="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold transition flex items-center gap-1">
@@ -137,7 +152,7 @@ const App = {
     const newQuiz = {
       id: 'quiz_' + Date.now(),
       title: 'Meu Novo Funil de Quiz',
-      description: 'Quiz de qualificação rápida e apresentação de oferta.',
+      description: 'Quiz interativo montado por blocos modulares.',
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       theme: {
@@ -162,46 +177,24 @@ const App = {
       steps: [
         {
           id: 'step_1',
-          type: 'question',
-          tag: 'Passo 1 de 3',
-          title: 'Qual é o seu principal objetivo hoje?',
-          subtitle: 'Selecione a opção que melhor descreve sua necessidade atual.',
-          youtubeUrl: '',
-          videoOrientation: 'horizontal',
-          customHtml: '',
-          hasDelayButton: false,
-          delaySeconds: 5,
-          delayButtonText: 'Avançar para a próxima etapa →',
-          delayButtonUrl: '',
-          isLeadStep: false,
-          options: [
-            { text: 'Aumentar minhas vendas rapidamente', icon: '🚀', points: 10, targetStepIndex: '' },
-            { text: 'Organizar meus processos e economizar tempo', icon: '⚙️', points: 8, targetStepIndex: '' },
-            { text: 'Aprender do zero com suporte', icon: '🎯', points: 5, targetStepIndex: '' }
+          title: 'Etapa 1',
+          blocks: [
+            {
+              id: 'b_head_1',
+              type: 'heading',
+              tag: 'Pergunta 1 de 2',
+              title: 'Qual é o seu objetivo principal?',
+              subtitle: 'Escolha a opção que melhor te representa:'
+            },
+            {
+              id: 'b_opt_1',
+              type: 'question',
+              options: [
+                { icon: '🚀', text: 'Quero aumentar minhas vendas', points: 10, targetStepIndex: '' },
+                { icon: '⚙️', text: 'Quero organizar meu processo', points: 5, targetStepIndex: '' }
+              ]
+            }
           ]
-        },
-        {
-          id: 'step_2',
-          type: 'lead_capture',
-          tag: 'Diagnóstico Quase Pronto',
-          title: 'Onde devemos enviar o seu relatório?',
-          subtitle: 'Preencha seus dados para receber o plano personalizado e a oferta exclusiva.',
-          isLeadStep: true,
-          requireEmail: true,
-          submitButtonText: 'Ver Meu Diagnóstico e Oferta →'
-        },
-        {
-          id: 'step_3',
-          type: 'offer',
-          tag: 'Oferta Exclusiva',
-          title: 'Seu Plano Personalizado Está Liberado!',
-          subtitle: 'Com base nas suas respostas, montamos esta oportunidade sob medida.',
-          showScore: true,
-          productTitle: 'Acesso VIP + Mentoria Direta',
-          productDescription: 'Tudo o que você precisa para implementar o método com segurança e suporte.',
-          productPrice: 'R$ 97,00 à vista ou 12x de R$ 9,70',
-          ctaText: 'Quero Garantir Minha Vaga Agora →',
-          ctaUrl: 'https://seusite.com.br/checkout'
         }
       ]
     };
@@ -236,9 +229,13 @@ const App = {
     const quiz = this.quizzes.find(q => q.id === quizId);
     if (!quiz) return;
 
+    // Normaliza passos se necessário
+    if (quiz.steps) {
+      quiz.steps = quiz.steps.map(s => QuizTemplateEngine.normalizeStep(s));
+    }
+
     this.currentQuiz = quiz;
 
-    // Atualiza interface do editor
     document.getElementById('view-dashboard').classList.add('hidden');
     document.getElementById('view-editor').classList.remove('hidden');
     document.getElementById('btn-header-back-dashboard').classList.remove('hidden');
@@ -246,13 +243,11 @@ const App = {
 
     document.getElementById('editor-quiz-title').value = quiz.title || '';
 
-    // Renderiza abas
     this.renderSteps();
     this.renderDesign();
     this.renderTracking();
 
-    // Atualiza preview inicial
-    this.refreshPreview();
+    this.restartPreview();
   },
 
   backToDashboard() {
@@ -273,8 +268,6 @@ const App = {
   // ==========================================
   switchEditorTab(tabName) {
     this.activeTab = tabName;
-
-    // Atualiza botões
     ['steps', 'design', 'tracking'].forEach(t => {
       const btn = document.getElementById(`tab-btn-${t}`);
       const content = document.getElementById(`tab-content-${t}`);
@@ -289,7 +282,7 @@ const App = {
   },
 
   // ==========================================
-  // RENDERIZAÇÃO DAS ETAPAS (ABA 1)
+  // ABA 1: RENDERIZAÇÃO DAS ETAPAS E BLOCOS
   // ==========================================
   renderSteps() {
     const container = document.getElementById('steps-container');
@@ -301,8 +294,8 @@ const App = {
       container.innerHTML = `
         <div class="py-12 text-center bg-slate-900 border border-slate-800 rounded-2xl p-6">
           <p class="text-xs text-slate-400 mb-3">Nenhuma etapa criada neste quiz.</p>
-          <button onclick="App.addNewStep('question')" class="px-4 py-2 bg-indigo-600 text-white font-bold text-xs rounded-xl">
-            Adicionar Pergunta
+          <button onclick="App.addNewStep()" class="px-4 py-2 bg-indigo-600 text-white font-bold text-xs rounded-xl shadow">
+            + Adicionar Primeira Etapa
           </button>
         </div>
       `;
@@ -314,358 +307,499 @@ const App = {
     }).join('');
   },
 
-  renderStepCardHtml(step, idx, total) {
-    const isOffer = step.type === 'offer';
-    const isAnalyzing = step.type === 'analyzing';
-    const isLead = step.type === 'lead_capture' || step.isLeadStep;
-    const isVideoStep = step.type === 'video_cta';
-    const isProductBrowser = step.type === 'product_browser';
-
-    let typeBadge = '<span class="text-indigo-400 bg-indigo-500/10 border border-indigo-500/20 px-2 py-0.5 rounded text-[10px] font-bold">Pergunta</span>';
-    if (isOffer) typeBadge = '<span class="text-violet-400 bg-violet-500/10 border border-violet-500/20 px-2 py-0.5 rounded text-[10px] font-bold">Oferta Final</span>';
-    if (isAnalyzing) typeBadge = '<span class="text-cyan-400 bg-cyan-500/10 border border-cyan-500/20 px-2 py-0.5 rounded text-[10px] font-bold">Análise Dinâmica</span>';
-    if (isLead) typeBadge = '<span class="text-amber-400 bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded text-[10px] font-bold">Captura de Lead</span>';
-    if (isVideoStep) typeBadge = '<span class="text-red-400 bg-red-500/10 border border-red-500/20 px-2 py-0.5 rounded text-[10px] font-bold">Vídeo + Delay</span>';
-    if (isProductBrowser) typeBadge = '<span class="text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded text-[10px] font-bold">Navegador Produto</span>';
+  renderStepCardHtml(step, stepIdx, totalSteps) {
+    step = QuizTemplateEngine.normalizeStep(step);
+    const blocks = step.blocks || [];
+    const isActive = this.preview.currentStepIndex === stepIdx;
 
     return `
-      <div class="bg-slate-800/90 border border-slate-700/80 rounded-2xl p-4 transition-card" id="step-card-${idx}">
-        <!-- Cabeçalho do Cartão da Etapa -->
-        <div class="flex items-center justify-between gap-3 mb-4 pb-3 border-b border-slate-700/60">
-          <div class="flex items-center gap-2">
-            <span class="w-6 h-6 rounded-lg bg-slate-900 text-slate-300 font-bold text-xs flex items-center justify-center border border-slate-700">
-              ${idx + 1}
+      <div class="bg-slate-900/90 border ${isActive ? 'border-indigo-500/80 shadow-lg shadow-indigo-500/10' : 'border-slate-800'} rounded-2xl p-4 transition-card" id="step-card-${stepIdx}">
+        
+        <!-- Cabeçalho da Etapa -->
+        <div class="flex items-center justify-between gap-3 mb-4 pb-3 border-b border-slate-800">
+          <div class="flex items-center gap-2.5">
+            <span class="w-7 h-7 rounded-lg bg-slate-800 text-indigo-400 font-extrabold text-xs flex items-center justify-center border border-slate-700">
+              ${stepIdx + 1}
             </span>
-            ${typeBadge}
-            <span class="font-bold text-white text-xs truncate max-w-[200px] sm:max-w-[280px]">
-              ${this.escape(step.title || 'Sem título')}
+            <input type="text" value="${this.escape(step.title || 'Etapa ' + (stepIdx + 1))}" onchange="App.updateStepTitle(${stepIdx}, this.value)" placeholder="Nome da Etapa..." class="bg-transparent text-white font-extrabold text-sm border-b border-transparent hover:border-slate-700 focus:border-indigo-500 px-1 py-0.5 outline-none transition max-w-[200px] sm:max-w-[280px]">
+            <span class="text-[10px] text-slate-400 bg-slate-800/80 px-2 py-0.5 rounded-full border border-slate-700">
+              ${blocks.length} ${blocks.length === 1 ? 'componente' : 'componentes'}
             </span>
           </div>
 
-          <!-- Controles de Ordenação e Exclusão -->
+          <!-- Ações da Etapa: Ver no celular, Mover, Duplicar, Excluir -->
           <div class="flex items-center gap-1">
-            <button onclick="App.moveStep(${idx}, -1)" ${idx === 0 ? 'disabled class="opacity-30 cursor-not-allowed"' : 'class="hover:text-white"'} class="p-1 text-slate-400 transition" title="Mover para cima">
+            <button onclick="App.focusStep(${stepIdx})" class="px-2 py-1 rounded-lg text-xs font-semibold ${isActive ? 'bg-indigo-600 text-white' : 'bg-slate-800 text-slate-300 hover:text-white'} transition flex items-center gap-1" title="Ver esta etapa no celular">
+              <i class="ph ph-eye"></i> <span class="hidden sm:inline">Ver</span>
+            </button>
+            <button onclick="App.moveStep(${stepIdx}, -1)" ${stepIdx === 0 ? 'disabled class="opacity-30 cursor-not-allowed p-1 text-slate-500"' : 'class="p-1 text-slate-400 hover:text-white"'} title="Mover para cima">
               <i class="ph ph-arrow-up text-sm"></i>
             </button>
-            <button onclick="App.moveStep(${idx}, 1)" ${idx === total - 1 ? 'disabled class="opacity-30 cursor-not-allowed"' : 'class="hover:text-white"'} class="p-1 text-slate-400 transition" title="Mover para baixo">
+            <button onclick="App.moveStep(${stepIdx}, 1)" ${stepIdx === totalSteps - 1 ? 'disabled class="opacity-30 cursor-not-allowed p-1 text-slate-500"' : 'class="p-1 text-slate-400 hover:text-white"'} title="Mover para baixo">
               <i class="ph ph-arrow-down text-sm"></i>
             </button>
-            <button onclick="App.duplicateStep(${idx})" class="p-1 text-slate-400 hover:text-white transition" title="Duplicar Etapa">
+            <button onclick="App.duplicateStep(${stepIdx})" class="p-1 text-slate-400 hover:text-white transition" title="Duplicar Etapa">
               <i class="ph ph-copy text-sm"></i>
             </button>
-            <button onclick="App.deleteStep(${idx})" class="p-1 text-slate-500 hover:text-red-400 transition" title="Excluir Etapa">
+            <button onclick="App.deleteStep(${stepIdx})" class="p-1 text-slate-500 hover:text-red-400 transition" title="Excluir Etapa">
               <i class="ph ph-trash text-sm"></i>
             </button>
           </div>
         </div>
 
-        <!-- Campos de Configuração da Etapa -->
-        <div class="space-y-4">
-          
-          <!-- Tag e Título -->
-          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <!-- LISTA DE BLOCOS DENTRO DA ETAPA -->
+        <div class="space-y-3">
+          ${blocks.length === 0 ? `
+            <div class="py-6 px-4 text-center bg-slate-950/60 border border-dashed border-slate-800 rounded-xl">
+              <div class="text-2xl mb-1">🧩</div>
+              <p class="text-xs font-bold text-slate-300">Esta etapa está em branco</p>
+              <p class="text-[11px] text-slate-400 mb-3">Escolha abaixo quais componentes você quer combinar aqui dentro:</p>
+              ${this.renderBlockPickerToolbar(stepIdx)}
+            </div>
+          ` : `
+            <div class="space-y-3">
+              ${blocks.map((block, bIdx) => this.renderBlockCardHtml(stepIdx, block, bIdx, blocks.length)).join('')}
+            </div>
+
+            <!-- Botão para adicionar mais blocos à etapa -->
+            <div class="pt-2 border-t border-slate-800/80">
+              <p class="text-[11px] font-bold text-slate-400 mb-2 flex items-center gap-1.5">
+                <i class="ph ph-plus-circle text-indigo-400"></i> Adicionar mais um componente nesta etapa:
+              </p>
+              ${this.renderBlockPickerToolbar(stepIdx)}
+            </div>
+          `}
+        </div>
+
+      </div>
+    `;
+  },
+
+  // Barra de Botões Rápidos para Adicionar Componentes em uma Etapa
+  renderBlockPickerToolbar(stepIdx) {
+    return `
+      <div class="flex flex-wrap items-center gap-1.5">
+        <button onclick="App.addBlockToStep(${stepIdx}, 'heading')" class="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold border border-slate-700 transition flex items-center gap-1">
+          <span>📝</span> Título / Texto
+        </button>
+        <button onclick="App.addBlockToStep(${stepIdx}, 'video')" class="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-red-400 text-xs font-semibold border border-slate-700 transition flex items-center gap-1">
+          <span>🎬</span> Vídeo YouTube
+        </button>
+        <button onclick="App.addBlockToStep(${stepIdx}, 'question')" class="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-indigo-400 text-xs font-semibold border border-slate-700 transition flex items-center gap-1">
+          <span>❓</span> Pergunta / Opções
+        </button>
+        <button onclick="App.addBlockToStep(${stepIdx}, 'delay_button')" class="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-amber-400 text-xs font-semibold border border-slate-700 transition flex items-center gap-1">
+          <span>⏱️</span> Botão com Delay
+        </button>
+        <button onclick="App.addBlockToStep(${stepIdx}, 'html')" class="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-emerald-400 text-xs font-semibold border border-slate-700 transition flex items-center gap-1">
+          <span>🌐</span> Bloco HTML / Loja
+        </button>
+        <button onclick="App.addBlockToStep(${stepIdx}, 'lead_form')" class="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-cyan-400 text-xs font-semibold border border-slate-700 transition flex items-center gap-1">
+          <span>📱</span> Captura de Lead
+        </button>
+        <button onclick="App.addBlockToStep(${stepIdx}, 'offer')" class="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-violet-400 text-xs font-semibold border border-slate-700 transition flex items-center gap-1">
+          <span>🎁</span> Oferta / Checkout
+        </button>
+      </div>
+    `;
+  },
+
+  // Renderiza o Cartão de um Bloco Individual
+  renderBlockCardHtml(stepIdx, block, bIdx, totalBlocks) {
+    let blockBadge = '';
+    let blockBody = '';
+
+    // 1. BLOCO DE TÍTULO / TEXTO
+    if (block.type === 'heading') {
+      blockBadge = '<span class="text-slate-300 font-bold text-xs flex items-center gap-1.5"><span>📝</span> Título & Subtítulo</span>';
+      blockBody = `
+        <div class="space-y-2.5 pt-1">
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
             <div>
-              <label class="block text-[11px] font-bold text-slate-400 mb-1">Tag Superior</label>
-              <input type="text" value="${this.escape(step.tag || '')}" oninput="App.updateStepProp(${idx}, 'tag', this.value)" placeholder="Ex: Passo 1 de 4" class="w-full bg-slate-900 border border-slate-700 px-3 py-1.5 rounded-lg text-xs text-white">
+              <label class="block text-[10px] font-bold text-slate-400 mb-1">Tag Superior (Opcional)</label>
+              <input type="text" value="${this.escape(block.tag || '')}" oninput="App.updateBlockProp(${stepIdx}, ${bIdx}, 'tag', this.value)" placeholder="Ex: Passo 1 de 3" class="w-full bg-slate-900 border border-slate-700 px-2.5 py-1.5 rounded-lg text-xs text-white">
             </div>
             <div class="sm:col-span-2">
-              <label class="block text-[11px] font-bold text-slate-400 mb-1">Título Principal</label>
-              <input type="text" value="${this.escape(step.title || '')}" oninput="App.updateStepProp(${idx}, 'title', this.value)" placeholder="Ex: Qual o seu maior desafio?" class="w-full bg-slate-900 border border-slate-700 px-3 py-1.5 rounded-lg text-xs text-white font-semibold">
+              <label class="block text-[10px] font-bold text-slate-400 mb-1">Título Principal</label>
+              <input type="text" value="${this.escape(block.title || '')}" oninput="App.updateBlockProp(${stepIdx}, ${bIdx}, 'title', this.value)" placeholder="Ex: Qual o seu maior desafio hoje?" class="w-full bg-slate-900 border border-slate-700 px-2.5 py-1.5 rounded-lg text-xs text-white font-semibold">
             </div>
           </div>
-
-          <!-- Subtítulo -->
           <div>
-            <label class="block text-[11px] font-bold text-slate-400 mb-1">Subtítulo Explicativo</label>
-            <input type="text" value="${this.escape(step.subtitle || '')}" oninput="App.updateStepProp(${idx}, 'subtitle', this.value)" placeholder="Ex: Escolha a alternativa mais sincera..." class="w-full bg-slate-900 border border-slate-700 px-3 py-1.5 rounded-lg text-xs text-white">
+            <label class="block text-[10px] font-bold text-slate-400 mb-1">Subtítulo Explicativo</label>
+            <input type="text" value="${this.escape(block.subtitle || '')}" oninput="App.updateBlockProp(${stepIdx}, ${bIdx}, 'subtitle', this.value)" placeholder="Ex: Selecione uma das opções abaixo para prosseguir..." class="w-full bg-slate-900 border border-slate-700 px-2.5 py-1.5 rounded-lg text-xs text-white">
           </div>
-
-          ${!isAnalyzing ? `
-          <!-- BLOCO 1: VÍDEO DO YOUTUBE (VERTICAL OU HORIZONTAL) -->
-          <div class="bg-slate-900/80 p-3.5 rounded-xl border border-slate-700/80 space-y-2.5">
-            <div class="flex items-center justify-between">
-              <label class="text-xs font-bold text-red-400 flex items-center gap-1.5">
-                <i class="ph ph-youtube-logo text-base"></i> Vídeo do YouTube (Opcional)
-              </label>
-              <div class="flex items-center gap-2">
-                <label class="text-[11px] font-semibold text-slate-400">Formato:</label>
-                <select onchange="App.updateStepProp(${idx}, 'videoOrientation', this.value)" class="bg-slate-800 border border-slate-700 px-2 py-1 rounded text-[11px] text-white">
-                  <option value="horizontal" ${step.videoOrientation !== 'vertical' ? 'selected' : ''}>Horizontal (16:9 Padrão)</option>
-                  <option value="vertical" ${step.videoOrientation === 'vertical' ? 'selected' : ''}>Vertical (9:16 Shorts/Reels)</option>
-                </select>
-              </div>
-            </div>
-            <input type="url" value="${this.escape(step.youtubeUrl || '')}" oninput="App.updateStepProp(${idx}, 'youtubeUrl', this.value)" placeholder="Cole o link do YouTube (ex: https://youtube.com/watch?v=... ou shorts/...)" class="w-full bg-slate-950 border border-slate-700 px-3 py-1.5 rounded-lg text-xs text-white">
-          </div>
-
-          <!-- BLOCO 2: BLOCO HTML / NAVEGADOR DE PRODUTO -->
-          <div class="bg-slate-900/80 p-3.5 rounded-xl border border-slate-700/80 space-y-2">
-            <div class="flex items-center justify-between">
-              <label class="text-xs font-bold text-emerald-400 flex items-center gap-1.5">
-                <i class="ph ph-code text-base"></i> Bloco HTML / Navegador de Produto (Iframe)
-              </label>
-              <button onclick="App.insertSampleIframe(${idx})" class="text-[10px] text-indigo-400 hover:text-indigo-300 font-semibold underline">
-                Inserir Exemplo Interativo
-              </button>
-            </div>
-            <textarea oninput="App.updateStepProp(${idx}, 'customHtml', this.value)" placeholder="Cole código HTML livre ou iframe da sua loja/produto (ex: <iframe src='https://seusite.com'></iframe>)..." rows="2" class="w-full bg-slate-950 border border-slate-700 px-3 py-2 rounded-lg text-xs font-mono text-slate-200">${this.escape(step.customHtml || '')}</textarea>
-          </div>
-
-          <!-- BLOCO 3: BOTÃO COM DELAY PROGRAMÁVEL -->
-          ${!isOffer && !isLead ? `
-          <div class="bg-slate-900/80 p-3.5 rounded-xl border border-slate-700/80 space-y-3">
-            <div class="flex items-center justify-between">
-              <label class="text-xs font-bold text-indigo-400 flex items-center gap-1.5">
-                <i class="ph ph-timer text-base"></i> Botão com Delay Programável
-              </label>
-              <label class="relative inline-flex items-center cursor-pointer">
-                <input type="checkbox" ${step.hasDelayButton ? 'checked' : ''} onchange="App.updateStepProp(${idx}, 'hasDelayButton', this.checked)" class="sr-only peer">
-                <div class="w-8 h-4 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-indigo-600"></div>
-              </label>
-            </div>
-
-            ${step.hasDelayButton ? `
-              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
-                <div>
-                  <label class="block text-[11px] font-bold text-slate-400 mb-1">Tempo de Espera (em Segundos):</label>
-                  <input type="number" min="1" max="3600" value="${step.delaySeconds || 5}" oninput="App.updateStepProp(${idx}, 'delaySeconds', parseInt(this.value, 10))" class="w-full bg-slate-950 border border-slate-700 px-3 py-1.5 rounded-lg text-xs text-white">
-                </div>
-                <div>
-                  <label class="block text-[11px] font-bold text-slate-400 mb-1">Texto do Botão:</label>
-                  <input type="text" value="${this.escape(step.delayButtonText || 'Avançar para a próxima etapa →')}" oninput="App.updateStepProp(${idx}, 'delayButtonText', this.value)" class="w-full bg-slate-950 border border-slate-700 px-3 py-1.5 rounded-lg text-xs text-white">
-                </div>
-                <div class="sm:col-span-2">
-                  <label class="block text-[11px] font-bold text-slate-400 mb-1">Link Opcional de Redirecionamento (ou deixe vazio para avançar quiz):</label>
-                  <input type="url" value="${this.escape(step.delayButtonUrl || '')}" oninput="App.updateStepProp(${idx}, 'delayButtonUrl', this.value)" placeholder="https://..." class="w-full bg-slate-950 border border-slate-700 px-3 py-1.5 rounded-lg text-xs text-white">
-                </div>
-              </div>
-            ` : ''}
-          </div>
-          ` : ''}
-
-          ` : ''}
-
-          <!-- BLOCO DE OPÇÕES DE RESPOSTA (SE FOR PERGUNTA) -->
-          ${!isOffer && !isAnalyzing && !isLead ? `
-          <div class="space-y-2 pt-1">
-            <div class="flex items-center justify-between">
-              <label class="text-xs font-bold text-slate-300">Alternativas / Opções de Escolha</label>
-              <button onclick="App.addOptionToStep(${idx})" class="text-xs font-bold text-indigo-400 hover:text-indigo-300 flex items-center gap-1">
-                <i class="ph ph-plus-circle"></i> Adicionar Alternativa
-              </button>
-            </div>
-
-            <div class="space-y-2">
-              ${(step.options || []).map((opt, optIdx) => `
-                <div class="flex items-center gap-2 bg-slate-900 p-2.5 rounded-xl border border-slate-700">
-                  <input type="text" value="${this.escape(opt.icon || '👉')}" oninput="App.updateOptionProp(${idx}, ${optIdx}, 'icon', this.value)" title="Ícone ou Emoji" class="w-9 text-center bg-slate-800 border border-slate-700 py-1 rounded text-xs text-white">
-                  <input type="text" value="${this.escape(opt.text || '')}" oninput="App.updateOptionProp(${idx}, ${optIdx}, 'text', this.value)" placeholder="Texto da alternativa..." class="flex-1 bg-slate-800 border border-slate-700 px-2.5 py-1 rounded text-xs text-white">
-                  <div class="flex items-center gap-1">
-                    <span class="text-[10px] text-slate-400">Pts:</span>
-                    <input type="number" value="${opt.points || 0}" oninput="App.updateOptionProp(${idx}, ${optIdx}, 'points', parseInt(this.value, 10))" title="Pontos para esta resposta" class="w-12 text-center bg-slate-800 border border-slate-700 py-1 rounded text-xs text-white">
-                  </div>
-                  <button onclick="App.deleteOption(${idx}, ${optIdx})" class="p-1 text-slate-500 hover:text-red-400 transition" title="Remover alternativa">
-                    <i class="ph ph-x text-sm"></i>
-                  </button>
-                </div>
-              `).join('')}
-            </div>
-          </div>
-          ` : ''}
-
-          <!-- SE FOR ETAPA DE OFERTA -->
-          ${isOffer ? `
-            <div class="bg-violet-950/30 p-4 rounded-xl border border-violet-800/40 space-y-3">
-              <h4 class="text-xs font-bold text-violet-300">Configurações da Oferta de Vendas</h4>
-              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label class="block text-[11px] font-bold text-slate-400 mb-1">Título do Produto/Serviço:</label>
-                  <input type="text" value="${this.escape(step.productTitle || '')}" oninput="App.updateStepProp(${idx}, 'productTitle', this.value)" placeholder="Ex: Combo Skincare Renovador" class="w-full bg-slate-900 border border-slate-700 px-3 py-1.5 rounded-lg text-xs text-white">
-                </div>
-                <div>
-                  <label class="block text-[11px] font-bold text-slate-400 mb-1">Preço / Condição de Pagamento:</label>
-                  <input type="text" value="${this.escape(step.productPrice || '')}" oninput="App.updateStepProp(${idx}, 'productPrice', this.value)" placeholder="Ex: 12x de R$ 19,90" class="w-full bg-slate-900 border border-slate-700 px-3 py-1.5 rounded-lg text-xs text-white font-bold text-emerald-400">
-                </div>
-                <div class="sm:col-span-2">
-                  <label class="block text-[11px] font-bold text-slate-400 mb-1">Descrição Curta do Produto:</label>
-                  <input type="text" value="${this.escape(step.productDescription || '')}" oninput="App.updateStepProp(${idx}, 'productDescription', this.value)" placeholder="Benefícios e o que está incluso..." class="w-full bg-slate-900 border border-slate-700 px-3 py-1.5 rounded-lg text-xs text-white">
-                </div>
-                <div class="sm:col-span-2">
-                  <label class="block text-[11px] font-bold text-slate-400 mb-1">Texto do Botão de Checkout (CTA):</label>
-                  <input type="text" value="${this.escape(step.ctaText || 'Garantir Minha Oferta Exclusiva Agora →')}" oninput="App.updateStepProp(${idx}, 'ctaText', this.value)" class="w-full bg-slate-900 border border-slate-700 px-3 py-1.5 rounded-lg text-xs text-white font-bold">
-                </div>
-                <div class="sm:col-span-2">
-                  <label class="block text-[11px] font-bold text-slate-400 mb-1">Link do Checkout / WhatsApp:</label>
-                  <input type="url" value="${this.escape(step.ctaUrl || '')}" oninput="App.updateStepProp(${idx}, 'ctaUrl', this.value)" placeholder="https://pay.hotmart.com/... ou https://wa.me/..." class="w-full bg-slate-900 border border-slate-700 px-3 py-1.5 rounded-lg text-xs text-white">
-                </div>
-              </div>
-            </div>
-          ` : ''}
-
         </div>
+      `;
+    }
+
+    // 2. BLOCO DE VÍDEO DO YOUTUBE
+    else if (block.type === 'video') {
+      blockBadge = '<span class="text-red-400 font-bold text-xs flex items-center gap-1.5"><span>🎬</span> Vídeo do YouTube</span>';
+      blockBody = `
+        <div class="space-y-2.5 pt-1">
+          <div class="flex items-center justify-between gap-3">
+            <div class="flex-1">
+              <label class="block text-[10px] font-bold text-slate-400 mb-1">Link do Vídeo no YouTube</label>
+              <input type="url" value="${this.escape(block.youtubeUrl || '')}" oninput="App.updateBlockProp(${stepIdx}, ${bIdx}, 'youtubeUrl', this.value)" placeholder="Ex: https://youtube.com/watch?v=... ou shorts/..." class="w-full bg-slate-900 border border-slate-700 px-2.5 py-1.5 rounded-lg text-xs text-white">
+            </div>
+            <div class="w-36">
+              <label class="block text-[10px] font-bold text-slate-400 mb-1">Formato</label>
+              <select onchange="App.updateBlockProp(${stepIdx}, ${bIdx}, 'orientation', this.value)" class="w-full bg-slate-900 border border-slate-700 px-2 py-1.5 rounded-lg text-xs text-white">
+                <option value="horizontal" ${block.orientation !== 'vertical' ? 'selected' : ''}>Horizontal (16:9)</option>
+                <option value="vertical" ${block.orientation === 'vertical' ? 'selected' : ''}>Vertical (Shorts)</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    // 3. BLOCO DE PERGUNTA COM OPÇÕES
+    else if (block.type === 'question') {
+      blockBadge = '<span class="text-indigo-400 font-bold text-xs flex items-center gap-1.5"><span>❓</span> Pergunta com Alternativas</span>';
+      const options = block.options || [];
+      blockBody = `
+        <div class="space-y-2.5 pt-1">
+          <div class="flex items-center justify-between">
+            <label class="text-[11px] font-bold text-slate-400">Alternativas de Escolha:</label>
+            <button onclick="App.addOptionToQuestionBlock(${stepIdx}, ${bIdx})" class="text-xs font-bold text-indigo-400 hover:text-indigo-300 flex items-center gap-1">
+              <i class="ph ph-plus-circle"></i> + Adicionar Alternativa
+            </button>
+          </div>
+
+          <div class="space-y-2">
+            ${options.map((opt, optIdx) => `
+              <div class="flex items-center gap-2 bg-slate-900 p-2 rounded-xl border border-slate-700">
+                <input type="text" value="${this.escape(opt.icon || '👉')}" oninput="App.updateOptionProp(${stepIdx}, ${bIdx}, ${optIdx}, 'icon', this.value)" title="Ícone ou Emoji" class="w-9 text-center bg-slate-800 border border-slate-700 py-1 rounded text-xs text-white">
+                <input type="text" value="${this.escape(opt.text || '')}" oninput="App.updateOptionProp(${stepIdx}, ${bIdx}, ${optIdx}, 'text', this.value)" placeholder="Texto da alternativa..." class="flex-1 bg-slate-800 border border-slate-700 px-2.5 py-1 rounded text-xs text-white">
+                <div class="flex items-center gap-1">
+                  <span class="text-[10px] text-slate-400">Pts:</span>
+                  <input type="number" value="${opt.points || 0}" oninput="App.updateOptionProp(${stepIdx}, ${bIdx}, ${optIdx}, 'points', parseInt(this.value, 10))" title="Pontos" class="w-12 text-center bg-slate-800 border border-slate-700 py-1 rounded text-xs text-white">
+                </div>
+                <button onclick="App.deleteOptionFromQuestionBlock(${stepIdx}, ${bIdx}, ${optIdx})" class="p-1 text-slate-500 hover:text-red-400 transition" title="Excluir">
+                  <i class="ph ph-x text-sm"></i>
+                </button>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      `;
+    }
+
+    // 4. BLOCO DE BOTÃO COM DELAY
+    else if (block.type === 'delay_button') {
+      blockBadge = '<span class="text-amber-400 font-bold text-xs flex items-center gap-1.5"><span>⏱️</span> Botão com Delay Programável</span>';
+      blockBody = `
+        <div class="space-y-2.5 pt-1">
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+            <div>
+              <label class="block text-[10px] font-bold text-slate-400 mb-1">Tempo de Espera (Segundos)</label>
+              <input type="number" min="1" max="3600" value="${block.delaySeconds || 5}" oninput="App.updateBlockProp(${stepIdx}, ${bIdx}, 'delaySeconds', parseInt(this.value, 10))" class="w-full bg-slate-900 border border-slate-700 px-2.5 py-1.5 rounded-lg text-xs text-white font-bold text-amber-400">
+            </div>
+            <div class="sm:col-span-2">
+              <label class="block text-[10px] font-bold text-slate-400 mb-1">Texto do Botão</label>
+              <input type="text" value="${this.escape(block.text || block.delayButtonText || 'Avançar para a próxima etapa →')}" oninput="App.updateBlockProp(${stepIdx}, ${bIdx}, 'text', this.value)" class="w-full bg-slate-900 border border-slate-700 px-2.5 py-1.5 rounded-lg text-xs text-white font-semibold">
+            </div>
+          </div>
+          <div>
+            <label class="block text-[10px] font-bold text-slate-400 mb-1">Link de Destino Opcional (deixe vazio para avançar o quiz)</label>
+            <input type="url" value="${this.escape(block.url || block.delayButtonUrl || '')}" oninput="App.updateBlockProp(${stepIdx}, ${bIdx}, 'url', this.value)" placeholder="https://..." class="w-full bg-slate-900 border border-slate-700 px-2.5 py-1.5 rounded-lg text-xs text-white">
+          </div>
+        </div>
+      `;
+    }
+
+    // 5. BLOCO HTML / NAVEGADOR DE PRODUTO
+    else if (block.type === 'html') {
+      blockBadge = '<span class="text-emerald-400 font-bold text-xs flex items-center gap-1.5"><span>🌐</span> Bloco HTML / Navegador de Produto</span>';
+      blockBody = `
+        <div class="space-y-2 pt-1">
+          <div class="flex items-center justify-between">
+            <label class="text-[10px] font-bold text-slate-400">Código HTML / Iframe:</label>
+            <button onclick="App.insertSampleIframeToBlock(${stepIdx}, ${bIdx})" class="text-[10px] text-indigo-400 hover:text-indigo-300 font-semibold underline">
+              Inserir Modelo Interativo
+            </button>
+          </div>
+          <textarea oninput="App.updateBlockProp(${stepIdx}, ${bIdx}, 'customHtml', this.value)" placeholder="Cole código HTML ou <iframe src='...'></iframe>" rows="2" class="w-full bg-slate-900 border border-slate-700 px-2.5 py-2 rounded-lg text-xs font-mono text-slate-200">${this.escape(block.customHtml || '')}</textarea>
+        </div>
+      `;
+    }
+
+    // 6. BLOCO DE CAPTURA DE LEAD
+    else if (block.type === 'lead_form') {
+      blockBadge = '<span class="text-cyan-400 font-bold text-xs flex items-center gap-1.5"><span>📱</span> Captura de Lead (WhatsApp / E-mail)</span>';
+      blockBody = `
+        <div class="space-y-2.5 pt-1">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+            <div>
+              <label class="block text-[10px] font-bold text-slate-400 mb-1">Texto do Botão de Envio</label>
+              <input type="text" value="${this.escape(block.submitButtonText || 'Ver Meu Resultado Agora →')}" oninput="App.updateBlockProp(${stepIdx}, ${bIdx}, 'submitButtonText', this.value)" class="w-full bg-slate-900 border border-slate-700 px-2.5 py-1.5 rounded-lg text-xs text-white font-semibold">
+            </div>
+            <div class="flex items-center pt-5">
+              <label class="inline-flex items-center gap-2 cursor-pointer text-xs text-slate-300">
+                <input type="checkbox" ${block.requireEmail !== false ? 'checked' : ''} onchange="App.updateBlockProp(${stepIdx}, ${bIdx}, 'requireEmail', this.checked)" class="rounded bg-slate-800 border-slate-700 text-indigo-600 focus:ring-0">
+                <span>Solicitar E-mail além do WhatsApp</span>
+              </label>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    // 7. BLOCO DE OFERTA / CHECKOUT
+    else if (block.type === 'offer') {
+      blockBadge = '<span class="text-violet-400 font-bold text-xs flex items-center gap-1.5"><span>🎁</span> Oferta Final & Checkout</span>';
+      blockBody = `
+        <div class="space-y-2.5 pt-1">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+            <div>
+              <label class="block text-[10px] font-bold text-slate-400 mb-1">Nome do Produto / Serviço</label>
+              <input type="text" value="${this.escape(block.productTitle || '')}" oninput="App.updateBlockProp(${stepIdx}, ${bIdx}, 'productTitle', this.value)" placeholder="Ex: Método Vendas Rápidas" class="w-full bg-slate-900 border border-slate-700 px-2.5 py-1.5 rounded-lg text-xs text-white">
+            </div>
+            <div>
+              <label class="block text-[10px] font-bold text-slate-400 mb-1">Preço em Destaque</label>
+              <input type="text" value="${this.escape(block.productPrice || '')}" oninput="App.updateBlockProp(${stepIdx}, ${bIdx}, 'productPrice', this.value)" placeholder="Ex: 12x de R$ 19,90" class="w-full bg-slate-900 border border-slate-700 px-2.5 py-1.5 rounded-lg text-xs text-emerald-400 font-bold">
+            </div>
+            <div class="sm:col-span-2">
+              <label class="block text-[10px] font-bold text-slate-400 mb-1">Descrição Curta / Benefícios</label>
+              <input type="text" value="${this.escape(block.productDescription || '')}" oninput="App.updateBlockProp(${stepIdx}, ${bIdx}, 'productDescription', this.value)" placeholder="Ex: Acesso imediato + bônus exclusivos..." class="w-full bg-slate-900 border border-slate-700 px-2.5 py-1.5 rounded-lg text-xs text-white">
+            </div>
+            <div>
+              <label class="block text-[10px] font-bold text-slate-400 mb-1">Texto do Botão de Compra</label>
+              <input type="text" value="${this.escape(block.ctaText || 'Garantir Minha Oferta Exclusiva Agora →')}" oninput="App.updateBlockProp(${stepIdx}, ${bIdx}, 'ctaText', this.value)" class="w-full bg-slate-900 border border-slate-700 px-2.5 py-1.5 rounded-lg text-xs text-white font-bold">
+            </div>
+            <div>
+              <label class="block text-[10px] font-bold text-slate-400 mb-1">Link de Pagamento / WhatsApp</label>
+              <input type="url" value="${this.escape(block.ctaUrl || '')}" oninput="App.updateBlockProp(${stepIdx}, ${bIdx}, 'ctaUrl', this.value)" placeholder="https://pay.hotmart.com/..." class="w-full bg-slate-900 border border-slate-700 px-2.5 py-1.5 rounded-lg text-xs text-white">
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    return `
+      <div class="bg-slate-950/70 border border-slate-800 rounded-xl p-3.5 space-y-2">
+        <div class="flex items-center justify-between pb-2 border-b border-slate-800/60">
+          ${blockBadge}
+          <div class="flex items-center gap-1">
+            <button onclick="App.moveBlockInStep(${stepIdx}, ${bIdx}, -1)" ${bIdx === 0 ? 'disabled class="opacity-30 cursor-not-allowed p-1 text-slate-500"' : 'class="p-1 text-slate-400 hover:text-white"'} title="Mover bloco para cima">
+              <i class="ph ph-arrow-up text-xs"></i>
+            </button>
+            <button onclick="App.moveBlockInStep(${stepIdx}, ${bIdx}, 1)" ${bIdx === totalBlocks - 1 ? 'disabled class="opacity-30 cursor-not-allowed p-1 text-slate-500"' : 'class="p-1 text-slate-400 hover:text-white"'} title="Mover bloco para baixo">
+              <i class="ph ph-arrow-down text-xs"></i>
+            </button>
+            <button onclick="App.deleteBlockFromStep(${stepIdx}, ${bIdx})" class="p-1 text-slate-500 hover:text-red-400 transition" title="Excluir este componente">
+              <i class="ph ph-trash text-xs"></i>
+            </button>
+          </div>
+        </div>
+        ${blockBody}
       </div>
     `;
   },
 
   // ==========================================
-  // MANIPULAÇÃO DE ETAPAS
+  // MANIPULAÇÃO DE ETAPAS E BLOCOS
   // ==========================================
-  toggleAddStepMenu() {
-    const menu = document.getElementById('menu-add-step');
-    menu.classList.toggle('hidden');
-  },
-
-  addNewStep(type) {
-    document.getElementById('menu-add-step').classList.add('hidden');
+  addNewStep() {
     if (!this.currentQuiz) return;
+    if (!this.currentQuiz.steps) this.currentQuiz.steps = [];
 
-    let newStep = {
+    const newIdx = this.currentQuiz.steps.length + 1;
+    const newStep = {
       id: 'step_' + Date.now(),
-      type: type,
-      tag: 'Nova Etapa',
-      title: 'Título da Etapa',
-      subtitle: 'Instruções para o visitante...',
-      youtubeUrl: '',
-      videoOrientation: 'horizontal',
-      customHtml: '',
-      hasDelayButton: false,
-      delaySeconds: 5,
-      delayButtonText: 'Avançar para a próxima etapa →',
-      options: []
+      title: 'Etapa ' + newIdx,
+      blocks: [] // Começa totalmente em branco como o usuário pediu!
     };
-
-    if (type === 'question') {
-      newStep.title = 'Qual a sua preferência?';
-      newStep.options = [
-        { text: 'Opção 1', icon: '🔹', points: 5, targetStepIndex: '' },
-        { text: 'Opção 2', icon: '🔸', points: 10, targetStepIndex: '' }
-      ];
-    } else if (type === 'video_cta') {
-      newStep.title = 'Assista ao vídeo explicativo';
-      newStep.youtubeUrl = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ';
-      newStep.hasDelayButton = true;
-      newStep.delaySeconds = 10;
-      newStep.delayButtonText = 'Quero Aproveitar Esta Oportunidade →';
-    } else if (type === 'product_browser') {
-      newStep.title = 'Conheça o Produto por Dentro';
-      newStep.subtitle = 'Você pode interagir e rolar o bloco abaixo antes de decidir.';
-      newStep.customHtml = '<div style="background:#2563eb;color:#fff;padding:24px;border-radius:12px;text-align:center;"><h4>Navegador do Produto</h4><p>Demonstração interativa do produto.</p></div>';
-      newStep.hasDelayButton = true;
-      newStep.delaySeconds = 5;
-    } else if (type === 'lead_capture') {
-      newStep.title = 'Para onde devemos enviar seu diagnóstico?';
-      newStep.isLeadStep = true;
-      newStep.requireEmail = true;
-      newStep.submitButtonText = 'Liberar Meu Diagnóstico Completo →';
-    } else if (type === 'analyzing') {
-      newStep.title = 'Analisando suas respostas...';
-      newStep.subtitle = 'Calculando o perfil ideal para o seu objetivo.';
-      newStep.durationSeconds = 3.5;
-    } else if (type === 'offer') {
-      newStep.title = 'Sua Solução Personalizada';
-      newStep.productTitle = 'Pacote Completo de Transformação';
-      newStep.productPrice = 'R$ 197,00';
-      newStep.ctaText = 'Quero Comprar Agora →';
-      newStep.ctaUrl = '#';
-    }
 
     this.currentQuiz.steps.push(newStep);
     this.currentQuiz.updatedAt = new Date().toISOString();
     this.saveQuizzesToStorage();
+
     this.renderSteps();
-    this.refreshPreview();
+    this.focusStep(this.currentQuiz.steps.length - 1);
   },
 
-  moveStep(index, direction) {
+  updateStepTitle(stepIdx, title) {
+    if (!this.currentQuiz || !this.currentQuiz.steps[stepIdx]) return;
+    this.currentQuiz.steps[stepIdx].title = title.trim() || 'Etapa ' + (stepIdx + 1);
+    this.currentQuiz.updatedAt = new Date().toISOString();
+    this.saveQuizzesToStorage();
+    this.refreshPreview(stepIdx);
+  },
+
+  moveStep(stepIdx, direction) {
     if (!this.currentQuiz) return;
     const steps = this.currentQuiz.steps;
-    const targetIndex = index + direction;
-    if (targetIndex < 0 || targetIndex >= steps.length) return;
+    const targetIdx = stepIdx + direction;
+    if (targetIdx < 0 || targetIdx >= steps.length) return;
 
-    const temp = steps[index];
-    steps[index] = steps[targetIndex];
-    steps[targetIndex] = temp;
+    const temp = steps[stepIdx];
+    steps[stepIdx] = steps[targetIdx];
+    steps[targetIdx] = temp;
 
     this.currentQuiz.updatedAt = new Date().toISOString();
     this.saveQuizzesToStorage();
     this.renderSteps();
-    this.refreshPreview();
+    this.focusStep(targetIdx);
   },
 
-  duplicateStep(index) {
+  duplicateStep(stepIdx) {
     if (!this.currentQuiz) return;
-    const original = this.currentQuiz.steps[index];
+    const original = this.currentQuiz.steps[stepIdx];
     const copy = JSON.parse(JSON.stringify(original));
     copy.id = 'step_' + Date.now();
-    copy.title = original.title + ' (Cópia)';
+    copy.title = (original.title || 'Etapa') + ' (Cópia)';
 
-    this.currentQuiz.steps.splice(index + 1, 0, copy);
+    this.currentQuiz.steps.splice(stepIdx + 1, 0, copy);
     this.currentQuiz.updatedAt = new Date().toISOString();
     this.saveQuizzesToStorage();
     this.renderSteps();
-    this.refreshPreview();
+    this.focusStep(stepIdx + 1);
   },
 
-  deleteStep(index) {
+  deleteStep(stepIdx) {
     if (!this.currentQuiz) return;
     if (this.currentQuiz.steps.length <= 1) {
       alert('O quiz precisa de pelo menos 1 etapa.');
       return;
     }
-    if (!confirm('Deseja remover esta etapa?')) return;
+    if (!confirm('Deseja excluir esta etapa inteira?')) return;
 
-    this.currentQuiz.steps.splice(index, 1);
+    this.currentQuiz.steps.splice(stepIdx, 1);
     this.currentQuiz.updatedAt = new Date().toISOString();
     this.saveQuizzesToStorage();
     this.renderSteps();
-    this.refreshPreview();
+    this.focusStep(Math.max(0, stepIdx - 1));
   },
 
-  updateStepProp(stepIndex, prop, value) {
-    if (!this.currentQuiz || !this.currentQuiz.steps[stepIndex]) return;
-    this.currentQuiz.steps[stepIndex][prop] = value;
+  // ADICIONAR BLOCO ESPECÍFICO À ETAPA
+  addBlockToStep(stepIdx, blockType) {
+    if (!this.currentQuiz || !this.currentQuiz.steps[stepIdx]) return;
+    const step = this.currentQuiz.steps[stepIdx];
+    if (!step.blocks) step.blocks = [];
+
+    let newBlock = { id: 'b_' + Date.now(), type: blockType };
+
+    if (blockType === 'heading') {
+      newBlock.tag = 'Etapa ' + (stepIdx + 1);
+      newBlock.title = 'Qual o seu principal objetivo?';
+      newBlock.subtitle = 'Escolha a opção que melhor te descreve:';
+    } else if (blockType === 'video') {
+      newBlock.youtubeUrl = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ';
+      newBlock.orientation = 'horizontal';
+    } else if (blockType === 'question') {
+      newBlock.options = [
+        { icon: '🚀', text: 'Quero aumentar minhas vendas', points: 10, targetStepIndex: '' },
+        { icon: '⚙️', text: 'Quero economizar tempo', points: 5, targetStepIndex: '' }
+      ];
+    } else if (blockType === 'delay_button') {
+      newBlock.delaySeconds = 5;
+      newBlock.text = 'Avançar para a próxima etapa →';
+      newBlock.url = '';
+    } else if (blockType === 'html') {
+      newBlock.customHtml = '<div style="background:linear-gradient(135deg, #1e1b4b, #312e81); border:1px solid #4338ca; padding:18px; border-radius:12px; text-align:center; color:#fff;"><h4 style="font-weight:bold; margin-bottom:6px;">🚀 Demonstração do Produto</h4><p style="font-size:13px; opacity:0.85;">Você pode interagir e testar o produto aqui dentro.</p></div>';
+    } else if (blockType === 'lead_form') {
+      newBlock.requireEmail = true;
+      newBlock.submitButtonText = 'Liberar Meu Diagnóstico Completo →';
+    } else if (blockType === 'offer') {
+      newBlock.productTitle = 'Acesso Completo ao Método';
+      newBlock.productPrice = 'R$ 97,00 à vista';
+      newBlock.productDescription = 'Tudo o que você precisa para implementar e ter resultados rápidos.';
+      newBlock.ctaText = 'Quero Garantir Minha Vaga Agora →';
+      newBlock.ctaUrl = '#';
+    }
+
+    step.blocks.push(newBlock);
     this.currentQuiz.updatedAt = new Date().toISOString();
     this.saveQuizzesToStorage();
-    this.refreshPreview(stepIndex);
+    this.renderSteps();
+    this.refreshPreview(stepIdx);
   },
 
-  addOptionToStep(stepIndex) {
-    const step = this.currentQuiz.steps[stepIndex];
-    if (!step.options) step.options = [];
-    step.options.push({
-      text: 'Nova Opção',
+  deleteBlockFromStep(stepIdx, bIdx) {
+    if (!this.currentQuiz || !this.currentQuiz.steps[stepIdx]) return;
+    const step = this.currentQuiz.steps[stepIdx];
+    if (!step.blocks) return;
+
+    step.blocks.splice(bIdx, 1);
+    this.currentQuiz.updatedAt = new Date().toISOString();
+    this.saveQuizzesToStorage();
+    this.renderSteps();
+    this.refreshPreview(stepIdx);
+  },
+
+  moveBlockInStep(stepIdx, bIdx, direction) {
+    if (!this.currentQuiz || !this.currentQuiz.steps[stepIdx]) return;
+    const blocks = this.currentQuiz.steps[stepIdx].blocks;
+    const targetIdx = bIdx + direction;
+    if (targetIdx < 0 || targetIdx >= blocks.length) return;
+
+    const temp = blocks[bIdx];
+    blocks[bIdx] = blocks[targetIdx];
+    blocks[targetIdx] = temp;
+
+    this.currentQuiz.updatedAt = new Date().toISOString();
+    this.saveQuizzesToStorage();
+    this.renderSteps();
+    this.refreshPreview(stepIdx);
+  },
+
+  updateBlockProp(stepIdx, bIdx, prop, value) {
+    if (!this.currentQuiz || !this.currentQuiz.steps[stepIdx]) return;
+    const step = this.currentQuiz.steps[stepIdx];
+    if (!step.blocks || !step.blocks[bIdx]) return;
+
+    step.blocks[bIdx][prop] = value;
+    this.currentQuiz.updatedAt = new Date().toISOString();
+    this.saveQuizzesToStorage();
+    this.refreshPreview(stepIdx);
+  },
+
+  addOptionToQuestionBlock(stepIdx, bIdx) {
+    if (!this.currentQuiz || !this.currentQuiz.steps[stepIdx]) return;
+    const block = this.currentQuiz.steps[stepIdx].blocks[bIdx];
+    if (!block.options) block.options = [];
+
+    block.options.push({
       icon: '👉',
+      text: 'Nova Opção',
       points: 5,
       targetStepIndex: ''
     });
+
     this.currentQuiz.updatedAt = new Date().toISOString();
     this.saveQuizzesToStorage();
     this.renderSteps();
-    this.refreshPreview(stepIndex);
+    this.refreshPreview(stepIdx);
   },
 
-  updateOptionProp(stepIndex, optIndex, prop, value) {
-    const step = this.currentQuiz.steps[stepIndex];
-    if (!step || !step.options || !step.options[optIndex]) return;
-    step.options[optIndex][prop] = value;
-    this.currentQuiz.updatedAt = new Date().toISOString();
-    this.saveQuizzesToStorage();
-    this.refreshPreview(stepIndex);
-  },
+  deleteOptionFromQuestionBlock(stepIdx, bIdx, optIdx) {
+    if (!this.currentQuiz || !this.currentQuiz.steps[stepIdx]) return;
+    const block = this.currentQuiz.steps[stepIdx].blocks[bIdx];
+    if (!block.options) return;
 
-  deleteOption(stepIndex, optIndex) {
-    const step = this.currentQuiz.steps[stepIndex];
-    if (!step || !step.options) return;
-    step.options.splice(optIndex, 1);
+    block.options.splice(optIdx, 1);
     this.currentQuiz.updatedAt = new Date().toISOString();
     this.saveQuizzesToStorage();
     this.renderSteps();
-    this.refreshPreview(stepIndex);
+    this.refreshPreview(stepIdx);
   },
 
-  insertSampleIframe(stepIndex) {
-    const sampleHtml = `<iframe src="https://example.com" style="width:100%;height:350px;border-radius:10px;border:none;"></iframe>`;
-    this.updateStepProp(stepIndex, 'customHtml', sampleHtml);
+  updateOptionProp(stepIdx, bIdx, optIdx, prop, value) {
+    if (!this.currentQuiz || !this.currentQuiz.steps[stepIdx]) return;
+    const block = this.currentQuiz.steps[stepIdx].blocks[bIdx];
+    if (!block.options || !block.options[optIdx]) return;
+
+    block.options[optIdx][prop] = value;
+    this.currentQuiz.updatedAt = new Date().toISOString();
+    this.saveQuizzesToStorage();
+    this.refreshPreview(stepIdx);
+  },
+
+  insertSampleIframeToBlock(stepIdx, bIdx) {
+    const sampleHtml = `<iframe src="https://example.com" style="width:100%;height:320px;border-radius:10px;border:none;"></iframe>`;
+    this.updateBlockProp(stepIdx, bIdx, 'customHtml', sampleHtml);
     this.renderSteps();
   },
 
@@ -700,7 +834,6 @@ const App = {
 
     this.currentQuiz.theme[prop] = value;
 
-    // Se for cor, atualiza o par
     if (prop === 'primaryColor') {
       const c = document.getElementById('theme-primary');
       const t = document.getElementById('theme-primary-text');
@@ -745,52 +878,189 @@ const App = {
     this.refreshPreview();
   },
 
+  setMobileScreen(screen) {
+    const left = document.getElementById('panel-editor-left');
+    const right = document.getElementById('panel-editor-right');
+    const btnEditor = document.getElementById('btn-mview-editor');
+    const btnPreview = document.getElementById('btn-mview-preview');
+
+    if (screen === 'preview') {
+      if (left) left.classList.add('hidden');
+      if (right) {
+        right.classList.remove('hidden');
+        right.classList.add('flex');
+      }
+      if (btnEditor) {
+        btnEditor.className = 'flex-1 py-2 rounded-xl text-xs font-bold bg-slate-800 text-slate-300 hover:text-white flex items-center justify-center gap-1.5 border border-slate-700 transition';
+      }
+      if (btnPreview) {
+        btnPreview.className = 'flex-1 py-2 rounded-xl text-xs font-bold bg-indigo-600 text-white flex items-center justify-center gap-1.5 transition';
+      }
+      this.refreshPreview();
+    } else {
+      if (left) left.classList.remove('hidden');
+      if (right) {
+        right.classList.add('hidden');
+        right.classList.remove('flex');
+      }
+      if (btnEditor) {
+        btnEditor.className = 'flex-1 py-2 rounded-xl text-xs font-bold bg-indigo-600 text-white flex items-center justify-center gap-1.5 transition';
+      }
+      if (btnPreview) {
+        btnPreview.className = 'flex-1 py-2 rounded-xl text-xs font-bold bg-slate-800 text-slate-300 hover:text-white flex items-center justify-center gap-1.5 border border-slate-700 transition';
+      }
+    }
+  },
+
   // ==========================================
-  // PREVIEW INTERATIVO EM TEMPO REAL
+  // PREVIEW INTERATIVO EM TEMPO REAL (NATIVO & INSTANTÂNEO)
   // ==========================================
   focusStep(stepIndex) {
     this.currentEditingStepIndex = stepIndex;
+    this.preview.currentStepIndex = stepIndex;
+    this.renderSteps(); // Atualiza destaque visual na lista de etapas
     this.refreshPreview(stepIndex);
   },
 
   refreshPreview(stepIndex) {
     if (!this.currentQuiz) return;
-    const iframe = document.getElementById('preview-iframe');
-    if (!iframe) return;
+
+    const viewport = document.getElementById('preview-viewport');
+    if (!viewport) return;
 
     if (stepIndex !== undefined && stepIndex !== null) {
-      this.currentEditingStepIndex = stepIndex;
+      this.preview.currentStepIndex = stepIndex;
     }
 
-    const targetStep = this.currentEditingStepIndex || 0;
+    const steps = this.currentQuiz.steps || [];
+    const totalSteps = steps.length;
+    let currentIdx = this.preview.currentStepIndex;
 
-    clearTimeout(this.refreshTimeout);
-    this.refreshTimeout = setTimeout(() => {
-      try {
-        const fullHtml = QuizTemplateEngine.generate(this.currentQuiz, targetStep);
+    if (currentIdx >= totalSteps) {
+      currentIdx = totalSteps > 0 ? totalSteps - 1 : 0;
+      this.preview.currentStepIndex = currentIdx;
+    }
+    if (currentIdx < 0) {
+      currentIdx = 0;
+      this.preview.currentStepIndex = 0;
+    }
 
-        // Escreve com segurança no iframe
-        const doc = iframe.contentDocument || (iframe.contentWindow && iframe.contentWindow.document);
-        if (doc) {
-          doc.open();
-          doc.write(fullHtml);
-          doc.close();
-        } else {
-          iframe.srcdoc = fullHtml;
-        }
-      } catch (err) {
-        console.warn('Erro ao atualizar via document.write, usando fallback:', err);
-        try {
-          iframe.srcdoc = QuizTemplateEngine.generate(this.currentQuiz, targetStep);
-        } catch (e) {
-          console.error('Falha geral no preview:', e);
-        }
+    // 1. Atualiza estilos dinâmicos escopados do tema
+    const styleEl = document.getElementById('preview-scoped-styles');
+    if (styleEl && typeof QuizTemplateEngine !== 'undefined') {
+      styleEl.innerHTML = QuizTemplateEngine.generateThemeCss(this.currentQuiz.theme, '#preview-viewport');
+    }
+
+    // 2. Atualiza Barra de Progresso
+    const progressBar = document.getElementById('preview-progress-bar');
+    const progressPercent = document.getElementById('preview-progress-percent');
+    const stepIndicator = document.getElementById('preview-step-indicator');
+    const backBtn = document.getElementById('preview-btn-back');
+
+    const currentStep = steps[currentIdx];
+
+    if (totalSteps > 0) {
+      const pct = Math.round(((currentIdx + 1) / totalSteps) * 100);
+      if (progressBar) progressBar.style.width = pct + '%';
+      if (progressPercent) progressPercent.innerText = pct + '%';
+      if (stepIndicator) stepIndicator.innerText = `Etapa ${currentIdx + 1} de ${totalSteps}`;
+    }
+
+    if (backBtn) {
+      backBtn.style.display = currentIdx > 0 ? 'inline-flex' : 'none';
+    }
+
+    // 3. Renderiza o conteúdo da etapa montado por blocos
+    const contentEl = document.getElementById('preview-step-content');
+    if (contentEl && currentStep) {
+      contentEl.innerHTML = QuizTemplateEngine.renderStepContentHtml(currentStep, this.preview, true);
+
+      clearTimeout(this.preview.delayTimeout);
+
+      // Tratamento do Botão com Delay Programável se houver algum bloco de delay nesta etapa
+      const delayBlock = (currentStep.blocks || []).find(b => b.type === 'delay_button');
+      if (delayBlock) {
+        const delaySeconds = parseInt(delayBlock.delaySeconds, 10) || 5;
+        this.preview.delayTimeout = setTimeout(() => {
+          const btnBox = document.getElementById('delayed-btn-box');
+          if (btnBox) btnBox.style.display = 'flex';
+        }, delaySeconds * 1000);
       }
-    }, 120);
+    }
+  },
+
+  previewSelectOption(optIdx) {
+    if (!this.currentQuiz) return;
+    const steps = this.currentQuiz.steps || [];
+    const step = steps[this.preview.currentStepIndex];
+    if (!step) return;
+
+    const qBlock = (step.blocks || []).find(b => b.type === 'question');
+    if (!qBlock || !qBlock.options || !qBlock.options[optIdx]) return;
+
+    const opt = qBlock.options[optIdx];
+    this.preview.userAnswers[step.id] = optIdx;
+
+    if (opt.points) {
+      this.preview.totalScore += parseInt(opt.points, 10) || 0;
+    }
+
+    this.refreshPreview();
+
+    if (opt.targetStepIndex !== undefined && opt.targetStepIndex !== '') {
+      const targetIdx = parseInt(opt.targetStepIndex, 10);
+      setTimeout(() => {
+        this.preview.currentStepIndex = targetIdx;
+        this.refreshPreview();
+      }, 250);
+      return;
+    }
+
+    const hasDelay = (step.blocks || []).some(b => b.type === 'delay_button');
+    if (!hasDelay) {
+      setTimeout(() => {
+        this.previewNextStep();
+      }, 250);
+    }
+  },
+
+  previewNextStep() {
+    if (!this.currentQuiz) return;
+    const steps = this.currentQuiz.steps || [];
+    if (this.preview.currentStepIndex + 1 < steps.length) {
+      this.preview.currentStepIndex++;
+      this.refreshPreview();
+    }
+  },
+
+  previewPrevStep() {
+    if (this.preview.currentStepIndex > 0) {
+      this.preview.currentStepIndex--;
+      this.refreshPreview();
+    }
+  },
+
+  previewSubmitLead(event) {
+    if (event) event.preventDefault();
+    const nameEl = document.getElementById('lead-name');
+    const phoneEl = document.getElementById('lead-whatsapp');
+    const emailEl = document.getElementById('lead-email');
+
+    this.preview.leadData = {
+      name: nameEl ? nameEl.value.trim() : '',
+      whatsapp: phoneEl ? phoneEl.value.trim() : '',
+      email: emailEl ? emailEl.value.trim() : ''
+    };
+
+    this.previewNextStep();
   },
 
   restartPreview() {
-    this.currentEditingStepIndex = 0;
+    clearTimeout(this.preview.delayTimeout);
+    this.preview.currentStepIndex = 0;
+    this.preview.userAnswers = {};
+    this.preview.totalScore = 0;
+    this.preview.leadData = {};
     this.refreshPreview(0);
   },
 
@@ -823,7 +1093,7 @@ const App = {
     const quiz = this.quizzes.find(q => q.id === quizId);
     if (!quiz) return;
 
-    const htmlContent = QuizTemplateEngine.generate(quiz);
+    const htmlContent = QuizTemplateEngine.generate(quiz, 0);
     this.lastExportedHtml = htmlContent;
 
     const safeTitle = (quiz.title || 'quiz')
@@ -836,7 +1106,6 @@ const App = {
     const filename = `${safeTitle}.html`;
     this.downloadFile(filename, htmlContent, 'text/html');
 
-    // Abre o modal de sucesso
     document.getElementById('modal-export-success').classList.remove('hidden');
   },
 
@@ -865,10 +1134,10 @@ const App = {
           return;
         }
 
-        // Atribui novo ID para evitar colisões
         importedQuiz.id = 'quiz_' + Date.now();
         importedQuiz.title = (importedQuiz.title || 'Quiz Importado') + ' (Importado)';
         importedQuiz.updatedAt = new Date().toISOString();
+        importedQuiz.steps = importedQuiz.steps.map(s => QuizTemplateEngine.normalizeStep(s));
 
         this.quizzes.unshift(importedQuiz);
         this.saveQuizzesToStorage();
@@ -880,7 +1149,7 @@ const App = {
       }
     };
     reader.readAsText(file);
-    event.target.value = ''; // Limpa o input
+    event.target.value = '';
   },
 
   downloadFile(filename, content, mimeType) {
@@ -952,13 +1221,13 @@ const App = {
   },
 
   // ==========================================
-  // QUIZ DE EXEMPLO PADRÃO (DEMONSTRAÇÃO)
+  // QUIZ DE EXEMPLO PADRÃO (MONTADO EM BLOCOS)
   // ==========================================
   getSampleQuizData() {
     return {
       id: 'quiz_demo_vsl',
       title: 'Diagnóstico de Vendas Express (Exemplo)',
-      description: 'Funil demonstrativo com vídeo vertical, bloco HTML e botão com delay programável.',
+      description: 'Funil montado com blocos modulares: vídeo + perguntas + botões com delay.',
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       theme: {
@@ -983,82 +1252,128 @@ const App = {
       steps: [
         {
           id: 'step_1',
-          type: 'question',
-          tag: 'Diagnóstico 1 de 4',
-          title: 'Qual é o seu maior gargalo de vendas atualmente?',
-          subtitle: 'Selecione a situação que mais se aproxima do seu dia a dia.',
-          youtubeUrl: '',
-          videoOrientation: 'horizontal',
-          customHtml: '',
-          hasDelayButton: false,
-          delaySeconds: 5,
-          delayButtonText: 'Avançar →',
-          options: [
-            { text: 'Pouco tráfego qualificado chegando no WhatsApp', icon: '📲', points: 10, targetStepIndex: '' },
-            { text: 'Pessoas chegam, perguntam preço e somem', icon: '👻', points: 15, targetStepIndex: '' },
-            { text: 'Não tenho uma esteira de produtos bem definida', icon: '🧱', points: 20, targetStepIndex: '' }
+          title: 'Etapa 1: Qualificação',
+          blocks: [
+            {
+              id: 'b_1',
+              type: 'heading',
+              tag: 'Diagnóstico 1 de 4',
+              title: 'Qual é o seu maior gargalo de vendas atualmente?',
+              subtitle: 'Selecione a situação que mais se aproxima do seu dia a dia.'
+            },
+            {
+              id: 'b_2',
+              type: 'question',
+              options: [
+                { icon: '📲', text: 'Pouco tráfego qualificado chegando no WhatsApp', points: 10, targetStepIndex: '' },
+                { icon: '👻', text: 'Pessoas chegam, perguntam preço e somem', points: 15, targetStepIndex: '' },
+                { icon: '🧱', text: 'Não tenho uma esteira de produtos bem definida', points: 20, targetStepIndex: '' }
+              ]
+            }
           ]
         },
         {
           id: 'step_2',
-          type: 'video_cta',
-          tag: 'Vídeo Importante',
-          title: 'Veja como dobrar sua conversão com este método',
-          subtitle: 'Assista a esta breve explicação de 1 minuto (o botão aparecerá em instantes).',
-          youtubeUrl: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
-          videoOrientation: 'horizontal',
-          customHtml: '',
-          hasDelayButton: true,
-          delaySeconds: 6,
-          delayButtonText: 'Entendi! Quero Continuar o Teste →'
+          title: 'Etapa 2: Vídeo + Botão com Delay',
+          blocks: [
+            {
+              id: 'b_3',
+              type: 'heading',
+              tag: 'Vídeo Importante',
+              title: 'Veja como dobrar sua conversão com este método',
+              subtitle: 'Assista a esta breve explicação de 1 minuto (o botão aparecerá em instantes).'
+            },
+            {
+              id: 'b_4',
+              type: 'video',
+              youtubeUrl: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+              orientation: 'horizontal'
+            },
+            {
+              id: 'b_5',
+              type: 'delay_button',
+              delaySeconds: 6,
+              text: 'Entendi! Quero Continuar o Teste →',
+              url: ''
+            }
+          ]
         },
         {
           id: 'step_3',
-          type: 'product_browser',
-          tag: 'Degustação do Produto',
-          title: 'Navegue pelo painel do método',
-          subtitle: 'Teste o bloco interativo abaixo antes de receber sua oferta final.',
-          customHtml: '<div style="background:linear-gradient(135deg, #1e1b4b, #312e81); border:1px solid #4338ca; padding:20px; border-radius:12px; text-align:center; color:#fff;"><h4 style="margin-bottom:8px; font-weight:bold;">🚀 Simulador de Resultados</h4><p style="font-size:13px; opacity:0.85;">Com a implementação deste funil, seus leads chegam 3x mais conscientes e prontos para comprar.</p></div>',
-          hasDelayButton: true,
-          delaySeconds: 4,
-          delayButtonText: 'Ir para a Análise Final →'
+          title: 'Etapa 3: Degustação do Produto',
+          blocks: [
+            {
+              id: 'b_6',
+              type: 'heading',
+              tag: 'Degustação do Produto',
+              title: 'Navegue pelo painel do método',
+              subtitle: 'Teste o bloco interativo abaixo antes de receber sua oferta final.'
+            },
+            {
+              id: 'b_7',
+              type: 'html',
+              customHtml: '<div style="background:linear-gradient(135deg, #1e1b4b, #312e81); border:1px solid #4338ca; padding:20px; border-radius:12px; text-align:center; color:#fff;"><h4 style="margin-bottom:8px; font-weight:bold;">🚀 Simulador de Resultados</h4><p style="font-size:13px; opacity:0.85;">Com a implementação deste funil, seus leads chegam 3x mais conscientes e prontos para comprar.</p></div>'
+            },
+            {
+              id: 'b_8',
+              type: 'delay_button',
+              delaySeconds: 4,
+              text: 'Ir para a Análise Final →',
+              url: ''
+            }
+          ]
         },
         {
           id: 'step_4',
-          type: 'lead_capture',
-          tag: 'Último Passo',
-          title: 'Onde devemos liberar o seu acesso com desconto?',
-          subtitle: 'Preencha seus dados para receber o diagnóstico completo.',
-          isLeadStep: true,
-          requireEmail: true,
-          submitButtonText: 'Ver Meu Plano Personalizado →'
+          title: 'Etapa 4: Captura de Lead',
+          blocks: [
+            {
+              id: 'b_9',
+              type: 'heading',
+              tag: 'Último Passo',
+              title: 'Onde devemos liberar o seu acesso com desconto?',
+              subtitle: 'Preencha seus dados para receber o diagnóstico completo.'
+            },
+            {
+              id: 'b_10',
+              type: 'lead_form',
+              requireEmail: true,
+              submitButtonText: 'Ver Meu Plano Personalizado →'
+            }
+          ]
         },
         {
           id: 'step_5',
-          type: 'analyzing',
-          title: 'Calculando a melhor oferta para você...',
-          subtitle: 'Aguarde 3 segundos enquanto processamos seu perfil.',
-          durationSeconds: 3.5
+          title: 'Etapa 5: Oferta Final',
+          blocks: [
+            {
+              id: 'b_11',
+              type: 'heading',
+              tag: 'Oferta Especial Liberada',
+              title: 'Parabéns! Sua Condição Especial Está Pronta',
+              subtitle: 'Você foi aprovado para receber 50% de desconto na adesão hoje.'
+            },
+            {
+              id: 'b_12',
+              type: 'offer',
+              productTitle: 'Método Funil de Quiz 2.0',
+              productDescription: 'Acesso vitalício ao treinamento, modelos prontos de copy e suporte individual.',
+              productPrice: 'De R$ 497 por apenas R$ 197 à vista',
+              ctaText: 'Garantir Minha Vaga com 50% de Desconto →',
+              ctaUrl: 'https://pay.hotmart.com/exemplo'
+            }
+          ]
         },
         {
           id: 'step_6',
-          type: 'offer',
-          tag: 'Oferta Especial Liberada',
-          title: 'Parabéns! Sua Condição Especial Está Pronta',
-          subtitle: 'Você foi aprovado para receber 50% de desconto na adesão hoje.',
-          showScore: true,
-          productTitle: 'Método Funil de Quiz 2.0',
-          productDescription: 'Acesso vitalício ao treinamento, modelos prontos de copy e suporte individual.',
-          productPrice: 'De R$ 497 por apenas R$ 197 à vista',
-          ctaText: 'Garantir Minha Vaga com 50% de Desconto →',
-          ctaUrl: 'https://pay.hotmart.com/exemplo'
+          title: 'Etapa 6: Teste em Branco',
+          blocks: []
         }
       ]
     };
   }
 };
 
-// Inicializa no carregamento do DOM
 document.addEventListener('DOMContentLoaded', () => {
   App.init();
 });

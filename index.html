@@ -150,7 +150,7 @@
   <!-- ========================================== -->
   <!-- TELA 2: EDITOR VISUAL COMPLETO             -->
   <!-- ========================================== -->
-  <main id="view-editor" class="flex-1 flex flex-col h-[calc(100vh-65px)] overflow-hidden">
+  <main id="view-editor" class="flex-1 flex flex-col h-[calc(100vh-65px)] max-h-[calc(100vh-65px)] overflow-hidden min-h-0">
     <!-- Sub-Barra do Editor -->
     <div class="bg-slate-900 border-b border-slate-800 px-4 lg:px-8 py-2.5 flex items-center justify-between gap-4">
       <div class="flex items-center gap-3">
@@ -187,11 +187,21 @@
       </div>
     </div>
 
+    <!-- Barra de Alternância para Telas Menores / Notebooks (Mobile & Tablet) -->
+    <div class="md:hidden flex border-b border-slate-800 bg-slate-900 px-4 py-1.5 gap-2">
+      <button id="btn-mview-editor" onclick="App.setMobileScreen('editor')" class="flex-1 py-2 rounded-xl text-xs font-bold bg-indigo-600 text-white flex items-center justify-center gap-1.5 transition">
+        <i class="ph ph-note-pencil"></i> 1. Editar Quiz
+      </button>
+      <button id="btn-mview-preview" onclick="App.setMobileScreen('preview')" class="flex-1 py-2 rounded-xl text-xs font-bold bg-slate-800 text-slate-300 hover:text-white flex items-center justify-center gap-1.5 border border-slate-700 transition">
+        <i class="ph ph-device-mobile"></i> 2. Ver Celular (Preview)
+      </button>
+    </div>
+
     <!-- Conteúdo Dividido: Coluna de Configuração + Coluna de Preview -->
-    <div class="flex-1 flex flex-col lg:flex-row overflow-hidden">
+    <div class="flex-1 flex flex-col md:flex-row overflow-hidden min-h-0 h-full">
       
       <!-- PAINEL ESQUERDO: CONFIGURAÇÕES & ETAPAS -->
-      <div class="w-full lg:w-[58%] border-r border-slate-800 flex flex-col bg-slate-900/60 overflow-hidden">
+      <div id="panel-editor-left" class="w-full md:w-[56%] lg:w-[58%] border-r border-slate-800 flex flex-col bg-slate-900/60 overflow-hidden h-full min-h-0">
         <!-- Abas de Navegação do Painel -->
         <div class="flex border-b border-slate-800 bg-slate-900 px-4">
           <button id="tab-btn-steps" onclick="App.switchEditorTab('steps')" class="px-4 py-3 font-bold text-xs uppercase tracking-wider text-indigo-400 border-b-2 border-indigo-500 flex items-center gap-2">
@@ -227,36 +237,14 @@
             <div class="flex items-center justify-between">
               <div>
                 <h3 class="font-extrabold text-white text-lg">Etapas do Quiz</h3>
-                <p class="text-xs text-slate-400">Configure as perguntas, vídeos, blocos e página final de oferta.</p>
+                <p class="text-xs text-slate-400">Monte cada etapa combinando blocos livres (vídeo, botões, perguntas, formulário).</p>
               </div>
 
-              <!-- Menu Adicionar Nova Etapa -->
-              <div class="relative inline-block text-left">
-                <button onclick="App.toggleAddStepMenu()" class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold transition shadow-sm">
-                  <i class="ph ph-plus-circle text-sm"></i>
-                  Adicionar Etapa
-                </button>
-                <div id="menu-add-step" class="hidden absolute right-0 mt-2 w-56 rounded-xl bg-slate-800 border border-slate-700 shadow-2xl z-50 py-1.5">
-                  <button onclick="App.addNewStep('question')" class="w-full text-left px-4 py-2 text-xs font-semibold text-slate-200 hover:bg-slate-700/70 flex items-center gap-2.5">
-                    <span class="text-indigo-400 font-bold">❓</span> Pergunta com Opções
-                  </button>
-                  <button onclick="App.addNewStep('video_cta')" class="w-full text-left px-4 py-2 text-xs font-semibold text-slate-200 hover:bg-slate-700/70 flex items-center gap-2.5">
-                    <span class="text-red-400 font-bold">🎬</span> Vídeo + Botão com Delay
-                  </button>
-                  <button onclick="App.addNewStep('product_browser')" class="w-full text-left px-4 py-2 text-xs font-semibold text-slate-200 hover:bg-slate-700/70 flex items-center gap-2.5">
-                    <span class="text-emerald-400 font-bold">🌐</span> Navegador de Produto (HTML/Iframe)
-                  </button>
-                  <button onclick="App.addNewStep('lead_capture')" class="w-full text-left px-4 py-2 text-xs font-semibold text-slate-200 hover:bg-slate-700/70 flex items-center gap-2.5">
-                    <span class="text-amber-400 font-bold">📱</span> Captura de Leads (WhatsApp/Email)
-                  </button>
-                  <button onclick="App.addNewStep('analyzing')" class="w-full text-left px-4 py-2 text-xs font-semibold text-slate-200 hover:bg-slate-700/70 flex items-center gap-2.5">
-                    <span class="text-cyan-400 font-bold">⏳</span> Tela de Análise (Fake Loading)
-                  </button>
-                  <button onclick="App.addNewStep('offer')" class="w-full text-left px-4 py-2 text-xs font-semibold text-slate-200 hover:bg-slate-700/70 flex items-center gap-2.5">
-                    <span class="text-violet-400 font-bold">🎁</span> Oferta Final / Checkout
-                  </button>
-                </div>
-              </div>
+              <!-- Botão Criar Etapa em Branco -->
+              <button onclick="App.addNewStep()" class="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold transition shadow-lg shadow-indigo-500/20">
+                <i class="ph ph-plus-circle text-base"></i>
+                + Nova Etapa em Branco
+              </button>
             </div>
 
             <!-- Lista de Cartões de Etapa (Renderizados via JS) -->
@@ -407,26 +395,58 @@
       </div>
 
       <!-- PAINEL DIREITO: PRÉ-VISUALIZAÇÃO EM TEMPO REAL -->
-      <div class="w-full lg:w-[42%] bg-slate-950 flex flex-col p-4 lg:p-6 overflow-hidden relative">
-        <div class="flex items-center justify-between mb-3 px-2">
+      <div id="panel-editor-right" class="w-full md:w-[44%] lg:w-[42%] bg-slate-950 flex flex-col p-4 lg:p-6 overflow-hidden h-full min-h-0 relative">
+        <div class="flex items-center justify-between mb-3 px-2 shrink-0">
           <div class="flex items-center gap-2">
             <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
-            <span class="text-xs font-bold text-slate-300 uppercase tracking-wider">Preview Interativo em Tempo Real</span>
+            <span class="text-xs font-bold text-emerald-400 uppercase tracking-wider">📱 Celular do Cliente (Preview)</span>
           </div>
-          <button onclick="App.restartPreview()" class="text-xs text-indigo-400 hover:text-indigo-300 font-semibold flex items-center gap-1">
-            <i class="ph ph-arrow-counter-clockwise"></i> Reiniciar Teste
+          <button onclick="App.restartPreview()" class="px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-xs text-indigo-400 hover:text-indigo-300 font-semibold flex items-center gap-1 border border-slate-700 transition">
+            <i class="ph ph-arrow-counter-clockwise"></i> Reiniciar
           </button>
         </div>
 
         <!-- Moldura do Dispositivo -->
-        <div class="flex-1 flex items-center justify-center overflow-y-auto py-2">
+        <div class="flex-1 flex items-start justify-center overflow-y-auto py-2 min-h-0">
           <div id="preview-mockup-frame" class="phone-mockup">
             <div class="phone-notch">
               <div class="phone-speaker"></div>
               <div class="phone-camera"></div>
             </div>
             
-            <iframe id="preview-iframe" class="phone-screen w-full h-full border-0"></iframe>
+            <!-- Estilos Dinâmicos Escopados do Tema do Quiz -->
+            <style id="preview-scoped-styles"></style>
+
+            <!-- Tela do Celular (Preview em Tempo Real 100% Nativo) -->
+            <div id="preview-viewport" class="phone-screen w-full h-full overflow-y-auto p-4 pt-10">
+              <div class="quiz-container">
+                <!-- Barra de Progresso Superior -->
+                <div id="preview-progress-section">
+                  <div class="progress-text">
+                    <span id="preview-step-indicator">Etapa 1 de 4</span>
+                    <span id="preview-progress-percent">0%</span>
+                  </div>
+                  <div class="progress-wrapper" style="margin-top: 6px;">
+                    <div id="preview-progress-bar" class="progress-bar"></div>
+                  </div>
+                </div>
+
+                <!-- Cartão da Etapa Ativa -->
+                <div id="preview-quiz-card" class="quiz-card">
+                  <div id="preview-step-content"></div>
+                  
+                  <div style="text-align: center;">
+                    <button id="preview-btn-back" class="btn-back" style="display: none;" onclick="App.previewPrevStep()">
+                      ← Voltar à pergunta anterior
+                    </button>
+                  </div>
+                </div>
+
+                <div class="quiz-footer">
+                  <span>🔒 Ambiente Seguro • Seus dados estão protegidos</span>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
