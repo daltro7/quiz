@@ -1,0 +1,637 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>QuizForge • Construtor de Funis de Quiz de Alta Conversão</title>
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#eef2ff',
+              100: '#e0e7ff',
+              500: '#6366f1',
+              600: '#4f46e5',
+              700: '#4338ca',
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- Google Fonts: Plus Jakarta Sans -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  
+  <!-- Ícones Phosphor -->
+  <script src="https://unpkg.com/@phosphor-icons/web"></script>
+  
+  <!-- Estilos Customizados -->
+  <link rel="stylesheet" href="styles.css">
+
+  <style>
+    body {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+    }
+  </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col antialiased selection:bg-indigo-500 selection:text-white">
+
+  <!-- ========================================== -->
+  <!-- BARRA DE NAVEGAÇÃO SUPERIOR               -->
+  <!-- ========================================== -->
+  <header class="bg-slate-900/90 backdrop-blur-md border-b border-slate-800 sticky top-0 z-40 px-4 lg:px-8 py-3.5 flex items-center justify-between">
+    <div class="flex items-center gap-3">
+      <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-indigo-600 to-violet-500 flex items-center justify-center shadow-lg shadow-indigo-500/20 text-white font-black text-lg">
+        ⚡
+      </div>
+      <div>
+        <h1 class="font-extrabold text-base lg:text-lg tracking-tight text-white flex items-center gap-2">
+          QuizForge
+          <span class="text-[10px] font-bold bg-indigo-500/20 text-indigo-400 border border-indigo-500/30 px-2 py-0.5 rounded-full uppercase tracking-wider">Pro Vendas</span>
+        </h1>
+        <p class="text-xs text-slate-400 hidden sm:block">Construtor de Funis de Quiz com Exportação HTML Autônoma</p>
+      </div>
+    </div>
+
+    <!-- Ações do Header -->
+    <div class="flex items-center gap-2.5">
+      <!-- Botão Guia Planilha -->
+      <button onclick="App.openSheetsGuideModal()" class="hidden md:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 text-xs font-semibold border border-emerald-500/20 transition">
+        <i class="ph ph-file-spreadsheet text-sm"></i>
+        Planilha de Retenção
+      </button>
+
+      <!-- Botão Guia GitHub -->
+      <button onclick="App.openGithubGuideModal()" class="hidden md:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold border border-slate-700 transition">
+        <i class="ph ph-github-logo text-sm"></i>
+        Como Subir no GitHub
+      </button>
+
+      <!-- Botão Como Funciona -->
+      <button onclick="App.openHowItWorksModal()" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-400 text-xs font-semibold border border-indigo-500/20 transition">
+        <i class="ph ph-question text-sm"></i>
+        Como Funciona?
+      </button>
+
+      <!-- Botão Meus Quizzes (Alternar) -->
+      <button id="btn-header-back-dashboard" onclick="App.toggleDashboardView()" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold border border-slate-700 transition">
+        <i class="ph ph-folder text-sm"></i>
+        Meus Quizzes
+      </button>
+
+      <!-- Botão Exportar HTML no Header -->
+      <button id="btn-header-export-html" onclick="App.exportCurrentQuizHtml()" class="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white text-xs lg:text-sm font-bold shadow-lg shadow-emerald-500/25 transition">
+        <i class="ph ph-download-simple text-base"></i>
+        Exportar HTML (.html)
+      </button>
+    </div>
+  </header>
+
+  <!-- ========================================== -->
+  <!-- TELA 1: DASHBOARD (MEUS QUIZZES)           -->
+  <!-- ========================================== -->
+  <main id="view-dashboard" class="hidden flex-1 p-4 lg:p-8 max-w-7xl mx-auto w-full">
+    <!-- Cabeçalho do Dashboard -->
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
+      <div>
+        <h2 class="text-2xl lg:text-3xl font-extrabold text-white">Meus Funis de Quiz</h2>
+        <p class="text-slate-400 text-sm mt-1">Gerencie, edite ou crie novos funis de conversão para suas páginas de vendas.</p>
+      </div>
+
+      <div class="flex items-center gap-3">
+        <!-- Importar Projeto -->
+        <label class="cursor-pointer inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-sm font-semibold border border-slate-700 transition">
+          <i class="ph ph-upload-simple text-base"></i>
+          Importar Projeto (.json)
+          <input type="file" id="input-import-project" accept=".json" class="hidden" onchange="App.handleImportProject(event)">
+        </label>
+
+        <!-- Criar Novo Quiz -->
+        <button onclick="App.createNewQuiz()" class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-bold shadow-lg shadow-indigo-500/20 transition">
+          <i class="ph ph-plus-circle text-base"></i>
+          Novo Quiz
+        </button>
+      </div>
+    </div>
+
+    <!-- Lista / Grade de Quizzes -->
+    <div id="quiz-list-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <!-- Os cartões de quiz serão injetados dinamicamente via JS -->
+    </div>
+
+    <!-- Banner Dicas Rápidas -->
+    <div class="mt-12 bg-gradient-to-r from-indigo-950/60 to-slate-900 border border-indigo-900/40 rounded-2xl p-6 flex flex-col md:flex-row items-center justify-between gap-6">
+      <div class="flex items-start gap-4">
+        <div class="w-12 h-12 rounded-xl bg-indigo-500/20 text-indigo-400 flex items-center justify-center shrink-0 text-2xl">
+          💡
+        </div>
+        <div>
+          <h4 class="font-bold text-white text-base">Recursos Nativos deste Construtor:</h4>
+          <p class="text-slate-400 text-sm mt-1">
+            Suporte a <b>YouTube Vertical (Shorts/Reels)</b> e <b>Horizontal</b>, <b>Botão com Delay programável</b> para VSLs, <b>Navegador de Produto (Iframe/HTML)</b>, coleta de Leads e salvamento de retenção em Planilha Google.
+          </p>
+        </div>
+      </div>
+      <button onclick="App.openSheetsGuideModal()" class="shrink-0 px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold border border-slate-700 transition">
+        Ver Como Configurar Métricas →
+      </button>
+    </div>
+  </main>
+
+  <!-- ========================================== -->
+  <!-- TELA 2: EDITOR VISUAL COMPLETO             -->
+  <!-- ========================================== -->
+  <main id="view-editor" class="flex-1 flex flex-col h-[calc(100vh-65px)] overflow-hidden">
+    <!-- Sub-Barra do Editor -->
+    <div class="bg-slate-900 border-b border-slate-800 px-4 lg:px-8 py-2.5 flex items-center justify-between gap-4">
+      <div class="flex items-center gap-3">
+        <button onclick="App.backToDashboard()" class="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800 transition" title="Voltar ao Painel">
+          <i class="ph ph-arrow-left text-lg"></i>
+        </button>
+        <input type="text" id="editor-quiz-title" onchange="App.updateCurrentQuizTitle(this.value)" class="bg-transparent text-white font-extrabold text-base lg:text-lg focus:bg-slate-800/80 px-2 py-1 rounded border border-transparent focus:border-indigo-500 outline-none transition" placeholder="Nome do Quiz...">
+        <span id="save-status-badge" class="text-[11px] text-emerald-400 font-semibold bg-emerald-500/10 px-2.5 py-0.5 rounded-full border border-emerald-500/20 flex items-center gap-1">
+          <i class="ph ph-check-circle"></i> Salvo
+        </span>
+      </div>
+
+      <div class="flex items-center gap-2">
+        <!-- Switcher Visualizador: Mobile vs Desktop -->
+        <div class="bg-slate-800 p-0.5 rounded-lg flex items-center border border-slate-700">
+          <button id="btn-device-mobile" onclick="App.setPreviewDevice('mobile')" class="px-2.5 py-1 rounded text-xs font-semibold bg-indigo-600 text-white flex items-center gap-1 transition">
+            <i class="ph ph-device-mobile"></i> Celular
+          </button>
+          <button id="btn-device-desktop" onclick="App.setPreviewDevice('desktop')" class="px-2.5 py-1 rounded text-xs font-semibold text-slate-400 hover:text-white flex items-center gap-1 transition">
+            <i class="ph ph-laptop"></i> Desktop
+          </button>
+        </div>
+
+        <!-- Botão Baixar Projeto JSON -->
+        <button onclick="App.exportCurrentQuizJson()" class="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold border border-slate-700 transition" title="Salva arquivo .json no computador">
+          <i class="ph ph-floppy-disk"></i> Backup .json
+        </button>
+
+        <!-- Botão Exportar HTML Principal -->
+        <button onclick="App.exportCurrentQuizHtml()" class="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-gradient-to-r from-indigo-500 to-indigo-600 hover:from-indigo-600 hover:to-indigo-700 text-white text-xs font-bold shadow-lg shadow-indigo-500/25 transition">
+          <i class="ph ph-download-simple text-sm"></i>
+          Exportar HTML
+        </button>
+      </div>
+    </div>
+
+    <!-- Conteúdo Dividido: Coluna de Configuração + Coluna de Preview -->
+    <div class="flex-1 flex flex-col lg:flex-row overflow-hidden">
+      
+      <!-- PAINEL ESQUERDO: CONFIGURAÇÕES & ETAPAS -->
+      <div class="w-full lg:w-[58%] border-r border-slate-800 flex flex-col bg-slate-900/60 overflow-hidden">
+        <!-- Abas de Navegação do Painel -->
+        <div class="flex border-b border-slate-800 bg-slate-900 px-4">
+          <button id="tab-btn-steps" onclick="App.switchEditorTab('steps')" class="px-4 py-3 font-bold text-xs uppercase tracking-wider text-indigo-400 border-b-2 border-indigo-500 flex items-center gap-2">
+            <i class="ph ph-list-numbers text-base"></i> Etapas do Funil
+          </button>
+          <button id="tab-btn-design" onclick="App.switchEditorTab('design')" class="px-4 py-3 font-bold text-xs uppercase tracking-wider text-slate-400 hover:text-white border-b-2 border-transparent flex items-center gap-2">
+            <i class="ph ph-paint-brush text-base"></i> Visual & Cores
+          </button>
+          <button id="tab-btn-tracking" onclick="App.switchEditorTab('tracking')" class="px-4 py-3 font-bold text-xs uppercase tracking-wider text-slate-400 hover:text-white border-b-2 border-transparent flex items-center gap-2">
+            <i class="ph ph-chart-line-up text-base"></i> Métricas & Retenção
+          </button>
+        </div>
+
+        <!-- CONTEÚDO DAS ABAS (Scrollável) -->
+        <div class="flex-1 overflow-y-auto p-4 lg:p-6 space-y-6">
+
+          <!-- ABA 1: ETAPAS DO FUNIL -->
+          <div id="tab-content-steps" class="space-y-6">
+            <!-- Banner Explicativo Visual -->
+            <div class="bg-indigo-950/60 border border-indigo-500/30 rounded-2xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs">
+              <div class="flex items-center gap-3">
+                <span class="w-8 h-8 rounded-xl bg-indigo-500/20 text-indigo-400 flex items-center justify-center shrink-0 text-base font-black">1</span>
+                <div>
+                  <p class="font-bold text-white">Como usar este painel:</p>
+                  <p class="text-slate-300">Edite as perguntas e opções abaixo. O celular da direita 👉 atualiza na hora e você pode clicar nele para testar!</p>
+                </div>
+              </div>
+              <button onclick="App.openHowItWorksModal()" class="shrink-0 px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs transition">
+                Guia Rápido
+              </button>
+            </div>
+
+            <div class="flex items-center justify-between">
+              <div>
+                <h3 class="font-extrabold text-white text-lg">Etapas do Quiz</h3>
+                <p class="text-xs text-slate-400">Configure as perguntas, vídeos, blocos e página final de oferta.</p>
+              </div>
+
+              <!-- Menu Adicionar Nova Etapa -->
+              <div class="relative inline-block text-left">
+                <button onclick="App.toggleAddStepMenu()" class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold transition shadow-sm">
+                  <i class="ph ph-plus-circle text-sm"></i>
+                  Adicionar Etapa
+                </button>
+                <div id="menu-add-step" class="hidden absolute right-0 mt-2 w-56 rounded-xl bg-slate-800 border border-slate-700 shadow-2xl z-50 py-1.5">
+                  <button onclick="App.addNewStep('question')" class="w-full text-left px-4 py-2 text-xs font-semibold text-slate-200 hover:bg-slate-700/70 flex items-center gap-2.5">
+                    <span class="text-indigo-400 font-bold">❓</span> Pergunta com Opções
+                  </button>
+                  <button onclick="App.addNewStep('video_cta')" class="w-full text-left px-4 py-2 text-xs font-semibold text-slate-200 hover:bg-slate-700/70 flex items-center gap-2.5">
+                    <span class="text-red-400 font-bold">🎬</span> Vídeo + Botão com Delay
+                  </button>
+                  <button onclick="App.addNewStep('product_browser')" class="w-full text-left px-4 py-2 text-xs font-semibold text-slate-200 hover:bg-slate-700/70 flex items-center gap-2.5">
+                    <span class="text-emerald-400 font-bold">🌐</span> Navegador de Produto (HTML/Iframe)
+                  </button>
+                  <button onclick="App.addNewStep('lead_capture')" class="w-full text-left px-4 py-2 text-xs font-semibold text-slate-200 hover:bg-slate-700/70 flex items-center gap-2.5">
+                    <span class="text-amber-400 font-bold">📱</span> Captura de Leads (WhatsApp/Email)
+                  </button>
+                  <button onclick="App.addNewStep('analyzing')" class="w-full text-left px-4 py-2 text-xs font-semibold text-slate-200 hover:bg-slate-700/70 flex items-center gap-2.5">
+                    <span class="text-cyan-400 font-bold">⏳</span> Tela de Análise (Fake Loading)
+                  </button>
+                  <button onclick="App.addNewStep('offer')" class="w-full text-left px-4 py-2 text-xs font-semibold text-slate-200 hover:bg-slate-700/70 flex items-center gap-2.5">
+                    <span class="text-violet-400 font-bold">🎁</span> Oferta Final / Checkout
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Lista de Cartões de Etapa (Renderizados via JS) -->
+            <div id="steps-container" class="space-y-4">
+              <!-- Cards dinâmicos das etapas -->
+            </div>
+          </div>
+
+          <!-- ABA 2: VISUAL & CORES (DESIGN) -->
+          <div id="tab-content-design" class="hidden space-y-6">
+            <div>
+              <h3 class="font-extrabold text-white text-lg">Personalização Visual</h3>
+              <p class="text-xs text-slate-400">Ajuste cores, bordas, sombras e espaçamentos do seu quiz.</p>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <!-- Cor Primária -->
+              <div class="bg-slate-800/80 p-4 rounded-xl border border-slate-700">
+                <label class="block text-xs font-bold text-slate-300 mb-2">Cor Principal dos Botões / Destaque</label>
+                <div class="flex items-center gap-3">
+                  <input type="color" id="theme-primary" onchange="App.updateThemeProp('primaryColor', this.value)" class="w-10 h-10 rounded-lg cursor-pointer bg-transparent border-0">
+                  <input type="text" id="theme-primary-text" onchange="App.updateThemeProp('primaryColor', this.value)" class="flex-1 bg-slate-900 border border-slate-700 px-3 py-2 rounded-lg text-xs font-mono text-white">
+                </div>
+              </div>
+
+              <!-- Cor de Acento -->
+              <div class="bg-slate-800/80 p-4 rounded-xl border border-slate-700">
+                <label class="block text-xs font-bold text-slate-300 mb-2">Cor de Acento / Sucesso</label>
+                <div class="flex items-center gap-3">
+                  <input type="color" id="theme-accent" onchange="App.updateThemeProp('accentColor', this.value)" class="w-10 h-10 rounded-lg cursor-pointer bg-transparent border-0">
+                  <input type="text" id="theme-accent-text" onchange="App.updateThemeProp('accentColor', this.value)" class="flex-1 bg-slate-900 border border-slate-700 px-3 py-2 rounded-lg text-xs font-mono text-white">
+                </div>
+              </div>
+
+              <!-- Cor de Fundo da Página -->
+              <div class="bg-slate-800/80 p-4 rounded-xl border border-slate-700">
+                <label class="block text-xs font-bold text-slate-300 mb-2">Fundo da Página (Background)</label>
+                <div class="flex items-center gap-3">
+                  <input type="color" id="theme-bg" onchange="App.updateThemeProp('bgColor', this.value)" class="w-10 h-10 rounded-lg cursor-pointer bg-transparent border-0">
+                  <input type="text" id="theme-bg-text" onchange="App.updateThemeProp('bgColor', this.value)" class="flex-1 bg-slate-900 border border-slate-700 px-3 py-2 rounded-lg text-xs font-mono text-white">
+                </div>
+              </div>
+
+              <!-- Cor do Cartão do Quiz -->
+              <div class="bg-slate-800/80 p-4 rounded-xl border border-slate-700">
+                <label class="block text-xs font-bold text-slate-300 mb-2">Fundo do Cartão do Quiz</label>
+                <div class="flex items-center gap-3">
+                  <input type="color" id="theme-card-bg" onchange="App.updateThemeProp('cardBg', this.value)" class="w-10 h-10 rounded-lg cursor-pointer bg-transparent border-0">
+                  <input type="text" id="theme-card-bg-text" onchange="App.updateThemeProp('cardBg', this.value)" class="flex-1 bg-slate-900 border border-slate-700 px-3 py-2 rounded-lg text-xs font-mono text-white">
+                </div>
+              </div>
+
+              <!-- Cor do Texto Principal -->
+              <div class="bg-slate-800/80 p-4 rounded-xl border border-slate-700">
+                <label class="block text-xs font-bold text-slate-300 mb-2">Cor do Texto Principal</label>
+                <div class="flex items-center gap-3">
+                  <input type="color" id="theme-text" onchange="App.updateThemeProp('textColor', this.value)" class="w-10 h-10 rounded-lg cursor-pointer bg-transparent border-0">
+                  <input type="text" id="theme-text-text" onchange="App.updateThemeProp('textColor', this.value)" class="flex-1 bg-slate-900 border border-slate-700 px-3 py-2 rounded-lg text-xs font-mono text-white">
+                </div>
+              </div>
+
+              <!-- Arredondamento de Bordas -->
+              <div class="bg-slate-800/80 p-4 rounded-xl border border-slate-700">
+                <label class="block text-xs font-bold text-slate-300 mb-2">Estilo de Arredondamento (Bordas)</label>
+                <select id="theme-radius" onchange="App.updateThemeProp('borderRadius', this.value)" class="w-full bg-slate-900 border border-slate-700 px-3 py-2 rounded-lg text-xs text-white">
+                  <option value="0px">Quadrado Reto (0px)</option>
+                  <option value="8px">Suave (8px)</option>
+                  <option value="16px">Arredondado Moderno (16px)</option>
+                  <option value="24px">Super Curvo (24px)</option>
+                  <option value="9999px">Formato Pílula</option>
+                </select>
+              </div>
+
+              <!-- Intensidade da Sombra -->
+              <div class="bg-slate-800/80 p-4 rounded-xl border border-slate-700">
+                <label class="block text-xs font-bold text-slate-300 mb-2">Efeito de Sombra (Profundidade)</label>
+                <select id="theme-shadow" onchange="App.updateThemeProp('shadow', this.value)" class="w-full bg-slate-900 border border-slate-700 px-3 py-2 rounded-lg text-xs text-white">
+                  <option value="none">Nenhuma Sombra</option>
+                  <option value="subtle">Sombra Suave</option>
+                  <option value="medium">Sombra Média (Padrão)</option>
+                  <option value="intense">Sombra Marcante</option>
+                  <option value="glow">Brilho Neon (Glow)</option>
+                </select>
+              </div>
+
+              <!-- Largura Máxima -->
+              <div class="bg-slate-800/80 p-4 rounded-xl border border-slate-700">
+                <label class="block text-xs font-bold text-slate-300 mb-2">Largura Máxima do Quiz</label>
+                <select id="theme-max-width" onchange="App.updateThemeProp('maxWidth', this.value)" class="w-full bg-slate-900 border border-slate-700 px-3 py-2 rounded-lg text-xs text-white">
+                  <option value="480px">Compacto Mobile (480px)</option>
+                  <option value="560px">Equilibrado (560px - Recomendado)</option>
+                  <option value="640px">Amplo Desktop (640px)</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <!-- ABA 3: RASTREAMENTO & RETENÇÃO -->
+          <div id="tab-content-tracking" class="hidden space-y-6">
+            <div>
+              <h3 class="font-extrabold text-white text-lg">Métricas de Retenção & Tracking</h3>
+              <p class="text-xs text-slate-400">Monitore abandono por etapa e alimente seu tráfego pago sem intermediários pagos.</p>
+            </div>
+
+            <!-- Webhook Google Planilhas -->
+            <div class="bg-slate-800/80 p-5 rounded-2xl border border-slate-700 space-y-3">
+              <div class="flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                  <i class="ph ph-file-spreadsheet text-emerald-400 text-xl"></i>
+                  <h4 class="font-bold text-white text-sm">Planilha Google (Apps Script Webhook)</h4>
+                </div>
+                <button onclick="App.openSheetsGuideModal()" class="text-xs font-bold text-indigo-400 hover:text-indigo-300 underline">
+                  Ver código do Apps Script
+                </button>
+              </div>
+              <p class="text-xs text-slate-400">
+                Insira a URL do seu Web App criado no Google Sheets. Cada clique e etapa do usuário criará uma nova linha na planilha em tempo real.
+              </p>
+              <input type="url" id="tracking-webhook" onchange="App.updateTrackingProp('webhookUrl', this.value)" placeholder="https://script.google.com/macros/s/AKfycbx.../exec" class="w-full bg-slate-900 border border-slate-700 px-3.5 py-2.5 rounded-xl text-xs text-white focus:border-indigo-500 outline-none">
+            </div>
+
+            <!-- Meta Pixel ID -->
+            <div class="bg-slate-800/80 p-5 rounded-2xl border border-slate-700 space-y-3">
+              <div class="flex items-center gap-2">
+                <i class="ph ph-meta-logo text-blue-400 text-xl"></i>
+                <h4 class="font-bold text-white text-sm">Meta Pixel ID (Facebook & Instagram Ads)</h4>
+              </div>
+              <p class="text-xs text-slate-400">
+                Dispara eventos automáticos: <code>Quiz_Iniciado</code>, <code>Quiz_Etapa_X</code>, <code>Lead</code> e <code>Quiz_Chegou_Oferta</code> para criar públicos de remarketing personalizados.
+              </p>
+              <input type="text" id="tracking-pixel" onchange="App.updateTrackingProp('metaPixelId', this.value)" placeholder="Ex: 123456789012345" class="w-full bg-slate-900 border border-slate-700 px-3.5 py-2.5 rounded-xl text-xs text-white focus:border-indigo-500 outline-none">
+            </div>
+
+            <!-- Google Analytics 4 (GA4) -->
+            <div class="bg-slate-800/80 p-5 rounded-2xl border border-slate-700 space-y-3">
+              <div class="flex items-center gap-2">
+                <i class="ph ph-google-logo text-amber-400 text-xl"></i>
+                <h4 class="font-bold text-white text-sm">Google Analytics 4 (Measurement ID)</h4>
+              </div>
+              <p class="text-xs text-slate-400">
+                Rastreia o funil de retenção dentro dos relatórios do GA4.
+              </p>
+              <input type="text" id="tracking-ga4" onchange="App.updateTrackingProp('ga4Id', this.value)" placeholder="Ex: G-XXXXXXXXXX" class="w-full bg-slate-900 border border-slate-700 px-3.5 py-2.5 rounded-xl text-xs text-white focus:border-indigo-500 outline-none">
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- PAINEL DIREITO: PRÉ-VISUALIZAÇÃO EM TEMPO REAL -->
+      <div class="w-full lg:w-[42%] bg-slate-950 flex flex-col p-4 lg:p-6 overflow-hidden relative">
+        <div class="flex items-center justify-between mb-3 px-2">
+          <div class="flex items-center gap-2">
+            <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
+            <span class="text-xs font-bold text-slate-300 uppercase tracking-wider">Preview Interativo em Tempo Real</span>
+          </div>
+          <button onclick="App.restartPreview()" class="text-xs text-indigo-400 hover:text-indigo-300 font-semibold flex items-center gap-1">
+            <i class="ph ph-arrow-counter-clockwise"></i> Reiniciar Teste
+          </button>
+        </div>
+
+        <!-- Moldura do Dispositivo -->
+        <div class="flex-1 flex items-center justify-center overflow-y-auto py-2">
+          <div id="preview-mockup-frame" class="phone-mockup">
+            <div class="phone-notch">
+              <div class="phone-speaker"></div>
+              <div class="phone-camera"></div>
+            </div>
+            
+            <iframe id="preview-iframe" class="phone-screen w-full h-full border-0"></iframe>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+  <!-- ========================================== -->
+  <!-- MODAL: GUIA PLANILHA GOOGLE APPS SCRIPT    -->
+  <!-- ========================================== -->
+  <div id="modal-sheets-guide" class="hidden fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-2xl w-full p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
+      <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+        <div class="flex items-center gap-2.5">
+          <div class="w-8 h-8 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center">
+            <i class="ph ph-file-spreadsheet text-lg"></i>
+          </div>
+          <h3 class="font-extrabold text-white text-base">Como Conectar a Planilha Google (Sem Complicação)</h3>
+        </div>
+        <button onclick="App.closeModals()" class="text-slate-400 hover:text-white p-1">
+          <i class="ph ph-x text-lg"></i>
+        </button>
+      </div>
+
+      <div class="space-y-3 text-xs text-slate-300 leading-relaxed">
+        <p>Siga estes 4 passos simples para receber todos os cliques e leads direto em uma planilha:</p>
+        
+        <ol class="list-decimal pl-5 space-y-2 text-slate-300">
+          <li>Crie uma nova planilha no <b>Google Planilhas</b> (Google Sheets).</li>
+          <li>Na linha 1 (cabeçalho), crie as colunas: <br>
+            <span class="font-mono bg-slate-800 px-2 py-0.5 rounded text-indigo-300 inline-block mt-1">Data/Hora | Evento | Quiz | Etapa | Pergunta | Resposta | Pontos | Nome | WhatsApp | Email</span>
+          </li>
+          <li>No menu da planilha, clique em: <b>Extensões > Apps Script</b>.</li>
+          <li>Apague o código que estiver lá e cole o código abaixo:</li>
+        </ol>
+
+        <!-- Bloco de Código com Botão de Copiar -->
+        <div class="relative bg-slate-950 border border-slate-800 rounded-xl p-3 font-mono text-[11px] text-slate-300 overflow-x-auto max-h-48">
+          <button onclick="App.copySheetsScript()" class="absolute top-2 right-2 bg-indigo-600 hover:bg-indigo-500 text-white px-2.5 py-1 rounded text-[10px] font-bold flex items-center gap-1 transition">
+            <i class="ph ph-copy"></i> Copiar Código
+          </button>
+          <pre id="sheets-script-code">function doPost(e) {
+  try {
+    var sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
+    var data = JSON.parse(e.postData.contents);
+    var timestamp = new Date();
+    sheet.appendRow([
+      timestamp,
+      data.event || '',
+      data.quizTitle || '',
+      (data.data && data.data.stepIndex) || '',
+      (data.data && data.data.stepTitle) || (data.data && data.data.question) || '',
+      (data.data && data.data.answer) || '',
+      (data.data && data.data.points) !== undefined ? data.data.points : (data.totalScore || ''),
+      (data.lead && data.lead.name) || '',
+      (data.lead && data.lead.whatsapp) || '',
+      (data.lead && data.lead.email) || ''
+    ]);
+    return ContentService.createTextOutput(JSON.stringify({ status: 'success' })).setMimeType(ContentService.MimeType.JSON);
+  } catch (err) {
+    return ContentService.createTextOutput(JSON.stringify({ status: 'error', message: err.toString() })).setMimeType(ContentService.MimeType.JSON);
+  }
+}</pre>
+        </div>
+
+        <ol start="5" class="list-decimal pl-5 space-y-1.5 text-slate-300">
+          <li>Clique no botão azul <b>Implantar > Nova implantação</b> (canto superior direito).</li>
+          <li>Escolha o tipo <b>App da Web</b>.</li>
+          <li>Em <b>"Quem pode acessar"</b>, marque <b>"Qualquer pessoa"</b> (isso evita qualquer barreira de login ou permissão).</li>
+          <li>Copie a URL gerada e cole no campo <b>Planilha Google (Apps Script Webhook)</b> na aba Métricas do Quiz!</li>
+        </ol>
+      </div>
+
+      <div class="pt-2 flex justify-end">
+        <button onclick="App.closeModals()" class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold transition">
+          Entendi, Fechar
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- MODAL: GUIA GITHUB PAGES                   -->
+  <!-- ========================================== -->
+  <div id="modal-github-guide" class="hidden fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-xl w-full p-6 shadow-2xl space-y-4">
+      <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+        <div class="flex items-center gap-2.5">
+          <div class="w-8 h-8 rounded-lg bg-slate-800 text-white flex items-center justify-center">
+            <i class="ph ph-github-logo text-lg"></i>
+          </div>
+          <h3 class="font-extrabold text-white text-base">Como Colocar a Ferramenta no GitHub Pages</h3>
+        </div>
+        <button onclick="App.closeModals()" class="text-slate-400 hover:text-white p-1">
+          <i class="ph ph-x text-lg"></i>
+        </button>
+      </div>
+
+      <div class="space-y-3 text-xs text-slate-300 leading-relaxed">
+        <p>Você pode hospedar tanto esta ferramenta quanto os quizzes exportados no GitHub de forma 100% gratuita:</p>
+        <ol class="list-decimal pl-5 space-y-2">
+          <li>Crie uma conta gratuita no <b>GitHub.com</b>.</li>
+          <li>Crie um novo repositório (ex: <code class="bg-slate-800 px-1.5 py-0.5 rounded text-indigo-300">meu-quiz-builder</code>).</li>
+          <li>Faça o upload dos arquivos desta pasta (<code>index.html</code>, <code>app.js</code>, <code>template-engine.js</code>, <code>styles.css</code>).</li>
+          <li>No repositório, vá em <b>Settings > Pages</b>.</li>
+          <li>Em <b>Branch</b>, selecione <b>main</b> e clique em <b>Save</b>.</li>
+          <li>Em 1 minuto o GitHub gerará um link online seguro com HTTPS (ex: <code class="text-emerald-400">https://seu-usuario.github.io/meu-quiz-builder</code>)!</li>
+        </ol>
+      </div>
+
+      <div class="pt-2 flex justify-end">
+        <button onclick="App.closeModals()" class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold transition">
+          Fechar
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- MODAL: EXPORTAR HTML CONCLUÍDO             -->
+  <!-- ========================================== -->
+  <div id="modal-export-success" class="hidden fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-lg w-full p-6 shadow-2xl text-center space-y-4">
+      <div class="w-16 h-16 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center mx-auto text-3xl">
+        🎉
+      </div>
+      <div>
+        <h3 class="font-extrabold text-white text-xl">Seu Quiz foi Gerado com Sucesso!</h3>
+        <p class="text-xs text-slate-400 mt-1">O arquivo HTML é 100% autônomo, ultrarrápido e pronto para uso.</p>
+      </div>
+
+      <div class="bg-slate-950 border border-slate-800 rounded-xl p-4 text-left space-y-2 text-xs text-slate-300">
+        <p class="font-bold text-white">O que fazer agora com o arquivo baixado?</p>
+        <ul class="list-disc pl-5 space-y-1 text-slate-400">
+          <li><b>Testar agora:</b> Dê dois cliques no arquivo baixado para abri-lo direto no seu navegador.</li>
+          <li><b>No WordPress / Elementor:</b> Você pode subir o arquivo na sua hospedagem ou copiar o conteúdo em um bloco HTML.</li>
+          <li><b>Na Hostinger / cPanel:</b> Suba na pasta <code>public_html/quiz</code> e ele estará online.</li>
+          <li><b>No GitHub Pages:</b> Crie uma página estática e publique em segundos.</li>
+        </ul>
+      </div>
+
+      <div class="pt-2 flex justify-center gap-3">
+        <button onclick="App.downloadExportedHtmlAgain()" class="px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold transition flex items-center gap-1.5">
+          <i class="ph ph-download-simple"></i> Baixar Novamente
+        </button>
+        <button onclick="App.closeModals()" class="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold transition">
+          Fechar
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- MODAL: GUIA VISUAL RÁPIDO (COMO FUNCIONA)   -->
+  <!-- ========================================== -->
+  <div id="modal-how-it-works" class="hidden fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-800 rounded-3xl max-w-xl w-full p-6 shadow-2xl space-y-5">
+      <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+        <div class="flex items-center gap-2.5">
+          <div class="w-8 h-8 rounded-xl bg-indigo-500/20 text-indigo-400 flex items-center justify-center text-lg font-bold">
+            💡
+          </div>
+          <h3 class="font-extrabold text-white text-base">Como Funciona este Construtor de Quiz?</h3>
+        </div>
+        <button onclick="App.closeModals()" class="text-slate-400 hover:text-white p-1">
+          <i class="ph ph-x text-lg"></i>
+        </button>
+      </div>
+
+      <div class="space-y-4 text-xs text-slate-300 leading-relaxed">
+        <div class="bg-slate-950 p-3.5 rounded-2xl border border-slate-800 flex items-start gap-3">
+          <span class="w-6 h-6 rounded-lg bg-indigo-600 text-white font-bold text-xs flex items-center justify-center shrink-0">1</span>
+          <div>
+            <h4 class="font-bold text-white text-sm mb-0.5">O que é um Funil de Quiz?</h4>
+            <p class="text-slate-400">É uma página onde o visitante responde 3 ou 4 perguntas rápidas e, no final, recebe um diagnóstico com um botão para comprar o seu produto exato.</p>
+          </div>
+        </div>
+
+        <div class="bg-slate-950 p-3.5 rounded-2xl border border-slate-800 flex items-start gap-3">
+          <span class="w-6 h-6 rounded-lg bg-indigo-600 text-white font-bold text-xs flex items-center justify-center shrink-0">2</span>
+          <div>
+            <h4 class="font-bold text-white text-sm mb-0.5">Painel da Esquerda vs Celular da Direita</h4>
+            <p class="text-slate-400">Na <b>esquerda</b> você digita os títulos, adiciona vídeos do YouTube e configura os botões. Na <b>direita</b> aparece o celular do seu cliente. Você pode clicar nos botões do celular para testar a experiência na hora!</p>
+          </div>
+        </div>
+
+        <div class="bg-slate-950 p-3.5 rounded-2xl border border-slate-800 flex items-start gap-3">
+          <span class="w-6 h-6 rounded-lg bg-emerald-600 text-white font-bold text-xs flex items-center justify-center shrink-0">3</span>
+          <div>
+            <h4 class="font-bold text-white text-sm mb-0.5">Como usar o quiz pronto?</h4>
+            <p class="text-slate-400">Quando terminar de editar, basta clicar no botão verde <b>"Exportar HTML"</b> no topo. Ele baixa um único arquivo (ex: <code>meu-quiz.html</code>) que você pode abrir ou colocar no ar na sua hospedagem.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="pt-2 flex justify-end">
+        <button onclick="App.closeModals()" class="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold transition">
+          Perfeito, Entendi!
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Scripts do Construtor -->
+  <script src="template-engine.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

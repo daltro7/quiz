@@ -1,0 +1,105 @@
+/* Estilos Adicionais para o Construtor de Quiz */
+
+/* Scrollbar personalizado */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #0f172a;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #334155;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #475569;
+}
+
+/* Moldura de Celular para o Preview */
+.phone-mockup {
+  width: 375px;
+  max-width: 100%;
+  height: min(740px, calc(100vh - 140px));
+  min-height: 520px;
+  background: #1e293b;
+  border-radius: 40px;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7), 0 0 0 10px #0f172a, 0 0 0 12px #334155;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  margin: 0 auto;
+  transition: all 0.3s ease;
+}
+
+.phone-mockup.desktop-view {
+  width: 100%;
+  max-width: 680px;
+  height: min(740px, calc(100vh - 140px));
+  min-height: 520px;
+  border-radius: 20px;
+  box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.5), 0 0 0 6px #1e293b;
+}
+
+/* Speaker e Notch do celular */
+.phone-notch {
+  width: 140px;
+  height: 24px;
+  background: #0f172a;
+  border-bottom-left-radius: 14px;
+  border-bottom-right-radius: 14px;
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.phone-speaker {
+  width: 50px;
+  height: 4px;
+  background: #334155;
+  border-radius: 2px;
+}
+
+.phone-camera {
+  width: 8px;
+  height: 8px;
+  background: #1e293b;
+  border: 1px solid #475569;
+  border-radius: 50%;
+  margin-left: 10px;
+}
+
+.phone-screen {
+  flex: 1;
+  overflow-y: auto;
+  position: relative;
+  padding-top: 24px;
+}
+
+/* Transições suaves */
+.transition-card {
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.transition-card:hover {
+  transform: translateY(-2px);
+}
+
+/* Badge animado */
+@keyframes pulseSubtle {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+
+.pulse-badge {
+  animation: pulseSubtle 2s infinite ease-in-out;
+}
