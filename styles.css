@@ -1,33 +1,51 @@
 /* Estilos Adicionais para o Construtor de Quiz */
 
-/* Scrollbar personalizado geral */
+/* Scrollbars Universais Visíveis e Elegantes */
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;
 }
 
 ::-webkit-scrollbar-track {
-  background: #0f172a;
+  background: #0b1120;
 }
 
 ::-webkit-scrollbar-thumb {
   background: #334155;
-  border-radius: 4px;
+  border-radius: 9999px;
+  border: 2px solid #0b1120;
 }
 
 ::-webkit-scrollbar-thumb:hover {
+  background: #6366f1;
+}
+
+/* Scrollbar do Painel Esquerdo (Etapas) */
+#panel-editor-left > div::-webkit-scrollbar,
+.steps-scroll-area::-webkit-scrollbar {
+  width: 8px;
+}
+
+#panel-editor-left > div::-webkit-scrollbar-thumb,
+.steps-scroll-area::-webkit-scrollbar-thumb {
   background: #475569;
+  border-radius: 9999px;
+}
+
+#panel-editor-left > div::-webkit-scrollbar-thumb:hover,
+.steps-scroll-area::-webkit-scrollbar-thumb:hover {
+  background: #6366f1;
 }
 
 /* Moldura de Celular para o Preview */
 .phone-mockup {
-  width: 375px;
+  width: 360px;
   max-width: 100%;
-  height: min(740px, calc(100vh - 130px));
-  min-height: 480px;
+  height: min(640px, calc(100vh - 150px));
+  min-height: 440px;
   background: #1e293b;
-  border-radius: 40px;
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7), 0 0 0 10px #0f172a, 0 0 0 12px #334155;
+  border-radius: 36px;
+  box-shadow: 0 20px 45px -10px rgba(0, 0, 0, 0.7), 0 0 0 8px #0f172a, 0 0 0 10px #334155;
   overflow: hidden;
   display: flex;
   flex-direction: column;
@@ -38,20 +56,20 @@
 
 .phone-mockup.desktop-view {
   width: 100%;
-  max-width: 680px;
-  height: min(740px, calc(100vh - 130px));
-  min-height: 480px;
+  max-width: 660px;
+  height: min(640px, calc(100vh - 150px));
+  min-height: 440px;
   border-radius: 20px;
   box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.5), 0 0 0 6px #1e293b;
 }
 
-/* Speaker e Notch do celular (não bloqueia cliques ou rolagem) */
+/* Speaker e Notch do celular (pointer-events: none para não bloquear toques) */
 .phone-notch {
-  width: 140px;
-  height: 24px;
+  width: 130px;
+  height: 22px;
   background: #0f172a;
-  border-bottom-left-radius: 14px;
-  border-bottom-right-radius: 14px;
+  border-bottom-left-radius: 12px;
+  border-bottom-right-radius: 12px;
   position: absolute;
   top: 0;
   left: 50%;
@@ -64,22 +82,22 @@
 }
 
 .phone-speaker {
-  width: 50px;
+  width: 44px;
   height: 4px;
   background: #334155;
   border-radius: 2px;
 }
 
 .phone-camera {
-  width: 8px;
-  height: 8px;
+  width: 7px;
+  height: 7px;
   background: #1e293b;
   border: 1px solid #475569;
   border-radius: 50%;
-  margin-left: 10px;
+  margin-left: 8px;
 }
 
-/* Tela do Celular com Rolagem Fluida e Scrollbar Elegante */
+/* Tela do Celular com Barra de Rolagem Sempre Presente */
 .phone-screen {
   flex: 1 1 0%;
   min-height: 0;
@@ -87,10 +105,11 @@
   height: 100%;
   display: flex;
   flex-direction: column;
-  overflow-y: auto !important;
+  overflow-y: scroll !important;
   overscroll-behavior: contain;
   background: #0f172a;
   scroll-behavior: smooth;
+  scrollbar-gutter: stable;
 }
 
 #preview-viewport::-webkit-scrollbar {
@@ -98,7 +117,7 @@
 }
 
 #preview-viewport::-webkit-scrollbar-track {
-  background: rgba(15, 23, 42, 0.4);
+  background: rgba(15, 23, 42, 0.6);
 }
 
 #preview-viewport::-webkit-scrollbar-thumb {

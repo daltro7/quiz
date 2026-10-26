@@ -150,9 +150,9 @@
   <!-- ========================================== -->
   <!-- TELA 2: EDITOR VISUAL COMPLETO             -->
   <!-- ========================================== -->
-  <main id="view-editor" class="flex-1 flex flex-col h-[calc(100vh-65px)] max-h-[calc(100vh-65px)] overflow-hidden min-h-0">
+  <main id="view-editor" class="flex-1 flex flex-col min-h-0">
     <!-- Sub-Barra do Editor -->
-    <div class="bg-slate-900 border-b border-slate-800 px-4 lg:px-8 py-2.5 flex items-center justify-between gap-4">
+    <div class="bg-slate-900 border-b border-slate-800 px-4 lg:px-8 py-2.5 flex items-center justify-between gap-4 sticky top-[65px] z-30 shadow-md">
       <div class="flex items-center gap-3">
         <button onclick="App.backToDashboard()" class="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800 transition" title="Voltar ao Painel">
           <i class="ph ph-arrow-left text-lg"></i>
@@ -187,8 +187,8 @@
       </div>
     </div>
 
-    <!-- Barra de Alternância para Telas Menores / Notebooks (Mobile & Tablet) -->
-    <div class="md:hidden flex border-b border-slate-800 bg-slate-900 px-4 py-1.5 gap-2">
+    <!-- Barra de Alternância para Telas Menores / Celulares -->
+    <div class="md:hidden flex border-b border-slate-800 bg-slate-900 px-4 py-1.5 gap-2 sticky top-[118px] z-20">
       <button id="btn-mview-editor" onclick="App.setMobileScreen('editor')" class="flex-1 py-2 rounded-xl text-xs font-bold bg-indigo-600 text-white flex items-center justify-center gap-1.5 transition">
         <i class="ph ph-note-pencil"></i> 1. Editar Quiz
       </button>
@@ -197,13 +197,13 @@
       </button>
     </div>
 
-    <!-- Conteúdo Dividido: Coluna de Configuração + Coluna de Preview -->
-    <div class="flex-1 flex flex-col md:flex-row overflow-hidden min-h-0 h-full">
+    <!-- Conteúdo Dividido: Coluna de Configuração + Coluna de Preview (Rolagem fluida na página) -->
+    <div class="flex-1 flex flex-col md:flex-row items-start justify-center min-h-0 w-full">
       
       <!-- PAINEL ESQUERDO: CONFIGURAÇÕES & ETAPAS -->
-      <div id="panel-editor-left" class="w-full md:w-[56%] lg:w-[58%] border-r border-slate-800 flex flex-col bg-slate-900/60 overflow-hidden h-full min-h-0">
-        <!-- Abas de Navegação do Painel -->
-        <div class="flex border-b border-slate-800 bg-slate-900 px-4">
+      <div id="panel-editor-left" class="w-full md:w-[56%] lg:w-[58%] border-r border-slate-800 flex flex-col bg-slate-900/60 min-h-screen">
+        <!-- Abas de Navegação do Painel (Fixas no topo durante a rolagem) -->
+        <div class="sticky top-[118px] z-20 flex border-b border-slate-800 bg-slate-900/95 backdrop-blur px-4 shrink-0 shadow-sm">
           <button id="tab-btn-steps" onclick="App.switchEditorTab('steps')" class="px-4 py-3 font-bold text-xs uppercase tracking-wider text-indigo-400 border-b-2 border-indigo-500 flex items-center gap-2">
             <i class="ph ph-list-numbers text-base"></i> Etapas do Funil
           </button>
@@ -215,8 +215,8 @@
           </button>
         </div>
 
-        <!-- CONTEÚDO DAS ABAS (Scrollável) -->
-        <div class="flex-1 overflow-y-auto p-4 lg:p-6 space-y-6">
+        <!-- CONTEÚDO DAS ABAS (Rola livremente com a página) -->
+        <div class="p-4 lg:p-6 space-y-6 pb-48">
 
           <!-- ABA 1: ETAPAS DO FUNIL -->
           <div id="tab-content-steps" class="space-y-6">
@@ -226,7 +226,7 @@
                 <span class="w-8 h-8 rounded-xl bg-indigo-500/20 text-indigo-400 flex items-center justify-center shrink-0 text-base font-black">1</span>
                 <div>
                   <p class="font-bold text-white">Como usar este painel:</p>
-                  <p class="text-slate-300">Edite as perguntas e opções abaixo. O celular da direita 👉 atualiza na hora e você pode clicar nele para testar!</p>
+                  <p class="text-slate-300">Combine blocos livres (vídeo, botões com delay, perguntas, formulários). O celular da direita 👉 atualiza na hora e você pode clicar nele para testar!</p>
                 </div>
               </div>
               <button onclick="App.openHowItWorksModal()" class="shrink-0 px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs transition">
@@ -234,17 +234,25 @@
               </button>
             </div>
 
-            <div class="flex items-center justify-between">
+            <div class="flex flex-wrap items-center justify-between gap-3">
               <div>
                 <h3 class="font-extrabold text-white text-lg">Etapas do Quiz</h3>
-                <p class="text-xs text-slate-400">Monte cada etapa combinando blocos livres (vídeo, botões, perguntas, formulário).</p>
+                <p class="text-xs text-slate-400">Monte cada etapa combinando blocos modulares em branco ou já prontos.</p>
               </div>
 
-              <!-- Botão Criar Etapa em Branco -->
-              <button onclick="App.addNewStep()" class="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold transition shadow-lg shadow-indigo-500/20">
-                <i class="ph ph-plus-circle text-base"></i>
-                + Nova Etapa em Branco
-              </button>
+              <!-- Ações da Lista: Rolagem Rápida e Nova Etapa -->
+              <div class="flex items-center gap-2">
+                <button onclick="App.scrollEditor('bottom')" class="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-xs font-semibold border border-slate-700 transition flex items-center gap-1" title="Rolar tela até a última etapa">
+                  <i class="ph ph-arrow-down"></i> Fim ↓
+                </button>
+                <button onclick="App.scrollEditor('top')" class="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-xs font-semibold border border-slate-700 transition flex items-center gap-1" title="Voltar ao topo da página">
+                  <i class="ph ph-arrow-up"></i> Topo ↑
+                </button>
+                <button onclick="App.addNewStep()" class="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold transition shadow-lg shadow-indigo-500/20">
+                  <i class="ph ph-plus-circle text-base"></i>
+                  + Nova Etapa em Branco
+                </button>
+              </div>
             </div>
 
             <!-- Lista de Cartões de Etapa (Renderizados via JS) -->
@@ -394,20 +402,30 @@
         </div>
       </div>
 
-      <!-- PAINEL DIREITO: PRÉ-VISUALIZAÇÃO EM TEMPO REAL -->
-      <div id="panel-editor-right" class="w-full md:w-[44%] lg:w-[42%] bg-slate-950 flex flex-col p-4 lg:p-6 overflow-hidden h-full min-h-0 relative">
+      <!-- PAINEL DIREITO: PRÉ-VISUALIZAÇÃO EM TEMPO REAL (Sticky ao lado durante a rolagem) -->
+      <div id="panel-editor-right" class="w-full md:w-[44%] lg:w-[42%] bg-slate-950 flex flex-col p-4 lg:p-6 md:sticky md:top-[118px] self-start relative">
         <div class="flex items-center justify-between mb-3 px-2 shrink-0">
           <div class="flex items-center gap-2">
             <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
-            <span class="text-xs font-bold text-emerald-400 uppercase tracking-wider">📱 Celular do Cliente (Preview)</span>
+            <span class="text-xs font-bold text-emerald-400 uppercase tracking-wider">📱 Celular do Cliente</span>
           </div>
-          <button onclick="App.restartPreview()" class="px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-xs text-indigo-400 hover:text-indigo-300 font-semibold flex items-center gap-1 border border-slate-700 transition">
-            <i class="ph ph-arrow-counter-clockwise"></i> Reiniciar
-          </button>
+
+          <!-- Controles de Navegação e Rolagem do Preview -->
+          <div class="flex items-center gap-1.5">
+            <button onclick="App.scrollPreview(1)" class="px-2.5 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-xs text-white font-bold flex items-center gap-1 shadow-sm transition" title="Rolar tela do celular para baixo">
+              <i class="ph ph-arrow-down"></i> Rolar Celular ↓
+            </button>
+            <button onclick="App.scrollPreview(-1)" class="px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-xs text-slate-300 hover:text-white font-semibold flex items-center gap-1 border border-slate-700 transition" title="Voltar ao topo do celular">
+              <i class="ph ph-arrow-up"></i> Topo ↑
+            </button>
+            <button onclick="App.restartPreview()" class="px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-xs text-indigo-400 hover:text-indigo-300 font-semibold flex items-center gap-1 border border-slate-700 transition" title="Reiniciar do começo">
+              <i class="ph ph-arrow-counter-clockwise"></i> Reiniciar
+            </button>
+          </div>
         </div>
 
         <!-- Moldura do Dispositivo -->
-        <div class="flex-1 flex items-start justify-center overflow-y-auto py-2 min-h-0">
+        <div class="flex-1 flex items-start justify-center py-2 min-h-0">
           <div id="preview-mockup-frame" class="phone-mockup">
             <div class="phone-notch">
               <div class="phone-speaker"></div>
@@ -418,7 +436,7 @@
             <style id="preview-scoped-styles"></style>
 
             <!-- Tela do Celular (Preview em Tempo Real 100% Nativo) -->
-            <div id="preview-viewport" class="phone-screen w-full h-full overflow-y-auto p-4 pt-10">
+            <div id="preview-viewport" class="phone-screen w-full h-full p-4 pt-10">
               <div class="quiz-container">
                 <!-- Barra de Progresso Superior -->
                 <div id="preview-progress-section">

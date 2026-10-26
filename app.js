@@ -617,7 +617,29 @@ const App = {
     this.saveQuizzesToStorage();
 
     this.renderSteps();
-    this.focusStep(this.currentQuiz.steps.length - 1);
+    const lastIdx = this.currentQuiz.steps.length - 1;
+    this.focusStep(lastIdx);
+
+    // Rola automaticamente a tela até a nova etapa em branco criada
+    setTimeout(() => {
+      const newCard = document.getElementById(`step-card-${lastIdx}`);
+      if (newCard) {
+        newCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }, 120);
+  },
+
+  scrollEditor(direction) {
+    if (direction === 'top') {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    } else {
+      const container = document.getElementById('steps-container');
+      if (container && container.lastElementChild) {
+        container.lastElementChild.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      } else {
+        window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+      }
+    }
   },
 
   updateStepTitle(stepIdx, title) {
@@ -1053,6 +1075,16 @@ const App = {
     };
 
     this.previewNextStep();
+  },
+
+  scrollPreview(direction) {
+    const vp = document.getElementById('preview-viewport');
+    if (!vp) return;
+    if (direction === -1) {
+      vp.scrollTo({ top: 0, behavior: 'smooth' });
+    } else {
+      vp.scrollBy({ top: 300, behavior: 'smooth' });
+    }
   },
 
   restartPreview() {
