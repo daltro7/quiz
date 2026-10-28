@@ -1294,10 +1294,10 @@ const QuizTemplateEngine = {
           try { gtag('event', eventName, eventData); } catch(err) {}
         }
 
-        const webhookUrl = this.config.tracking && this.config.tracking.webhookUrl;
-        if (webhookUrl && webhookUrl.trim() !== '') {
+        const targetUrl = (this.config.tracking && this.config.tracking.sheetUrl) || (this.config.tracking && this.config.tracking.webhookUrl);
+        if (targetUrl && targetUrl.trim() !== '') {
           try {
-            fetch(webhookUrl, {
+            fetch(targetUrl, {
               method: 'POST',
               mode: 'no-cors',
               headers: { 'Content-Type': 'application/json' },

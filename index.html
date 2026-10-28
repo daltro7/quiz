@@ -492,6 +492,9 @@
                 <p class="text-xs text-slate-400">Acompanhe abandono, taxa de retenção por pergunta e conversão final diretamente aqui.</p>
               </div>
               <div class="flex items-center gap-2">
+                <button id="btn-sync-sheet-metrics" onclick="App.syncMetricsFromGoogleSheet()" class="px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition flex items-center gap-1.5 shadow-md shadow-emerald-500/20">
+                  <i class="ph ph-arrows-clockwise text-sm"></i> Sincronizar Planilha
+                </button>
                 <button onclick="App.simulateFunnelTraffic()" class="px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold transition flex items-center gap-1.5 shadow-md shadow-indigo-500/20">
                   <i class="ph ph-lightning"></i> Simular Tráfego (500)
                 </button>
@@ -499,6 +502,11 @@
                   <i class="ph ph-arrow-counter-clockwise"></i> Limpar
                 </button>
               </div>
+            </div>
+
+            <!-- Banner de Conexão com a Planilha Google -->
+            <div id="analytics-sheet-status-banner" class="bg-slate-900 border border-slate-800 rounded-2xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs">
+              <!-- Renderizado via app.js -->
             </div>
 
             <!-- Cards de KPI Resumo -->
@@ -536,6 +544,19 @@
 
               <!-- Container dinâmico das barras do funil -->
               <div id="analytics-funnel-container" class="space-y-3.5 pt-2">
+                <!-- Injetado via App.renderFunnelDashboard() -->
+              </div>
+            </div>
+
+            <!-- Lista de Leads Recebidos da Planilha -->
+            <div id="analytics-leads-section" class="bg-slate-800/80 p-5 rounded-2xl border border-slate-700 space-y-4">
+              <div class="flex items-center justify-between">
+                <h4 class="font-bold text-white text-sm flex items-center gap-2">
+                  <i class="ph ph-address-book text-emerald-400"></i> Últimos Contatos / Leads Capturados
+                </h4>
+                <span id="analytics-leads-count-badge" class="text-[11px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">0 Leads</span>
+              </div>
+              <div id="analytics-leads-container">
                 <!-- Injetado via App.renderFunnelDashboard() -->
               </div>
             </div>
@@ -635,35 +656,108 @@
         <p>Siga estes 4 passos simples para receber todos os cliques e leads direto em uma planilha:</p>
         
         <ol class="list-decimal pl-5 space-y-2 text-slate-300">
-          <li>Crie uma nova planilha no <b>Google Planilhas</b> (Google Sheets).</li>
-          <li>Na linha 1 (cabeçalho), crie as colunas: <br>
-            <span class="font-mono bg-slate-800 px-2 py-0.5 rounded text-indigo-300 inline-block mt-1">Data/Hora | Evento | Quiz | Etapa | Pergunta | Resposta | Pontos | Nome | WhatsApp | Email</span>
-          </li>
+          <li>Crie uma nova planilha no <b>Google Planilhas</b> (<a href="https://sheets.new" target="_blank" class="text-indigo-400 underline font-semibold">sheets.new</a>) exclusiva para este funil.</li>
+          <li><i>(Opcional)</i> Nem precisa criar colunas manualmente! O script cria o cabeçalho completo sozinho no primeiro acesso.</li>
           <li>No menu da planilha, clique em: <b>Extensões > Apps Script</b>.</li>
-          <li>Apague o código que estiver lá e cole o código abaixo:</li>
+          <li>Apague qualquer código que estiver lá e cole o código completo abaixo (com suporte a gravação e sincronização do Dashboard):</li>
         </ol>
 
         <!-- Bloco de Código com Botão de Copiar -->
-        <div class="relative bg-slate-950 border border-slate-800 rounded-xl p-3 font-mono text-[11px] text-slate-300 overflow-x-auto max-h-48">
-          <button onclick="App.copySheetsScript()" class="absolute top-2 right-2 bg-indigo-600 hover:bg-indigo-500 text-white px-2.5 py-1 rounded text-[10px] font-bold flex items-center gap-1 transition">
-            <i class="ph ph-copy"></i> Copiar Código
+        <div class="relative bg-slate-950 border border-slate-800 rounded-xl p-3 font-mono text-[11px] text-slate-300 overflow-x-auto max-h-56">
+          <button onclick="App.copySheetsScript()" class="sticky top-0 float-right bg-indigo-600 hover:bg-indigo-500 text-white px-2.5 py-1 rounded text-[10px] font-bold flex items-center gap-1 transition shadow-md z-10">
+            <i class="ph ph-copy"></i> Copiar Código Completo
           </button>
-          <pre id="sheets-script-code">function doPost(e) {
+          <pre id="sheets-script-code">// 1. LEITURA DOS DADOS (QuizForge ➔ Planilha)
+function doGet(e) {
   try {
     var sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
-    var data = JSON.parse(e.postData.contents);
-    var timestamp = new Date();
+    var lastRow = sheet.getLastRow();
+    if (lastRow &lt;= 1) {
+      return ContentService.createTextOutput(JSON.stringify({
+        status: 'success', totalStarts: 0, totalCompletions: 0, totalLeads: 0, stepViews: {}, recentLeads: []
+      })).setMimeType(ContentService.MimeType.JSON);
+    }
+    var rows = sheet.getDataRange().getValues();
+    var stepViews = {}, leadsMap = {}, recentLeads = [];
+    var totalStarts = 0, totalCompletions = 0;
+    for (var i = 1; i &lt; rows.length; i++) {
+      var row = rows[i];
+      var event = String(row[1] || '').trim();
+      var stepIdx = String(row[3] || '').trim();
+      var leadName = String(row[7] || '').trim();
+      var leadPhone = String(row[8] || '').trim();
+      var leadEmail = String(row[9] || '').trim();
+      var points = row[6], rowDate = row[0];
+      var utmSrc = String(row[10] || '').trim(), utmCmp = String(row[11] || '').trim();
+      var numStep = parseInt(stepIdx, 10);
+      if (!isNaN(numStep) &amp;&amp; numStep &gt;= 1) {
+        var key = 'step_' + (numStep - 1);
+        stepViews[key] = (stepViews[key] || 0) + 1;
+        if (numStep === 1) totalStarts++;
+      } else if (event.indexOf('Quiz_Etapa_') === 0) {
+        var parsed = parseInt(event.replace('Quiz_Etapa_', ''), 10);
+        if (!isNaN(parsed) &amp;&amp; parsed &gt;= 1) {
+          var key2 = 'step_' + (parsed - 1);
+          stepViews[key2] = (stepViews[key2] || 0) + 1;
+          if (parsed === 1) totalStarts++;
+        }
+      } else if (event === 'Quiz_Iniciado') {
+        stepViews['step_0'] = (stepViews['step_0'] || 0) + 1;
+        totalStarts++;
+      }
+      if (event === 'Quiz_Concluido' || event === 'Oferta_Visualizada') totalCompletions++;
+      if (leadName || leadPhone || leadEmail) {
+        var leadKey = leadPhone || leadEmail || (leadName + '_' + i);
+        if (!leadsMap[leadKey]) {
+          leadsMap[leadKey] = true;
+          recentLeads.unshift({
+            date: rowDate ? Utilities.formatDate(new Date(rowDate), Session.getScriptTimeZone() || "GMT-3", "dd/MM/yyyy HH:mm") : '',
+            name: leadName || 'Anônimo',
+            whatsapp: leadPhone || '',
+            email: leadEmail || '',
+            score: points || 0,
+            utm: [utmSrc, utmCmp].filter(Boolean).join(' / ') || '-'
+          });
+        }
+      }
+    }
+    if (recentLeads.length &gt; 30) recentLeads = recentLeads.slice(0, 30);
+    return ContentService.createTextOutput(JSON.stringify({
+      status: 'success', totalStarts: totalStarts, totalCompletions: totalCompletions,
+      totalLeads: Object.keys(leadsMap).length, stepViews: stepViews, recentLeads: recentLeads,
+      lastUpdated: new Date().toISOString()
+    })).setMimeType(ContentService.MimeType.JSON);
+  } catch (err) {
+    return ContentService.createTextOutput(JSON.stringify({ status: 'error', message: err.toString() })).setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
+// 2. GRAVAÇÃO DOS DADOS (Quiz do Visitante ➔ Planilha)
+function doPost(e) {
+  try {
+    var sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
+    if (sheet.getLastRow() === 0) {
+      sheet.appendRow(['Data/Hora', 'Evento', 'Quiz', 'Etapa', 'Pergunta / Título', 'Resposta', 'Pontos / Score', 'Nome', 'WhatsApp', 'Email', 'UTM_Source', 'UTM_Campaign']);
+      sheet.getRange(1, 1, 1, 12).setFontWeight('bold').setBackground('#e2e8f0');
+      sheet.setFrozenRows(1);
+    }
+    var data = {};
+    if (e.postData &amp;&amp; e.postData.contents) {
+      try { data = JSON.parse(e.postData.contents); } catch(p) { data = e.parameter || {}; }
+    } else { data = e.parameter || {}; }
     sheet.appendRow([
-      timestamp,
+      new Date(),
       data.event || '',
       data.quizTitle || '',
-      (data.data && data.data.stepIndex) || '',
-      (data.data && data.data.stepTitle) || (data.data && data.data.question) || '',
-      (data.data && data.data.answer) || '',
-      (data.data && data.data.points) !== undefined ? data.data.points : (data.totalScore || ''),
-      (data.lead && data.lead.name) || '',
-      (data.lead && data.lead.whatsapp) || '',
-      (data.lead && data.lead.email) || ''
+      (data.data &amp;&amp; data.data.stepIndex) || '',
+      (data.data &amp;&amp; (data.data.stepTitle || data.data.question)) || '',
+      (data.data &amp;&amp; data.data.answer) || '',
+      (data.data &amp;&amp; data.data.points) !== undefined ? data.data.points : (data.totalScore || ''),
+      (data.lead &amp;&amp; data.lead.name) || '',
+      (data.lead &amp;&amp; data.lead.whatsapp) || '',
+      (data.lead &amp;&amp; data.lead.email) || '',
+      (data.utms &amp;&amp; data.utms.utm_source) || '',
+      (data.utms &amp;&amp; data.utms.utm_campaign) || ''
     ]);
     return ContentService.createTextOutput(JSON.stringify({ status: 'success' })).setMimeType(ContentService.MimeType.JSON);
   } catch (err) {
@@ -675,8 +769,8 @@
         <ol start="5" class="list-decimal pl-5 space-y-1.5 text-slate-300">
           <li>Clique no botão azul <b>Implantar > Nova implantação</b> (canto superior direito).</li>
           <li>Escolha o tipo <b>App da Web</b>.</li>
-          <li>Em <b>"Quem pode acessar"</b>, marque <b>"Qualquer pessoa"</b> (isso evita qualquer barreira de login ou permissão).</li>
-          <li>Copie a URL gerada e cole no campo <b>Planilha Google (Apps Script Webhook)</b> na aba Métricas do Quiz!</li>
+          <li>Em <b>"Quem pode acessar"</b>, marque <b>"Qualquer pessoa"</b> (MUITO IMPORTANTE para liberar a sincronização sem login).</li>
+          <li>Copie a <b>URL do app da Web</b> gerada e cole no campo <b>Planilha Google (Apps Script Webhook)</b> na aba de Rastreamento do Quiz!</li>
         </ol>
       </div>
 

@@ -1446,73 +1446,235 @@ const App = {
     if (elDrop) elDrop.innerText = maxDrop > 0 ? maxDropStepTitle : 'Nenhum gargalo';
     if (elDropPct) elDropPct.innerText = maxDrop > 0 ? `Abandono de ${maxDropPct}` : 'Sem perdas registradas';
 
-    if (steps.length === 0) {
-      container.innerHTML = '<p class="text-xs text-slate-400 py-6 text-center">Nenhuma etapa cadastrada no quiz.</p>';
-      return;
+    // Renderiza Banner de Status da Planilha Google
+    const banner = document.getElementById('analytics-sheet-status-banner');
+    if (banner) {
+      const sheetUrl = (this.currentQuiz.tracking && this.currentQuiz.tracking.sheetUrl) || '';
+      const lastSync = analytics.lastSync ? new Date(analytics.lastSync).toLocaleString('pt-BR') : null;
+
+      if (sheetUrl) {
+        banner.innerHTML = `
+          <div class="flex items-center gap-3">
+            <span class="w-3 h-3 rounded-full bg-emerald-500 animate-pulse shrink-0"></span>
+            <div>
+              <div class="flex items-center gap-2">
+                <span class="font-extrabold text-white text-xs">Planilha Google Conectada</span>
+                <span class="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 font-bold text-[10px] border border-emerald-500/30">Pronta para Sincronizar</span>
+              </div>
+              <p class="text-[11px] text-slate-400 mt-0.5 font-mono truncate max-w-sm sm:max-w-md">
+                ${sheetUrl}
+              </p>
+              ${lastSync ? `<p class="text-[10px] text-slate-400 mt-0.5">Última sincronização: <b class="text-emerald-400">${lastSync}</b></p>` : '<p class="text-[10px] text-amber-400 mt-0.5">Nenhum dado sincronizado ainda. Clique em "Sincronizar Planilha" acima.</p>'}
+            </div>
+          </div>
+          <div class="flex items-center gap-2 shrink-0">
+            <button onclick="App.syncMetricsFromGoogleSheet()" class="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs transition flex items-center gap-1 shadow-md shadow-emerald-500/20">
+              <i class="ph ph-arrows-clockwise text-sm"></i> Sincronizar Agora
+            </button>
+            <button onclick="App.openSheetsGuideModal()" class="px-2.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold border border-slate-700 transition" title="Instruções de Configuração">
+              <i class="ph ph-question text-sm"></i> Ajuda
+            </button>
+          </div>
+        `;
+      } else {
+        banner.innerHTML = `
+          <div class="flex items-center gap-2.5 text-amber-400">
+            <i class="ph ph-warning-circle text-xl shrink-0"></i>
+            <div>
+              <p class="font-bold text-xs">Nenhuma Planilha Google Conectada a Este Funil</p>
+              <p class="text-[11px] text-slate-400">Para receber acessos e visualizar o funil com dados reais dos seus clientes, conecte uma planilha.</p>
+            </div>
+          </div>
+          <div class="flex items-center gap-2 shrink-0">
+            <button onclick="App.switchEditorTab('tracking')" class="px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs transition flex items-center gap-1 shadow-md">
+              <i class="ph ph-link text-sm"></i> Conectar Planilha
+            </button>
+            <button onclick="App.openSheetsGuideModal()" class="px-2.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold border border-slate-700 transition">
+              <i class="ph ph-file-spreadsheet text-sm"></i> Ver Passo a Passo
+            </button>
+          </div>
+        `;
+      }
     }
 
-    if (totalStarted === 0) {
+    if (steps.length === 0) {
+      container.innerHTML = '<p class="text-xs text-slate-400 py-6 text-center">Nenhuma etapa cadastrada no quiz.</p>';
+    } else if (totalStarted === 0) {
       container.innerHTML = `
         <div class="py-10 px-4 text-center bg-slate-950/40 rounded-xl border border-dashed border-slate-800 space-y-3">
           <div class="text-3xl">📊</div>
           <p class="text-xs font-bold text-slate-300">Nenhum tráfego registrado ainda neste quiz</p>
           <p class="text-[11px] text-slate-500 max-w-md mx-auto">
-            Conforme os usuários acessam suas páginas, os acessos são contabilizados aqui e na sua Planilha Google. Clique abaixo para gerar uma demonstração:
+            Conforme os usuários acessam suas páginas, os acessos são contabilizados aqui e na sua Planilha Google. Clique em "Sincronizar Planilha" acima ou gere uma demonstração:
           </p>
           <button onclick="App.simulateFunnelTraffic()" class="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold transition shadow-lg shadow-indigo-500/20 inline-flex items-center gap-1.5">
             <i class="ph ph-lightning"></i> Simular Tráfego de Demonstração (500 Visitantes)
           </button>
         </div>
       `;
+    } else {
+      container.innerHTML = steps.map((step, idx) => {
+        const stepViews = views[`step_${idx}`] || 0;
+        const retentionPct = totalStarted > 0 ? ((stepViews / totalStarted) * 100).toFixed(1) : (idx === 0 && stepViews > 0 ? '100.0' : '0.0');
+        
+        let dropInfo = '';
+        let isBottleneck = false;
+
+        if (idx > 0) {
+          const prevViews = views[`step_${idx-1}`] || 0;
+          const diff = Math.max(0, prevViews - stepViews);
+          const dropPct = prevViews > 0 ? ((diff / prevViews) * 100).toFixed(1) : '0.0';
+          isBottleneck = parseFloat(dropPct) === parseFloat(maxDrop.toFixed(1)) && maxDrop > 0;
+          dropInfo = `
+            <span class="text-[11px] font-semibold text-red-400/90 flex items-center gap-1">
+              <i class="ph ph-arrow-down-right"></i> -${diff} saíram (-${dropPct}%)
+            </span>
+          `;
+        }
+
+        return `
+          <div class="bg-slate-900/90 border ${isBottleneck ? 'border-amber-500/60 shadow-lg shadow-amber-500/10' : 'border-slate-800'} rounded-xl p-3.5 space-y-2">
+            <div class="flex flex-wrap items-center justify-between gap-2">
+              <div class="flex items-center gap-2">
+                <span class="w-6 h-6 rounded-lg bg-indigo-500/20 text-indigo-400 font-extrabold text-xs flex items-center justify-center">
+                  ${idx + 1}
+                </span>
+                <span class="font-bold text-white text-xs truncate max-w-[200px] sm:max-w-[320px]">
+                  ${this.escape(step.title || `Etapa ${idx + 1}`)}
+                </span>
+                ${isBottleneck ? '<span class="text-[9px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40 px-2 py-0.5 rounded-full uppercase">Maior Gargalo</span>' : ''}
+              </div>
+
+              <div class="flex items-center gap-3">
+                ${dropInfo}
+                <span class="text-xs font-mono font-bold text-white">${stepViews.toLocaleString('pt-BR')} acessos</span>
+                <span class="text-xs font-mono font-extrabold text-indigo-400 bg-indigo-500/10 px-2 py-0.5 rounded-md border border-indigo-500/20">${retentionPct}%</span>
+              </div>
+            </div>
+
+            <!-- Barra visual do Funil -->
+            <div class="w-full bg-slate-950/80 rounded-full h-3.5 overflow-hidden p-0.5 border border-slate-800">
+              <div class="funnel-bar-container h-full rounded-full bg-gradient-to-r from-indigo-500 via-indigo-400 to-emerald-400" style="width: ${Math.max(2, parseFloat(retentionPct))}%;"></div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    // Renderiza Lista de Leads Recebidos da Planilha
+    const leadsContainer = document.getElementById('analytics-leads-container');
+    const leadsBadge = document.getElementById('analytics-leads-count-badge');
+    const leads = analytics.leads || [];
+
+    if (leadsBadge) {
+      leadsBadge.innerText = `${leads.length} ${leads.length === 1 ? 'Lead' : 'Leads'}`;
+    }
+
+    if (leadsContainer) {
+      if (leads.length === 0) {
+        leadsContainer.innerHTML = `
+          <div class="py-6 text-center text-slate-500 text-xs bg-slate-900/50 rounded-xl border border-dashed border-slate-800">
+            <p>Nenhum lead capturado ou sincronizado ainda.</p>
+            <p class="text-[11px] text-slate-400 mt-1">Conforme os visitantes preenchem o formulário de captura no quiz, eles aparecerão aqui com link direto para o WhatsApp.</p>
+          </div>
+        `;
+      } else {
+        leadsContainer.innerHTML = `
+          <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs border-collapse">
+              <thead>
+                <tr class="border-b border-slate-700 text-slate-400 font-bold text-[11px] uppercase tracking-wider">
+                  <th class="py-2.5 px-3">Data/Hora</th>
+                  <th class="py-2.5 px-3">Nome</th>
+                  <th class="py-2.5 px-3">WhatsApp</th>
+                  <th class="py-2.5 px-3">E-mail</th>
+                  <th class="py-2.5 px-3 text-center">Score</th>
+                  <th class="py-2.5 px-3">Origem / UTM</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-slate-800 font-medium text-slate-200">
+                ${leads.map(lead => {
+                  const rawPhone = (lead.whatsapp || '').replace(/\D/g, '');
+                  const waLink = rawPhone ? `https://wa.me/55${rawPhone}` : null;
+                  return `
+                    <tr class="hover:bg-slate-800/40 transition">
+                      <td class="py-2.5 px-3 text-slate-400 text-[11px] whitespace-nowrap">${lead.date || '-'}</td>
+                      <td class="py-2.5 px-3 font-bold text-white">${this.escape(lead.name || 'Anônimo')}</td>
+                      <td class="py-2.5 px-3 whitespace-nowrap">
+                        ${waLink ? `
+                          <a href="${waLink}" target="_blank" class="inline-flex items-center gap-1 text-emerald-400 hover:text-emerald-300 font-mono font-bold bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
+                            <i class="ph ph-whatsapp-logo text-sm"></i> ${this.escape(lead.whatsapp)}
+                          </a>
+                        ` : (lead.whatsapp ? `<span class="font-mono text-slate-300">${this.escape(lead.whatsapp)}</span>` : '<span class="text-slate-500">-</span>')}
+                      </td>
+                      <td class="py-2.5 px-3 font-mono text-[11px] text-slate-300 truncate max-w-[160px]">${this.escape(lead.email || '-')}</td>
+                      <td class="py-2.5 px-3 text-center">
+                        <span class="px-2 py-0.5 rounded bg-indigo-500/20 text-indigo-300 font-mono font-bold text-[11px]">${lead.score || 0} pts</span>
+                      </td>
+                      <td class="py-2.5 px-3 text-slate-400 text-[11px] truncate max-w-[140px]">${this.escape(lead.utm || '-')}</td>
+                    </tr>
+                  `;
+                }).join('')}
+              </tbody>
+            </table>
+          </div>
+        `;
+      }
+    }
+  },
+
+  async syncMetricsFromGoogleSheet() {
+    if (!this.currentQuiz) return;
+    const sheetUrl = (this.currentQuiz.tracking && this.currentQuiz.tracking.sheetUrl) || '';
+    if (!sheetUrl || sheetUrl.trim() === '') {
+      alert('⚠️ Nenhuma URL de Planilha Google configurada para este funil!\n\nVá até a aba "Rastreamento & Métricas" e cole a URL do seu Google Apps Script.');
+      this.switchEditorTab('tracking');
       return;
     }
 
-    container.innerHTML = steps.map((step, idx) => {
-      const stepViews = views[`step_${idx}`] || 0;
-      const retentionPct = totalStarted > 0 ? ((stepViews / totalStarted) * 100).toFixed(1) : (idx === 0 && stepViews > 0 ? '100.0' : '0.0');
-      
-      let dropInfo = '';
-      let isBottleneck = false;
+    const btn = document.getElementById('btn-sync-sheet-metrics');
+    const originalText = btn ? btn.innerHTML : '';
+    if (btn) {
+      btn.disabled = true;
+      btn.innerHTML = '<i class="ph ph-arrows-clockwise animate-spin text-sm"></i> Sincronizando...';
+    }
 
-      if (idx > 0) {
-        const prevViews = views[`step_${idx-1}`] || 0;
-        const diff = Math.max(0, prevViews - stepViews);
-        const dropPct = prevViews > 0 ? ((diff / prevViews) * 100).toFixed(1) : '0.0';
-        isBottleneck = parseFloat(dropPct) === parseFloat(maxDrop.toFixed(1)) && maxDrop > 0;
-        dropInfo = `
-          <span class="text-[11px] font-semibold text-red-400/90 flex items-center gap-1">
-            <i class="ph ph-arrow-down-right"></i> -${diff} saíram (-${dropPct}%)
-          </span>
-        `;
+    try {
+      const sep = sheetUrl.indexOf('?') !== -1 ? '&' : '?';
+      const fetchUrl = sheetUrl + sep + 'action=getMetrics&nocache=' + Date.now();
+      
+      const response = await fetch(fetchUrl);
+      if (!response.ok) {
+        throw new Error(`Servidor do Google respondeu com código ${response.status}`);
       }
 
-      return `
-        <div class="bg-slate-900/90 border ${isBottleneck ? 'border-amber-500/60 shadow-lg shadow-amber-500/10' : 'border-slate-800'} rounded-xl p-3.5 space-y-2">
-          <div class="flex flex-wrap items-center justify-between gap-2">
-            <div class="flex items-center gap-2">
-              <span class="w-6 h-6 rounded-lg bg-indigo-500/20 text-indigo-400 font-extrabold text-xs flex items-center justify-center">
-                ${idx + 1}
-              </span>
-              <span class="font-bold text-white text-xs truncate max-w-[200px] sm:max-w-[320px]">
-                ${this.escape(step.title || `Etapa ${idx + 1}`)}
-              </span>
-              ${isBottleneck ? '<span class="text-[9px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40 px-2 py-0.5 rounded-full uppercase">Maior Gargalo</span>' : ''}
-            </div>
+      const data = await response.json();
+      if (data.status === 'success') {
+        if (!this.currentQuiz.analytics) this.currentQuiz.analytics = {};
+        this.currentQuiz.analytics.views = data.stepViews || {};
+        this.currentQuiz.analytics.leads = data.recentLeads || [];
+        this.currentQuiz.analytics.totalStarts = data.totalStarts || 0;
+        this.currentQuiz.analytics.totalCompletions = data.totalCompletions || 0;
+        this.currentQuiz.analytics.lastSync = new Date().toISOString();
+        this.currentQuiz.analytics.isRealData = true;
 
-            <div class="flex items-center gap-3">
-              ${dropInfo}
-              <span class="text-xs font-mono font-bold text-white">${stepViews.toLocaleString('pt-BR')} acessos</span>
-              <span class="text-xs font-mono font-extrabold text-indigo-400 bg-indigo-500/10 px-2 py-0.5 rounded-md border border-indigo-500/20">${retentionPct}%</span>
-            </div>
-          </div>
-
-          <!-- Barra visual do Funil -->
-          <div class="w-full bg-slate-950/80 rounded-full h-3.5 overflow-hidden p-0.5 border border-slate-800">
-            <div class="funnel-bar-container h-full rounded-full bg-gradient-to-r from-indigo-500 via-indigo-400 to-emerald-400" style="width: ${Math.max(2, parseFloat(retentionPct))}%;"></div>
-          </div>
-        </div>
-      `;
-    }).join('');
+        this.saveQuizzesToStorage();
+        this.renderFunnelDashboard();
+        
+        const count = Object.values(data.stepViews || {}).reduce((a, b) => a + b, 0);
+        alert(`✅ Sincronizado com sucesso!\n\nDados da planilha carregados no Dashboard:\n• ${count} acessos registrados\n• ${(data.recentLeads || []).length} leads capturados`);
+      } else {
+        throw new Error(data.message || 'Erro desconhecido retornado pelo script.');
+      }
+    } catch (err) {
+      console.error('Erro ao sincronizar com Google Sheets:', err);
+      alert('❌ Não foi possível sincronizar com a Planilha Google:\n\n' + err.message + '\n\nCertifique-se de que na implantação do Apps Script a permissão "Quem pode acessar" esteja como "Qualquer pessoa".');
+    } finally {
+      if (btn) {
+        btn.disabled = false;
+        btn.innerHTML = originalText;
+      }
+    }
   },
 
   simulateFunnelTraffic() {
