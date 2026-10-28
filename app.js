@@ -82,10 +82,15 @@ const App = {
   // NAVEGAÇÃO DE TELAS (DASHBOARD vs EDITOR)
   // ==========================================
   renderDashboard() {
-    document.getElementById('view-dashboard').classList.remove('hidden');
-    document.getElementById('view-editor').classList.add('hidden');
-    document.getElementById('btn-header-back-dashboard').classList.add('hidden');
-    document.getElementById('btn-header-export-html').classList.add('hidden');
+    const dash = document.getElementById('view-dashboard');
+    const editor = document.getElementById('view-editor');
+    const btnBack = document.getElementById('btn-header-back-dashboard');
+    const btnExport = document.getElementById('btn-header-export-html');
+
+    if (dash) dash.classList.remove('hidden');
+    if (editor) editor.classList.add('hidden');
+    if (btnBack) btnBack.classList.add('hidden');
+    if (btnExport) btnExport.classList.add('hidden');
 
     const grid = document.getElementById('quiz-list-grid');
     if (!grid) return;
@@ -236,12 +241,17 @@ const App = {
 
     this.currentQuiz = quiz;
 
-    document.getElementById('view-dashboard').classList.add('hidden');
-    document.getElementById('view-editor').classList.remove('hidden');
-    document.getElementById('btn-header-back-dashboard').classList.remove('hidden');
-    document.getElementById('btn-header-export-html').classList.remove('hidden');
+    const dash = document.getElementById('view-dashboard');
+    if (dash) dash.classList.add('hidden');
+    const editor = document.getElementById('view-editor');
+    if (editor) editor.classList.remove('hidden');
+    const btnBack = document.getElementById('btn-header-back-dashboard');
+    if (btnBack) btnBack.classList.remove('hidden');
+    const btnExport = document.getElementById('btn-header-export-html');
+    if (btnExport) btnExport.classList.remove('hidden');
 
-    document.getElementById('editor-quiz-title').value = quiz.title || '';
+    const titleInput = document.getElementById('editor-quiz-title');
+    if (titleInput) titleInput.value = quiz.title || '';
 
     this.renderSteps();
     this.renderDesign();
@@ -268,17 +278,23 @@ const App = {
   // ==========================================
   switchEditorTab(tabName) {
     this.activeTab = tabName;
-    ['steps', 'design', 'tracking'].forEach(t => {
+    ['steps', 'design', 'tracking', 'analytics'].forEach(t => {
       const btn = document.getElementById(`tab-btn-${t}`);
       const content = document.getElementById(`tab-content-${t}`);
-      if (t === tabName) {
-        btn.className = 'px-4 py-3 font-bold text-xs uppercase tracking-wider text-indigo-400 border-b-2 border-indigo-500 flex items-center gap-2';
-        content.classList.remove('hidden');
-      } else {
-        btn.className = 'px-4 py-3 font-bold text-xs uppercase tracking-wider text-slate-400 hover:text-white border-b-2 border-transparent flex items-center gap-2';
-        content.classList.add('hidden');
+      if (btn && content) {
+        if (t === tabName) {
+          btn.className = 'px-4 py-3 font-bold text-xs uppercase tracking-wider text-indigo-400 border-b-2 border-indigo-500 flex items-center gap-2 whitespace-nowrap';
+          content.classList.remove('hidden');
+        } else {
+          btn.className = 'px-4 py-3 font-bold text-xs uppercase tracking-wider text-slate-400 hover:text-white border-b-2 border-transparent flex items-center gap-2 whitespace-nowrap';
+          content.classList.add('hidden');
+        }
       }
     });
+
+    if (tabName === 'analytics') {
+      this.renderFunnelDashboard();
+    }
   },
 
   // ==========================================
@@ -294,7 +310,7 @@ const App = {
       container.innerHTML = `
         <div class="py-12 text-center bg-slate-900 border border-slate-800 rounded-2xl p-6">
           <p class="text-xs text-slate-400 mb-3">Nenhuma etapa criada neste quiz.</p>
-          <button onclick="App.addNewStep()" class="px-4 py-2 bg-indigo-600 text-white font-bold text-xs rounded-xl shadow">
+          <button onclick="App.addNewStep()" class="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs rounded-xl shadow-lg transition">
             + Adicionar Primeira Etapa
           </button>
         </div>
@@ -302,9 +318,22 @@ const App = {
       return;
     }
 
-    container.innerHTML = steps.map((step, idx) => {
+    const cardsHtml = steps.map((step, idx) => {
       return this.renderStepCardHtml(step, idx, steps.length);
     }).join('');
+
+    // Demanda 3: Botão "+ Nova Etapa em Branco" fixado logo abaixo do card da última etapa criada!
+    const addStepBottomButton = `
+      <div class="pt-2 pb-8 flex flex-col items-center justify-center">
+        <button onclick="App.addNewStep()" class="w-full py-4 rounded-2xl bg-gradient-to-r from-indigo-600 via-indigo-500 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white font-extrabold text-sm shadow-xl shadow-indigo-500/25 flex items-center justify-center gap-2 transition transform hover:-translate-y-0.5 border border-indigo-400/30">
+          <i class="ph ph-plus-circle text-xl"></i>
+          + Nova Etapa em Branco (Etapa ${steps.length + 1})
+        </button>
+        <p class="text-[11px] text-slate-400 mt-2 font-medium">Clique para adicionar uma nova etapa sequencial ao final do funil</p>
+      </div>
+    `;
+
+    container.innerHTML = cardsHtml + addStepBottomButton;
   },
 
   renderStepCardHtml(step, stepIdx, totalSteps) {
@@ -388,8 +417,11 @@ const App = {
         <button onclick="App.addBlockToStep(${stepIdx}, 'question')" class="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-indigo-400 text-xs font-semibold border border-slate-700 transition flex items-center gap-1">
           <span>❓</span> Pergunta / Opções
         </button>
+        <button onclick="App.addBlockToStep(${stepIdx}, 'fake_loader')" class="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-teal-300 text-xs font-semibold border border-teal-500/30 transition flex items-center gap-1 shadow-sm">
+          <span>⏳</span> Diagnóstico Falso (0% a 100%)
+        </button>
         <button onclick="App.addBlockToStep(${stepIdx}, 'delay_button')" class="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-amber-400 text-xs font-semibold border border-slate-700 transition flex items-center gap-1">
-          <span>⏱️</span> Botão com Delay
+          <span>⏱️</span> Botão de Ação / Avanço
         </button>
         <button onclick="App.addBlockToStep(${stepIdx}, 'html')" class="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-emerald-400 text-xs font-semibold border border-slate-700 transition flex items-center gap-1">
           <span>🌐</span> Bloco HTML / Loja
@@ -577,23 +609,73 @@ const App = {
       `;
     }
 
+    // 8. BLOCO DE DIAGNÓSTICO FALSO / CARREGAMENTO (fake_loader - Demanda 5)
+    else if (block.type === 'fake_loader') {
+      blockBadge = '<span class="text-teal-400 font-bold text-xs flex items-center gap-1.5"><span>⏳</span> Barra de Diagnóstico Falso (0% a 100%)</span>';
+      blockBody = `
+        <div class="space-y-3 pt-1">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label class="block text-[10px] font-bold text-slate-400 mb-1">Duração Total (segundos)</label>
+              <input type="number" min="1" max="60" value="${block.duration || 4}" oninput="App.updateBlockProp(${stepIdx}, ${bIdx}, 'duration', parseInt(this.value, 10) || 4)" class="w-full bg-slate-900 border border-slate-700 px-2.5 py-1.5 rounded-lg text-xs font-mono text-white font-bold">
+            </div>
+            <div>
+              <label class="block text-[10px] font-bold text-slate-400 mb-1">Ao atingir 100%:</label>
+              <select onchange="App.updateBlockProp(${stepIdx}, ${bIdx}, 'autoAdvance', this.value === 'true')" class="w-full bg-slate-900 border border-slate-700 px-2.5 py-1.5 rounded-lg text-xs text-white">
+                <option value="true" ${block.autoAdvance !== false ? 'selected' : ''}>Avançar automaticamente para a próxima etapa</option>
+                <option value="false" ${block.autoAdvance === false ? 'selected' : ''}>Exibir botão de continuar</option>
+              </select>
+            </div>
+          </div>
+          ${block.autoAdvance === false ? `
+            <div>
+              <label class="block text-[10px] font-bold text-slate-400 mb-1">Texto do Botão de Conclusão</label>
+              <input type="text" value="${this.escape(block.buttonText || 'Ver Meu Diagnóstico →')}" oninput="App.updateBlockProp(${stepIdx}, ${bIdx}, 'buttonText', this.value)" class="w-full bg-slate-900 border border-slate-700 px-2.5 py-1.5 rounded-lg text-xs text-white font-semibold">
+            </div>
+          ` : ''}
+          <div>
+            <label class="block text-[10px] font-bold text-slate-400 mb-1">Mensagens Dinâmicas de Status (uma por linha):</label>
+            <textarea rows="4" onchange="App.updateBlockProp(${stepIdx}, ${bIdx}, 'messages', this.value)" class="w-full bg-slate-900 border border-slate-700 p-2.5 rounded-xl text-xs text-slate-200 font-mono">${this.escape(typeof block.messages === 'string' ? block.messages : (block.messages || []).join('\n'))}</textarea>
+            <span class="text-[10px] text-slate-500">As frases se alternam automaticamente e suavemente enquanto a barra sobe de 0% até 100%.</span>
+          </div>
+        </div>
+      `;
+    }
+
+    // Demanda 4: Delay Universal Programável em TODOS os componentes
+    const universalDelayControl = `
+      <div class="mt-3 pt-2.5 border-t border-slate-800/80 flex items-center justify-between text-xs">
+        <span class="text-slate-400 font-semibold flex items-center gap-1.5">
+          <i class="ph ph-clock text-indigo-400"></i> Delay de Aparição na Tela:
+        </span>
+        <div class="flex items-center gap-2">
+          <input type="number" min="0" max="300" step="1" 
+            value="${block.delaySeconds || 0}" 
+            onchange="App.updateBlockProp(${stepIdx}, ${bIdx}, 'delaySeconds', parseInt(this.value, 10) || 0)" 
+            class="w-16 bg-slate-900 border border-slate-700 px-2 py-1 rounded text-center font-mono text-white text-xs font-bold">
+          <span class="text-[11px] text-slate-500 font-medium">segundos (0 = imediato)</span>
+        </div>
+      </div>
+    `;
+
     return `
       <div class="bg-slate-950/70 border border-slate-800 rounded-xl p-3.5 space-y-2">
         <div class="flex items-center justify-between pb-2 border-b border-slate-800/60">
           ${blockBadge}
           <div class="flex items-center gap-1">
-            <button onclick="App.moveBlockInStep(${stepIdx}, ${bIdx}, -1)" ${bIdx === 0 ? 'disabled class="opacity-30 cursor-not-allowed p-1 text-slate-500"' : 'class="p-1 text-slate-400 hover:text-white"'} title="Mover bloco para cima">
+            <button onclick="App.moveBlockInStep(${stepIdx}, ${bIdx}, -1)" ${bIdx === 0 ? 'disabled class="opacity-20 cursor-not-allowed p-1 text-slate-500"' : 'class="p-1 text-slate-400 hover:text-white"'} title="Mover bloco para cima">
               <i class="ph ph-arrow-up text-xs"></i>
             </button>
-            <button onclick="App.moveBlockInStep(${stepIdx}, ${bIdx}, 1)" ${bIdx === totalBlocks - 1 ? 'disabled class="opacity-30 cursor-not-allowed p-1 text-slate-500"' : 'class="p-1 text-slate-400 hover:text-white"'} title="Mover bloco para baixo">
+            <button onclick="App.moveBlockInStep(${stepIdx}, ${bIdx}, 1)" ${bIdx === totalBlocks - 1 ? 'disabled class="opacity-20 cursor-not-allowed p-1 text-slate-500"' : 'class="p-1 text-slate-400 hover:text-white"'} title="Mover bloco para baixo">
               <i class="ph ph-arrow-down text-xs"></i>
             </button>
-            <button onclick="App.deleteBlockFromStep(${stepIdx}, ${bIdx})" class="p-1 text-slate-500 hover:text-red-400 transition" title="Excluir este componente">
+            <button onclick="App.deleteBlockFromStep(${stepIdx}, ${bIdx})" class="p-1 text-slate-500 hover:text-red-400 transition" title="Excluir este bloco">
               <i class="ph ph-trash text-xs"></i>
             </button>
           </div>
         </div>
         ${blockBody}
+        ${universalDelayControl}
       </div>
     `;
   },
@@ -701,7 +783,7 @@ const App = {
     const step = this.currentQuiz.steps[stepIdx];
     if (!step.blocks) step.blocks = [];
 
-    let newBlock = { id: 'b_' + Date.now(), type: blockType };
+    let newBlock = { id: 'b_' + Date.now(), type: blockType, delaySeconds: 0 };
 
     if (blockType === 'heading') {
       newBlock.tag = 'Etapa ' + (stepIdx + 1);
@@ -715,6 +797,11 @@ const App = {
         { icon: '🚀', text: 'Quero aumentar minhas vendas', points: 10, targetStepIndex: '' },
         { icon: '⚙️', text: 'Quero economizar tempo', points: 5, targetStepIndex: '' }
       ];
+    } else if (blockType === 'fake_loader') {
+      newBlock.duration = 4;
+      newBlock.autoAdvance = true;
+      newBlock.buttonText = 'Ver Meu Diagnóstico →';
+      newBlock.messages = 'Analisando suas respostas...\nCruzando com nosso banco de dados...\nCalculando seu perfil ideal...\nDiagnóstico pronto!';
     } else if (blockType === 'delay_button') {
       newBlock.delaySeconds = 5;
       newBlock.text = 'Avançar para a próxima etapa →';
@@ -848,6 +935,17 @@ const App = {
     if (document.getElementById('theme-radius')) document.getElementById('theme-radius').value = theme.borderRadius || '16px';
     if (document.getElementById('theme-shadow')) document.getElementById('theme-shadow').value = theme.shadow || 'medium';
     if (document.getElementById('theme-max-width')) document.getElementById('theme-max-width').value = theme.maxWidth || '560px';
+
+    // Demanda 2: Barra de Progresso e Psicologia
+    if (document.getElementById('theme-show-progress')) {
+      document.getElementById('theme-show-progress').value = theme.showProgressBar !== false ? 'true' : 'false';
+    }
+    if (document.getElementById('theme-progress-format')) {
+      document.getElementById('theme-progress-format').value = theme.progressTextFormat || 'full';
+    }
+    if (document.getElementById('theme-start-percent')) {
+      document.getElementById('theme-start-percent').value = theme.startPercent || 0;
+    }
   },
 
   updateThemeProp(prop, value) {
@@ -881,7 +979,7 @@ const App = {
   },
 
   // ==========================================
-  // ABA 3: RASTREAMENTO & RETENÇÃO
+  // ABA 3: RASTREAMENTO, UTMS & INJEÇÃO DE SCRIPTS
   // ==========================================
   renderTracking() {
     if (!this.currentQuiz) return;
@@ -889,12 +987,17 @@ const App = {
     if (document.getElementById('tracking-webhook')) document.getElementById('tracking-webhook').value = tracking.webhookUrl || '';
     if (document.getElementById('tracking-pixel')) document.getElementById('tracking-pixel').value = tracking.metaPixelId || '';
     if (document.getElementById('tracking-ga4')) document.getElementById('tracking-ga4').value = tracking.ga4Id || '';
+
+    // Demanda 6: Injeção de Scripts em 3 posições
+    if (document.getElementById('tracking-head-scripts')) document.getElementById('tracking-head-scripts').value = tracking.customHeadScripts || '';
+    if (document.getElementById('tracking-body-top-scripts')) document.getElementById('tracking-body-top-scripts').value = tracking.customBodyTopScripts || '';
+    if (document.getElementById('tracking-body-bottom-scripts')) document.getElementById('tracking-body-bottom-scripts').value = tracking.customBodyBottomScripts || '';
   },
 
   updateTrackingProp(prop, value) {
     if (!this.currentQuiz) return;
     if (!this.currentQuiz.tracking) this.currentQuiz.tracking = {};
-    this.currentQuiz.tracking[prop] = value.trim();
+    this.currentQuiz.tracking[prop] = value;
     this.currentQuiz.updatedAt = new Date().toISOString();
     this.saveQuizzesToStorage();
     this.refreshPreview();
@@ -944,6 +1047,11 @@ const App = {
     this.refreshPreview(stepIndex);
   },
 
+  clearPreviewTimers() {
+    (this.preview.stepTimers || []).forEach(t => clearTimeout(t));
+    this.preview.stepTimers = [];
+  },
+
   refreshPreview(stepIndex) {
     if (!this.currentQuiz) return;
 
@@ -973,7 +1081,14 @@ const App = {
       styleEl.innerHTML = QuizTemplateEngine.generateThemeCss(this.currentQuiz.theme, '#preview-viewport');
     }
 
-    // 2. Atualiza Barra de Progresso
+    // 2. Atualiza Barra de Progresso Psicológica (Demanda 2)
+    const theme = this.currentQuiz.theme || {};
+    const showProgress = theme.showProgressBar !== false;
+    const progressSection = document.getElementById('preview-progress-section');
+    if (progressSection) {
+      progressSection.style.display = showProgress ? 'block' : 'none';
+    }
+
     const progressBar = document.getElementById('preview-progress-bar');
     const progressPercent = document.getElementById('preview-progress-percent');
     const stepIndicator = document.getElementById('preview-step-indicator');
@@ -981,11 +1096,12 @@ const App = {
 
     const currentStep = steps[currentIdx];
 
-    if (totalSteps > 0) {
-      const pct = Math.round(((currentIdx + 1) / totalSteps) * 100);
+    if (totalSteps > 0 && showProgress) {
+      const pct = QuizTemplateEngine.calculateProgressPercent(currentIdx, totalSteps, theme);
+      const text = QuizTemplateEngine.getProgressText(currentIdx, totalSteps, theme, pct);
       if (progressBar) progressBar.style.width = pct + '%';
       if (progressPercent) progressPercent.innerText = pct + '%';
-      if (stepIndicator) stepIndicator.innerText = `Etapa ${currentIdx + 1} de ${totalSteps}`;
+      if (stepIndicator) stepIndicator.innerText = text;
     }
 
     if (backBtn) {
@@ -997,18 +1113,99 @@ const App = {
     if (contentEl && currentStep) {
       contentEl.innerHTML = QuizTemplateEngine.renderStepContentHtml(currentStep, this.preview, true);
 
-      clearTimeout(this.preview.delayTimeout);
+      this.clearPreviewTimers();
+      if (!this.preview.stepTimers) this.preview.stepTimers = [];
 
-      // Tratamento do Botão com Delay Programável se houver algum bloco de delay nesta etapa
-      const delayBlock = (currentStep.blocks || []).find(b => b.type === 'delay_button');
-      if (delayBlock) {
-        const delaySeconds = parseInt(delayBlock.delaySeconds, 10) || 5;
-        this.preview.delayTimeout = setTimeout(() => {
-          const btnBox = document.getElementById('delayed-btn-box');
-          if (btnBox) btnBox.style.display = 'flex';
-        }, delaySeconds * 1000);
+      const blocks = currentStep.blocks || [];
+
+      // Demanda 4: Universal Delay em todos os blocos no preview
+      blocks.forEach((b, bIdx) => {
+        const delay = parseInt(b.delaySeconds, 10) || 0;
+        if (delay > 0) {
+          const el = document.getElementById('block-wrap-' + bIdx);
+          if (el) {
+            const timer = setTimeout(() => {
+              el.style.display = 'block';
+              setTimeout(() => {
+                el.style.opacity = '1';
+                el.style.transition = 'opacity 0.4s ease';
+              }, 20);
+            }, delay * 1000);
+            this.preview.stepTimers.push(timer);
+          }
+        }
+      });
+
+      // Demanda 5: Executa Fake Loader no preview se existir na etapa
+      const loaderBlock = blocks.find(b => b.type === 'fake_loader');
+      if (loaderBlock) {
+        this.runPreviewFakeLoader(loaderBlock);
       }
     }
+  },
+
+  runPreviewFakeLoader(block) {
+    const durationSec = Math.max(1, parseInt(block.duration, 10) || 4);
+    const totalMs = durationSec * 1000;
+    const rawMsgs = block.messages || 'Analisando suas respostas...\nCruzando com nosso banco de dados...\nCalculando seu perfil ideal...\nDiagnóstico pronto!';
+    const messages = Array.isArray(rawMsgs) ? rawMsgs : rawMsgs.split('\n').map(m => m.trim()).filter(Boolean);
+
+    const barEl = document.querySelector('#preview-viewport #loader-bar');
+    const pctEl = document.querySelector('#preview-viewport #loader-percent');
+    const msgEl = document.querySelector('#preview-viewport #loader-msg');
+    const ctaEl = document.querySelector('#preview-viewport #loader-cta');
+    const autoAdvance = block.autoAdvance !== false;
+
+    const startTime = performance.now();
+    if (msgEl && messages.length > 0) msgEl.innerText = messages[0];
+
+    const tick = () => {
+      const elapsed = performance.now() - startTime;
+      const progress = Math.min(1, elapsed / totalMs);
+
+      // Curva orgânica
+      const eased = progress < 0.5 ? 2 * progress * progress : 1 - Math.pow(-2 * progress + 2, 2) / 2;
+      const currentPct = Math.min(100, Math.round(eased * 100));
+
+      if (barEl) barEl.style.width = currentPct + '%';
+      if (pctEl) pctEl.innerText = currentPct + '%';
+
+      if (msgEl && messages.length > 0) {
+        const msgIdx = Math.min(messages.length - 1, Math.floor(progress * messages.length));
+        if (msgEl.innerText !== messages[msgIdx]) {
+          msgEl.style.opacity = '0.3';
+          setTimeout(() => {
+            msgEl.innerText = messages[msgIdx];
+            msgEl.style.opacity = '1';
+          }, 100);
+        }
+      }
+
+      if (progress < 1) {
+        const timer = setTimeout(tick, 40);
+        this.preview.stepTimers.push(timer);
+      } else {
+        if (barEl) barEl.style.width = '100%';
+        if (pctEl) pctEl.innerText = '100%';
+        if (msgEl && messages.length > 0) msgEl.innerText = messages[messages.length - 1];
+
+        if (autoAdvance) {
+          const timer = setTimeout(() => {
+            this.previewNextStep();
+          }, 450);
+          this.preview.stepTimers.push(timer);
+        } else if (ctaEl) {
+          ctaEl.style.display = 'block';
+          setTimeout(() => {
+            ctaEl.style.opacity = '1';
+            ctaEl.style.transition = 'opacity 0.4s ease';
+          }, 20);
+        }
+      }
+    };
+
+    const initialTimer = setTimeout(tick, 50);
+    this.preview.stepTimers.push(initialTimer);
   },
 
   previewSelectOption(optIdx) {
@@ -1199,6 +1396,155 @@ const App = {
   },
 
   // ==========================================
+  // ABA 4: DASHBOARD DE RETENÇÃO & FUNIL (Demanda 7)
+  // ==========================================
+  renderFunnelDashboard() {
+    if (!this.currentQuiz) return;
+    const steps = this.currentQuiz.steps || [];
+    const container = document.getElementById('analytics-funnel-container');
+    if (!container) return;
+
+    const analytics = this.currentQuiz.analytics || { views: {} };
+    const views = analytics.views || {};
+
+    const totalStarted = views['step_0'] || 0;
+    const lastStepKey = `step_${Math.max(0, steps.length - 1)}`;
+    const totalCompleted = views[lastStepKey] || 0;
+    const conversionRate = totalStarted > 0 ? ((totalCompleted / totalStarted) * 100).toFixed(1) : '0.0';
+
+    // Calcula maior drop-off entre etapas
+    let maxDrop = 0;
+    let maxDropStepTitle = 'Nenhum';
+    let maxDropPct = '0.0%';
+
+    for (let i = 1; i < steps.length; i++) {
+      const prev = views[`step_${i-1}`] || 0;
+      const curr = views[`step_${i}`] || 0;
+      if (prev > 0) {
+        const diff = prev - curr;
+        const dropPct = (diff / prev) * 100;
+        if (dropPct > maxDrop) {
+          maxDrop = dropPct;
+          maxDropStepTitle = steps[i].title || `Etapa ${i+1}`;
+          maxDropPct = dropPct.toFixed(1) + '%';
+        }
+      }
+    }
+
+    // Atualiza KPIs no topo
+    const elStarted = document.getElementById('kpi-total-started');
+    const elCompleted = document.getElementById('kpi-total-completed');
+    const elCompSub = document.getElementById('kpi-completion-sub');
+    const elRate = document.getElementById('kpi-conversion-rate');
+    const elDrop = document.getElementById('kpi-biggest-drop');
+    const elDropPct = document.getElementById('kpi-drop-pct');
+
+    if (elStarted) elStarted.innerText = totalStarted.toLocaleString('pt-BR');
+    if (elCompleted) elCompleted.innerText = totalCompleted.toLocaleString('pt-BR');
+    if (elCompSub) elCompSub.innerText = `${conversionRate}% concluídos`;
+    if (elRate) elRate.innerText = `${conversionRate}%`;
+    if (elDrop) elDrop.innerText = maxDrop > 0 ? maxDropStepTitle : 'Nenhum gargalo';
+    if (elDropPct) elDropPct.innerText = maxDrop > 0 ? `Abandono de ${maxDropPct}` : 'Sem perdas registradas';
+
+    if (steps.length === 0) {
+      container.innerHTML = '<p class="text-xs text-slate-400 py-6 text-center">Nenhuma etapa cadastrada no quiz.</p>';
+      return;
+    }
+
+    if (totalStarted === 0) {
+      container.innerHTML = `
+        <div class="py-10 px-4 text-center bg-slate-950/40 rounded-xl border border-dashed border-slate-800 space-y-3">
+          <div class="text-3xl">📊</div>
+          <p class="text-xs font-bold text-slate-300">Nenhum tráfego registrado ainda neste quiz</p>
+          <p class="text-[11px] text-slate-500 max-w-md mx-auto">
+            Conforme os usuários acessam suas páginas, os acessos são contabilizados aqui e na sua Planilha Google. Clique abaixo para gerar uma demonstração:
+          </p>
+          <button onclick="App.simulateFunnelTraffic()" class="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold transition shadow-lg shadow-indigo-500/20 inline-flex items-center gap-1.5">
+            <i class="ph ph-lightning"></i> Simular Tráfego de Demonstração (500 Visitantes)
+          </button>
+        </div>
+      `;
+      return;
+    }
+
+    container.innerHTML = steps.map((step, idx) => {
+      const stepViews = views[`step_${idx}`] || 0;
+      const retentionPct = totalStarted > 0 ? ((stepViews / totalStarted) * 100).toFixed(1) : (idx === 0 && stepViews > 0 ? '100.0' : '0.0');
+      
+      let dropInfo = '';
+      let isBottleneck = false;
+
+      if (idx > 0) {
+        const prevViews = views[`step_${idx-1}`] || 0;
+        const diff = Math.max(0, prevViews - stepViews);
+        const dropPct = prevViews > 0 ? ((diff / prevViews) * 100).toFixed(1) : '0.0';
+        isBottleneck = parseFloat(dropPct) === parseFloat(maxDrop.toFixed(1)) && maxDrop > 0;
+        dropInfo = `
+          <span class="text-[11px] font-semibold text-red-400/90 flex items-center gap-1">
+            <i class="ph ph-arrow-down-right"></i> -${diff} saíram (-${dropPct}%)
+          </span>
+        `;
+      }
+
+      return `
+        <div class="bg-slate-900/90 border ${isBottleneck ? 'border-amber-500/60 shadow-lg shadow-amber-500/10' : 'border-slate-800'} rounded-xl p-3.5 space-y-2">
+          <div class="flex flex-wrap items-center justify-between gap-2">
+            <div class="flex items-center gap-2">
+              <span class="w-6 h-6 rounded-lg bg-indigo-500/20 text-indigo-400 font-extrabold text-xs flex items-center justify-center">
+                ${idx + 1}
+              </span>
+              <span class="font-bold text-white text-xs truncate max-w-[200px] sm:max-w-[320px]">
+                ${this.escape(step.title || `Etapa ${idx + 1}`)}
+              </span>
+              ${isBottleneck ? '<span class="text-[9px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40 px-2 py-0.5 rounded-full uppercase">Maior Gargalo</span>' : ''}
+            </div>
+
+            <div class="flex items-center gap-3">
+              ${dropInfo}
+              <span class="text-xs font-mono font-bold text-white">${stepViews.toLocaleString('pt-BR')} acessos</span>
+              <span class="text-xs font-mono font-extrabold text-indigo-400 bg-indigo-500/10 px-2 py-0.5 rounded-md border border-indigo-500/20">${retentionPct}%</span>
+            </div>
+          </div>
+
+          <!-- Barra visual do Funil -->
+          <div class="w-full bg-slate-950/80 rounded-full h-3.5 overflow-hidden p-0.5 border border-slate-800">
+            <div class="funnel-bar-container h-full rounded-full bg-gradient-to-r from-indigo-500 via-indigo-400 to-emerald-400" style="width: ${Math.max(2, parseFloat(retentionPct))}%;"></div>
+          </div>
+        </div>
+      `;
+    }).join('');
+  },
+
+  simulateFunnelTraffic() {
+    if (!this.currentQuiz) return;
+    const steps = this.currentQuiz.steps || [];
+    if (steps.length === 0) return;
+
+    let base = 500;
+    const views = {};
+    steps.forEach((s, idx) => {
+      views[`step_${idx}`] = Math.round(base);
+      // Simula uma perda realista de 12% a 20% por etapa
+      const dropRate = 0.84 - (idx * 0.02);
+      base = base * dropRate;
+    });
+
+    this.currentQuiz.analytics = {
+      views: views,
+      simulatedAt: new Date().toISOString()
+    };
+    this.saveQuizzesToStorage();
+    this.renderFunnelDashboard();
+  },
+
+  resetFunnelAnalytics() {
+    if (!this.currentQuiz) return;
+    this.currentQuiz.analytics = { views: {} };
+    this.saveQuizzesToStorage();
+    this.renderFunnelDashboard();
+  },
+
+  // ==========================================
   // MODAIS E UTILITÁRIOS
   // ==========================================
   openHowItWorksModal() {
@@ -1259,7 +1605,7 @@ const App = {
     return {
       id: 'quiz_demo_vsl',
       title: 'Diagnóstico de Vendas Express (Exemplo)',
-      description: 'Funil montado com blocos modulares: vídeo + perguntas + botões com delay.',
+      description: 'Funil montado com blocos modulares: vídeo + perguntas + botões com delay + diagnóstico falso.',
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       theme: {
@@ -1274,12 +1620,18 @@ const App = {
         borderWidth: '1px',
         borderColor: '#334155',
         shadow: 'medium',
-        maxWidth: '560px'
+        maxWidth: '560px',
+        showProgressBar: true,
+        progressTextFormat: 'full',
+        startPercent: 60
       },
       tracking: {
         webhookUrl: '',
         metaPixelId: '',
-        ga4Id: ''
+        ga4Id: '',
+        customHeadScripts: '',
+        customBodyTopScripts: '',
+        customBodyBottomScripts: ''
       },
       steps: [
         {
@@ -1289,13 +1641,15 @@ const App = {
             {
               id: 'b_1',
               type: 'heading',
-              tag: 'Diagnóstico 1 de 4',
+              tag: 'Diagnóstico 1 de 5',
               title: 'Qual é o seu maior gargalo de vendas atualmente?',
-              subtitle: 'Selecione a situação que mais se aproxima do seu dia a dia.'
+              subtitle: 'Selecione a situação que mais se aproxima do seu dia a dia.',
+              delaySeconds: 0
             },
             {
               id: 'b_2',
               type: 'question',
+              delaySeconds: 0,
               options: [
                 { icon: '📲', text: 'Pouco tráfego qualificado chegando no WhatsApp', points: 10, targetStepIndex: '' },
                 { icon: '👻', text: 'Pessoas chegam, perguntam preço e somem', points: 15, targetStepIndex: '' },
@@ -1306,25 +1660,27 @@ const App = {
         },
         {
           id: 'step_2',
-          title: 'Etapa 2: Vídeo + Botão com Delay',
+          title: 'Etapa 2: Vídeo de Explicação',
           blocks: [
             {
               id: 'b_3',
               type: 'heading',
               tag: 'Vídeo Importante',
               title: 'Veja como dobrar sua conversão com este método',
-              subtitle: 'Assista a esta breve explicação de 1 minuto (o botão aparecerá em instantes).'
+              subtitle: 'Assista a esta breve explicação de 1 minuto.',
+              delaySeconds: 0
             },
             {
               id: 'b_4',
               type: 'video',
               youtubeUrl: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
-              orientation: 'horizontal'
+              orientation: 'horizontal',
+              delaySeconds: 0
             },
             {
               id: 'b_5',
               type: 'delay_button',
-              delaySeconds: 6,
+              delaySeconds: 0,
               text: 'Entendi! Quero Continuar o Teste →',
               url: ''
             }
@@ -1332,74 +1688,69 @@ const App = {
         },
         {
           id: 'step_3',
-          title: 'Etapa 3: Degustação do Produto',
+          title: 'Etapa 3: Diagnóstico Falso (0% a 100%)',
+          blocks: [
+            {
+              id: 'b_loader',
+              type: 'fake_loader',
+              duration: 4,
+              autoAdvance: true,
+              buttonText: 'Ver Meu Diagnóstico →',
+              messages: 'Analisando suas respostas...\nCruzando com nosso banco de inteligência de vendas...\nCalculando seu perfil ideal de cliente...\nDiagnóstico concluído com sucesso!',
+              delaySeconds: 0
+            }
+          ]
+        },
+        {
+          id: 'step_4',
+          title: 'Etapa 4: Degustação do Produto & Lead',
           blocks: [
             {
               id: 'b_6',
               type: 'heading',
               tag: 'Degustação do Produto',
               title: 'Navegue pelo painel do método',
-              subtitle: 'Teste o bloco interativo abaixo antes de receber sua oferta final.'
+              subtitle: 'Preencha seus dados abaixo para receber sua oferta final.',
+              delaySeconds: 0
             },
             {
               id: 'b_7',
               type: 'html',
-              customHtml: '<div style="background:linear-gradient(135deg, #1e1b4b, #312e81); border:1px solid #4338ca; padding:20px; border-radius:12px; text-align:center; color:#fff;"><h4 style="margin-bottom:8px; font-weight:bold;">🚀 Simulador de Resultados</h4><p style="font-size:13px; opacity:0.85;">Com a implementação deste funil, seus leads chegam 3x mais conscientes e prontos para comprar.</p></div>'
+              customHtml: '<div style="background:linear-gradient(135deg, #1e1b4b, #312e81); border:1px solid #4338ca; padding:18px; border-radius:12px; text-align:center; color:#fff;"><h4 style="margin-bottom:6px; font-weight:bold;">🚀 Simulador de Resultados</h4><p style="font-size:13px; opacity:0.85;">Com este funil implementado, sua taxa de conversão sobe expressivamente.</p></div>',
+              delaySeconds: 0
             },
             {
               id: 'b_8',
-              type: 'delay_button',
-              delaySeconds: 4,
-              text: 'Ir para a Análise Final →',
-              url: ''
-            }
-          ]
-        },
-        {
-          id: 'step_4',
-          title: 'Etapa 4: Captura de Lead',
-          blocks: [
-            {
-              id: 'b_9',
-              type: 'heading',
-              tag: 'Último Passo',
-              title: 'Onde devemos liberar o seu acesso com desconto?',
-              subtitle: 'Preencha seus dados para receber o diagnóstico completo.'
-            },
-            {
-              id: 'b_10',
               type: 'lead_form',
               requireEmail: true,
-              submitButtonText: 'Ver Meu Plano Personalizado →'
+              submitButtonText: 'Liberar Meu Diagnóstico com Oferta →',
+              delaySeconds: 0
             }
           ]
         },
         {
           id: 'step_5',
-          title: 'Etapa 5: Oferta Final',
+          title: 'Etapa 5: Oferta Final & Checkout',
           blocks: [
             {
-              id: 'b_11',
+              id: 'b_9',
               type: 'heading',
               tag: 'Oferta Especial Liberada',
               title: 'Parabéns! Sua Condição Especial Está Pronta',
-              subtitle: 'Você foi aprovado para receber 50% de desconto na adesão hoje.'
+              subtitle: 'Você foi aprovado para receber 50% de desconto na adesão hoje.',
+              delaySeconds: 0
             },
             {
-              id: 'b_12',
+              id: 'b_10',
               type: 'offer',
               productTitle: 'Método Funil de Quiz 2.0',
               productDescription: 'Acesso vitalício ao treinamento, modelos prontos de copy e suporte individual.',
               productPrice: 'De R$ 497 por apenas R$ 197 à vista',
               ctaText: 'Garantir Minha Vaga com 50% de Desconto →',
-              ctaUrl: 'https://pay.hotmart.com/exemplo'
+              ctaUrl: 'https://pay.hotmart.com/exemplo',
+              delaySeconds: 0
             }
           ]
-        },
-        {
-          id: 'step_6',
-          title: 'Etapa 6: Teste em Branco',
-          blocks: []
         }
       ]
     };

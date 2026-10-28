@@ -8,7 +8,19 @@ const QuizTemplateEngine = {
   // Converte etapa antiga para a nova estrutura de blocos se necessário
   normalizeStep(step) {
     if (!step) return { id: 'step_' + Date.now(), title: 'Nova Etapa', blocks: [] };
-    if (Array.isArray(step.blocks)) return step;
+    if (Array.isArray(step.blocks)) {
+      // Garante que cada bloco tenha propriedades consistentes
+      step.blocks.forEach(b => {
+        if (b.delaySeconds === undefined) b.delaySeconds = 0;
+        if (b.type === 'fake_loader') {
+          if (!b.duration) b.duration = 4;
+          if (!b.messages) b.messages = 'Analisando suas respostas...\nCruzando com nosso banco de dados...\nCalculando seu perfil ideal...\nDiagnóstico pronto!';
+          if (b.autoAdvance === undefined) b.autoAdvance = true;
+          if (!b.buttonText) b.buttonText = 'Ver Meu Diagnóstico →';
+        }
+      });
+      return step;
+    }
 
     const blocks = [];
 
@@ -19,7 +31,8 @@ const QuizTemplateEngine = {
         type: 'heading',
         tag: step.tag || '',
         title: step.title || '',
-        subtitle: step.subtitle || ''
+        subtitle: step.subtitle || '',
+        delaySeconds: 0
       });
     }
 
@@ -29,7 +42,8 @@ const QuizTemplateEngine = {
         id: 'block_' + Date.now() + '_vid',
         type: 'video',
         youtubeUrl: step.youtubeUrl,
-        orientation: step.videoOrientation || 'horizontal'
+        orientation: step.videoOrientation || 'horizontal',
+        delaySeconds: 0
       });
     }
 
@@ -38,7 +52,8 @@ const QuizTemplateEngine = {
       blocks.push({
         id: 'block_' + Date.now() + '_html',
         type: 'html',
-        customHtml: step.customHtml
+        customHtml: step.customHtml,
+        delaySeconds: 0
       });
     }
 
@@ -47,7 +62,8 @@ const QuizTemplateEngine = {
       blocks.push({
         id: 'block_' + Date.now() + '_opt',
         type: 'question',
-        options: step.options
+        options: step.options,
+        delaySeconds: 0
       });
     }
 
@@ -57,7 +73,8 @@ const QuizTemplateEngine = {
         id: 'block_' + Date.now() + '_lead',
         type: 'lead_form',
         requireEmail: step.requireEmail !== false,
-        submitButtonText: step.submitButtonText || 'Ver Meu Resultado Agora →'
+        submitButtonText: step.submitButtonText || 'Ver Meu Resultado Agora →',
+        delaySeconds: 0
       });
     }
 
@@ -81,12 +98,42 @@ const QuizTemplateEngine = {
         productPrice: step.productPrice || '',
         productDescription: step.productDescription || '',
         ctaText: step.ctaText || 'Garantir Minha Oferta Exclusiva Agora →',
-        ctaUrl: step.ctaUrl || '#'
+        ctaUrl: step.ctaUrl || '#',
+        delaySeconds: 0
       });
     }
 
     step.blocks = blocks;
     return step;
+  },
+
+  // Cálculo psicológico de progresso da barra
+  calculateProgressPercent(stepIndex, totalSteps, theme = {}) {
+    if (totalSteps <= 0) return 0;
+    const startPercent = Math.max(0, Math.min(95, parseInt(theme.startPercent, 10) || 0));
+    if (startPercent <= 0) {
+      return Math.min(100, Math.round(((stepIndex + 1) / totalSteps) * 100));
+    }
+    // Aceleração psicológica: começa em startPercent na primeira pergunta e vai até 100%
+    const progressFactor = totalSteps > 1 ? (stepIndex / (totalSteps - 1)) : 1;
+    const pct = Math.round(startPercent + ((100 - startPercent) * progressFactor));
+    return Math.min(100, Math.max(startPercent, pct));
+  },
+
+  // Texto customizado para o indicador de etapas
+  getProgressText(stepIndex, totalSteps, theme = {}, currentPercent = 0) {
+    const format = theme.progressTextFormat || 'full';
+    switch (format) {
+      case 'simple':
+        return `Etapa ${stepIndex + 1}`;
+      case 'percent_only':
+        return `${currentPercent}%`;
+      case 'none':
+        return '';
+      case 'full':
+      default:
+        return `Etapa ${stepIndex + 1} de ${totalSteps}`;
+    }
   },
 
   // Retorna os estilos CSS do tema (global ou com escopo para o preview)
@@ -381,7 +428,7 @@ const QuizTemplateEngine = {
     @keyframes fadeInScale {
       from {
         opacity: 0;
-        transform: scale(0.94) translateY(8px);
+        transform: scale(0.95) translateY(8px);
       }
       to {
         opacity: 1;
@@ -390,7 +437,71 @@ const QuizTemplateEngine = {
     }
 
     ${scope} .animate-appear {
-      animation: fadeInScale 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+      animation: fadeInScale 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+
+    /* Bloco de Diagnóstico e Barra de Carregamento Falsa (fake_loader) */
+    ${scope} .fake-loader-card {
+      text-align: center;
+      padding: 32px 18px;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: var(--radius);
+      margin: 16px 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 16px;
+    }
+
+    ${scope} .loader-spinner {
+      width: 54px;
+      height: 54px;
+      border-radius: 50%;
+      border: 4px solid rgba(255, 255, 255, 0.1);
+      border-top-color: var(--primary);
+      border-right-color: var(--accent);
+      animation: loaderSpin 0.9s linear infinite;
+      box-shadow: 0 0 16px rgba(99, 102, 241, 0.25);
+    }
+
+    @keyframes loaderSpin {
+      to { transform: rotate(360deg); }
+    }
+
+    ${scope} .loader-percent {
+      font-size: 38px;
+      font-weight: 800;
+      color: var(--text);
+      font-variant-numeric: tabular-nums;
+      line-height: 1;
+      letter-spacing: -0.02em;
+    }
+
+    ${scope} .loader-bar-wrapper {
+      width: 100%;
+      max-width: 340px;
+      height: 10px;
+      background: rgba(255, 255, 255, 0.08);
+      border-radius: 9999px;
+      overflow: hidden;
+      position: relative;
+    }
+
+    ${scope} .loader-bar-fill {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, var(--primary), var(--accent));
+      border-radius: 9999px;
+      transition: width 0.08s linear;
+    }
+
+    ${scope} .loader-msg {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text-muted);
+      min-height: 22px;
+      transition: opacity 0.2s ease;
     }
 
     /* Formulário de Lead */
@@ -542,19 +653,21 @@ const QuizTemplateEngine = {
     let html = '';
 
     blocks.forEach((block, bIdx) => {
+      let blockHtml = '';
+
       // 1. Bloco de Título / Texto
       if (block.type === 'heading') {
-        html += '<div class="step-header">';
+        blockHtml += '<div class="step-header">';
         if (block.tag) {
-          html += '<span class="step-tag">' + this.escapeHtml(block.tag) + '</span>';
+          blockHtml += '<span class="step-tag">' + this.escapeHtml(block.tag) + '</span>';
         }
         if (block.title) {
-          html += '<h2 class="step-title">' + this.escapeHtml(block.title) + '</h2>';
+          blockHtml += '<h2 class="step-title">' + this.escapeHtml(block.title) + '</h2>';
         }
         if (block.subtitle) {
-          html += '<p class="step-subtitle">' + this.escapeHtml(block.subtitle) + '</p>';
+          blockHtml += '<p class="step-subtitle">' + this.escapeHtml(block.subtitle) + '</p>';
         }
-        html += '</div>';
+        blockHtml += '</div>';
       }
 
       // 2. Bloco de Vídeo do YouTube
@@ -563,9 +676,9 @@ const QuizTemplateEngine = {
           const videoId = this.extractYouTubeId(block.youtubeUrl);
           const isVertical = block.orientation === 'vertical' || block.videoOrientation === 'vertical';
           if (videoId) {
-            html += '<div class="video-wrapper ' + (isVertical ? 'vertical' : 'horizontal') + '">';
-            html += '<iframe src="https://www.youtube-nocookie.com/embed/' + videoId + '?rel=0&modestbranding=1" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>';
-            html += '</div>';
+            blockHtml += '<div class="video-wrapper ' + (isVertical ? 'vertical' : 'horizontal') + '">';
+            blockHtml += '<iframe src="https://www.youtube-nocookie.com/embed/' + videoId + '?rel=0&modestbranding=1" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>';
+            blockHtml += '</div>';
           }
         }
       }
@@ -573,90 +686,114 @@ const QuizTemplateEngine = {
       // 3. Bloco HTML Livre / Navegador de Produto (Iframe)
       else if (block.type === 'html') {
         if (block.customHtml && block.customHtml.trim() !== '') {
-          html += '<div class="custom-html-container">' + block.customHtml + '</div>';
+          blockHtml += '<div class="custom-html-container">' + block.customHtml + '</div>';
         }
       }
 
       // 4. Bloco de Perguntas com Alternativas
       else if (block.type === 'question') {
         if (block.options && block.options.length > 0) {
-          html += '<div class="options-grid">';
+          blockHtml += '<div class="options-grid">';
           block.options.forEach((opt, optIdx) => {
             const isSelected = state.userAnswers && state.userAnswers[step.id] === optIdx;
-            html += '<button type="button" class="option-btn ' + (isSelected ? 'selected' : '') + '" onclick="' + clickPrefix + '(' + optIdx + ')">';
+            blockHtml += '<button type="button" class="option-btn ' + (isSelected ? 'selected' : '') + '" onclick="' + clickPrefix + '(' + optIdx + ')">';
             if (opt.icon) {
-              html += '<span class="option-icon">' + opt.icon + '</span>';
+              blockHtml += '<span class="option-icon">' + opt.icon + '</span>';
             }
-            html += '<span style="flex:1;">' + this.escapeHtml(opt.text || '') + '</span>';
-            html += '<span class="option-indicator"></span>';
-            html += '</button>';
+            blockHtml += '<span style="flex:1;">' + this.escapeHtml(opt.text || '') + '</span>';
+            blockHtml += '<span class="option-indicator"></span>';
+            blockHtml += '</button>';
           });
-          html += '</div>';
+          blockHtml += '</div>';
         }
       }
 
-      // 5. Bloco de Botão com Delay Programável
+      // 5. Bloco de Botão com Ação / Próxima Etapa
       else if (block.type === 'delay_button') {
         const buttonText = block.text || block.delayButtonText || 'Avançar para a próxima etapa →';
         const buttonUrl = block.url || block.delayButtonUrl || '';
 
-        html += '<div id="delayed-btn-box" class="delayed-cta-container" style="display: none;">';
+        blockHtml += '<div id="delayed-btn-box" class="delayed-cta-container">';
         if (buttonUrl) {
-          html += '<a href="' + buttonUrl + '" target="_blank" class="cta-btn animate-appear">' + this.escapeHtml(buttonText) + '</a>';
+          blockHtml += '<a href="' + buttonUrl + '" target="_blank" class="cta-btn animate-appear link-trackable">' + this.escapeHtml(buttonText) + '</a>';
         } else {
-          html += '<button type="button" class="cta-btn animate-appear" onclick="' + nextPrefix + '">' + this.escapeHtml(buttonText) + '</button>';
+          blockHtml += '<button type="button" class="cta-btn animate-appear" onclick="' + nextPrefix + '">' + this.escapeHtml(buttonText) + '</button>';
         }
-        html += '</div>';
+        blockHtml += '</div>';
       }
 
       // 6. Bloco de Captura de Lead
       else if (block.type === 'lead_form') {
         const lead = state.leadData || {};
-        html += '<form class="lead-form" onsubmit="' + formPrefix + '">';
-        html += '<div class="form-group">';
-        html += '<label class="form-label">Seu Nome Completo:</label>';
-        html += '<input type="text" id="lead-name" class="form-input" placeholder="Como podemos te chamar?" required value="' + (lead.name || '') + '">';
-        html += '</div>';
+        blockHtml += '<form class="lead-form" onsubmit="' + formPrefix + '">';
+        blockHtml += '<div class="form-group">';
+        blockHtml += '<label class="form-label">Seu Nome Completo:</label>';
+        blockHtml += '<input type="text" id="lead-name" class="form-input" placeholder="Como podemos te chamar?" required value="' + (lead.name || '') + '">';
+        blockHtml += '</div>';
 
-        html += '<div class="form-group">';
-        html += '<label class="form-label">Seu WhatsApp com DDD:</label>';
-        html += '<input type="tel" id="lead-whatsapp" class="form-input" placeholder="(11) 99999-9999" required value="' + (lead.whatsapp || '') + '">';
-        html += '</div>';
+        blockHtml += '<div class="form-group">';
+        blockHtml += '<label class="form-label">Seu WhatsApp com DDD:</label>';
+        blockHtml += '<input type="tel" id="lead-whatsapp" class="form-input" placeholder="(11) 99999-9999" required value="' + (lead.whatsapp || '') + '">';
+        blockHtml += '</div>';
 
         if (block.requireEmail !== false) {
-          html += '<div class="form-group">';
-          html += '<label class="form-label">Seu Melhor E-mail:</label>';
-          html += '<input type="email" id="lead-email" class="form-input" placeholder="seuemail@exemplo.com" required value="' + (lead.email || '') + '">';
-          html += '</div>';
+          blockHtml += '<div class="form-group">';
+          blockHtml += '<label class="form-label">Seu Melhor E-mail:</label>';
+          blockHtml += '<input type="email" id="lead-email" class="form-input" placeholder="seuemail@exemplo.com" required value="' + (lead.email || '') + '">';
+          blockHtml += '</div>';
         }
 
-        html += '<button type="submit" class="cta-btn" style="margin-top: 8px;">' + this.escapeHtml(block.submitButtonText || 'Ver Meu Resultado Agora →') + '</button>';
-        html += '</form>';
+        blockHtml += '<button type="submit" class="cta-btn" style="margin-top: 8px;">' + this.escapeHtml(block.submitButtonText || 'Ver Meu Resultado Agora →') + '</button>';
+        blockHtml += '</form>';
       }
 
       // 7. Bloco de Oferta / Checkout Final
       else if (block.type === 'offer') {
-        html += '<div class="offer-container">';
-        html += '<div class="badge-result">✨ Diagnóstico Concluído com Sucesso</div>';
+        blockHtml += '<div class="offer-container">';
+        blockHtml += '<div class="badge-result">✨ Diagnóstico Concluído com Sucesso</div>';
 
         if (block.productTitle) {
-          html += '<div class="product-box">';
-          html += '<h4>' + this.escapeHtml(block.productTitle) + '</h4>';
+          blockHtml += '<div class="product-box">';
+          blockHtml += '<h4>' + this.escapeHtml(block.productTitle) + '</h4>';
           if (block.productDescription) {
-            html += '<p>' + this.escapeHtml(block.productDescription) + '</p>';
+            blockHtml += '<p>' + this.escapeHtml(block.productDescription) + '</p>';
           }
           if (block.productPrice) {
-            html += '<div style="margin-top: 8px; font-size: 18px; font-weight: 800; color: var(--accent);">' + this.escapeHtml(block.productPrice) + '</div>';
+            blockHtml += '<div style="margin-top: 8px; font-size: 18px; font-weight: 800; color: var(--accent);">' + this.escapeHtml(block.productPrice) + '</div>';
           }
           html += '</div>';
         }
 
         const ctaText = block.ctaText || 'Garantir Minha Oferta Exclusiva Agora →';
         const ctaUrl = block.ctaUrl || '#';
-        html += '<div style="margin-top: 6px;">';
-        html += '<a href="' + ctaUrl + '" target="_blank" class="cta-btn" style="text-align: center; text-decoration: none;">' + this.escapeHtml(ctaText) + '</a>';
-        html += '</div>';
-        html += '</div>';
+        blockHtml += '<div style="margin-top: 6px;">';
+        blockHtml += '<a href="' + ctaUrl + '" target="_blank" class="cta-btn link-trackable" style="text-align: center; text-decoration: none;">' + this.escapeHtml(ctaText) + '</a>';
+        blockHtml += '</div>';
+        blockHtml += '</div>';
+      }
+
+      // 8. NOVO BLOCO: Barra de Carregamento e Diagnóstico Falso (fake_loader)
+      else if (block.type === 'fake_loader') {
+        const btnText = block.buttonText || 'Ver Meu Diagnóstico →';
+        blockHtml += '<div class="fake-loader-card">';
+        blockHtml += '<div class="loader-spinner"></div>';
+        blockHtml += '<div id="loader-percent" class="loader-percent">0%</div>';
+        blockHtml += '<div class="loader-bar-wrapper">';
+        blockHtml += '<div id="loader-bar" class="loader-bar-fill"></div>';
+        blockHtml += '</div>';
+        blockHtml += '<div id="loader-msg" class="loader-msg">Iniciando análise...</div>';
+        blockHtml += '<div id="loader-cta" style="display: none; opacity: 0; width: 100%; margin-top: 8px;">';
+        blockHtml += '<button type="button" class="cta-btn animate-appear" onclick="' + nextPrefix + '">' + this.escapeHtml(btnText) + '</button>';
+        blockHtml += '</div>';
+        blockHtml += '</div>';
+      }
+
+      // Aplica suporte universal a Delay Programável
+      const delay = parseInt(block.delaySeconds, 10) || 0;
+      if (delay > 0) {
+        html += '<div id="block-wrap-' + bIdx + '" class="quiz-delayed-block" data-delay="' + delay + '" style="display: none; opacity: 0;">' + blockHtml + '</div>';
+      } else {
+        html += blockHtml;
       }
     });
 
@@ -684,17 +821,19 @@ const QuizTemplateEngine = {
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
   ${this.generateTrackingHead(tracking)}
+  ${tracking.customHeadScripts || ''}
 
   <style>
     ${this.generateThemeCss(theme, '')}
   </style>
 </head>
 <body>
+  ${tracking.customBodyTopScripts || ''}
 
   <div class="quiz-container">
-    <div id="progress-section">
+    <div id="progress-section" style="${theme.showProgressBar === false ? 'display: none;' : ''}">
       <div class="progress-text">
-        <span id="step-indicator">Etapa 1 de ${steps.length}</span>
+        <span id="step-indicator"></span>
         <span id="progress-percent">0%</span>
       </div>
       <div class="progress-wrapper" style="margin-top: 6px;">
@@ -727,28 +866,101 @@ const QuizTemplateEngine = {
       userAnswers: {},
       totalScore: 0,
       leadData: {},
-      delayTimeout: null,
+      stepTimers: [],
+      utmParams: {},
 
       init() {
+        this.utmParams = this.captureUtms();
         const startStep = (typeof window.QUIZ_INITIAL_STEP === 'number' && window.QUIZ_INITIAL_STEP < this.config.steps.length) ? window.QUIZ_INITIAL_STEP : 0;
         this.renderStep(startStep);
         this.trackFunnelEvent('Quiz_Iniciado', { step: startStep });
       },
 
+      captureUtms() {
+        const utms = {};
+        try {
+          const params = new URLSearchParams(window.location.search);
+          for (const [key, value] of params.entries()) {
+            utms[key] = value;
+          }
+        } catch (e) {}
+        return utms;
+      },
+
+      appendUtmsToUrl(url) {
+        if (!url || url === '#' || url.startsWith('javascript:')) return url;
+        if (!this.utmParams || Object.keys(this.utmParams).length === 0) return url;
+        try {
+          const isFull = url.startsWith('http://') || url.startsWith('https://');
+          const base = isFull ? url : window.location.origin + (url.startsWith('/') ? url : '/' + url);
+          const u = new URL(base);
+          for (const [k, v] of Object.entries(this.utmParams)) {
+            if (!u.searchParams.has(k)) {
+              u.searchParams.set(k, v);
+            }
+          }
+          return isFull ? u.toString() : (u.pathname + u.search + u.hash);
+        } catch (e) {
+          const sep = url.includes('?') ? '&' : '?';
+          const qs = new URLSearchParams(this.utmParams).toString();
+          return qs ? (url + sep + qs) : url;
+        }
+      },
+
+      applyUtmsToLinks() {
+        if (!this.utmParams || Object.keys(this.utmParams).length === 0) return;
+        const links = document.querySelectorAll('.link-trackable, .cta-btn[href], .offer-container a[href]');
+        links.forEach(link => {
+          const href = link.getAttribute('href');
+          if (href && href !== '#' && !href.startsWith('javascript:')) {
+            link.setAttribute('href', this.appendUtmsToUrl(href));
+          }
+        });
+      },
+
+      calculateProgress(index, totalSteps) {
+        if (totalSteps <= 0) return 0;
+        const theme = this.config.theme || {};
+        const startPercent = Math.max(0, Math.min(95, parseInt(theme.startPercent, 10) || 0));
+        if (startPercent <= 0) {
+          return Math.min(100, Math.round(((index + 1) / totalSteps) * 100));
+        }
+        const factor = totalSteps > 1 ? (index / (totalSteps - 1)) : 1;
+        const pct = Math.round(startPercent + ((100 - startPercent) * factor));
+        return Math.min(100, Math.max(startPercent, pct));
+      },
+
+      getProgressText(index, totalSteps, pct) {
+        const theme = this.config.theme || {};
+        const format = theme.progressTextFormat || 'full';
+        switch (format) {
+          case 'simple': return 'Etapa ' + (index + 1);
+          case 'percent_only': return pct + '%';
+          case 'none': return '';
+          case 'full':
+          default: return 'Etapa ' + (index + 1) + ' de ' + totalSteps;
+        }
+      },
+
       renderStep(index) {
         if (index < 0 || index >= this.config.steps.length) return;
         
-        clearTimeout(this.delayTimeout);
+        // Limpa timers anteriores
+        this.clearAllTimers();
         this.currentStepIndex = index;
         const step = this.config.steps[index];
         const container = document.getElementById('step-content');
         const totalSteps = this.config.steps.length;
 
-        // Atualiza Progresso
-        const percent = Math.round(((index + 1) / totalSteps) * 100);
-        document.getElementById('progress-bar').style.width = percent + '%';
-        document.getElementById('progress-percent').innerText = percent + '%';
-        document.getElementById('step-indicator').innerText = 'Etapa ' + (index + 1) + ' de ' + totalSteps;
+        // Atualiza Progresso Psicológico
+        const percent = this.calculateProgress(index, totalSteps);
+        const progressBar = document.getElementById('progress-bar');
+        const progressPercent = document.getElementById('progress-percent');
+        const stepIndicator = document.getElementById('step-indicator');
+
+        if (progressBar) progressBar.style.width = percent + '%';
+        if (progressPercent) progressPercent.innerText = percent + '%';
+        if (stepIndicator) stepIndicator.innerText = this.getProgressText(index, totalSteps, percent);
 
         // Botão voltar visível se não for o primeiro
         const backBtn = document.getElementById('btn-back');
@@ -764,21 +976,213 @@ const QuizTemplateEngine = {
         // Renderiza conteúdo
         container.innerHTML = this.renderStepHtml(step);
 
-        // Se tiver algum bloco com delay nesta etapa
-        const delayBlock = (step.blocks || []).find(b => b.type === 'delay_button');
-        if (delayBlock) {
-          const delayMs = (parseInt(delayBlock.delaySeconds, 10) || 5) * 1000;
-          this.delayTimeout = setTimeout(() => {
-            const btnBox = document.getElementById('delayed-btn-box');
-            if (btnBox) btnBox.style.display = 'flex';
-          }, delayMs);
-        }
+        // Preserva e repassa UTMs para links gerados
+        this.applyUtmsToLinks();
+
+        // Inicializa Universal Delays e Fake Loaders
+        this.initStepTimers(step);
 
         window.scrollTo({ top: 0, behavior: 'smooth' });
       },
 
+      clearAllTimers() {
+        (this.stepTimers || []).forEach(t => clearTimeout(t));
+        this.stepTimers = [];
+      },
+
+      initStepTimers(step) {
+        const blocks = step.blocks || [];
+
+        // 1. Universal Delay em blocos
+        blocks.forEach((b, bIdx) => {
+          const delay = parseInt(b.delaySeconds, 10) || 0;
+          if (delay > 0) {
+            const el = document.getElementById('block-wrap-' + bIdx);
+            if (el) {
+              const timer = setTimeout(() => {
+                el.style.display = 'block';
+                setTimeout(() => {
+                  el.style.opacity = '1';
+                  el.style.transition = 'opacity 0.4s ease';
+                }, 20);
+              }, delay * 1000);
+              this.stepTimers.push(timer);
+            }
+          }
+        });
+
+        // 2. Fake Loader se houver
+        const loaderBlock = blocks.find(b => b.type === 'fake_loader');
+        if (loaderBlock) {
+          this.runFakeLoader(loaderBlock);
+        }
+      },
+
+      runFakeLoader(block) {
+        const durationSec = Math.max(1, parseInt(block.duration, 10) || 4);
+        const totalMs = durationSec * 1000;
+        const rawMsgs = block.messages || 'Analisando suas respostas...\\nCruzando com nosso banco de dados...\\nCalculando seu perfil ideal...\\nDiagnóstico pronto!';
+        const messages = Array.isArray(rawMsgs) ? rawMsgs : rawMsgs.split('\\n').map(m => m.trim()).filter(Boolean);
+
+        const barEl = document.getElementById('loader-bar');
+        const pctEl = document.getElementById('loader-percent');
+        const msgEl = document.getElementById('loader-msg');
+        const ctaEl = document.getElementById('loader-cta');
+        const autoAdvance = block.autoAdvance !== false;
+
+        const startTime = performance.now();
+        if (msgEl && messages.length > 0) msgEl.innerText = messages[0];
+
+        const tick = () => {
+          const elapsed = performance.now() - startTime;
+          const progress = Math.min(1, elapsed / totalMs);
+
+          // Curva orgânica com aceleração
+          const eased = progress < 0.5 ? 2 * progress * progress : 1 - Math.pow(-2 * progress + 2, 2) / 2;
+          const currentPct = Math.min(100, Math.round(eased * 100));
+
+          if (barEl) barEl.style.width = currentPct + '%';
+          if (pctEl) pctEl.innerText = currentPct + '%';
+
+          if (msgEl && messages.length > 0) {
+            const msgIdx = Math.min(messages.length - 1, Math.floor(progress * messages.length));
+            if (msgEl.innerText !== messages[msgIdx]) {
+              msgEl.style.opacity = '0.3';
+              setTimeout(() => {
+                msgEl.innerText = messages[msgIdx];
+                msgEl.style.opacity = '1';
+              }, 100);
+            }
+          }
+
+          if (progress < 1) {
+            const timer = setTimeout(tick, 40);
+            this.stepTimers.push(timer);
+          } else {
+            if (barEl) barEl.style.width = '100%';
+            if (pctEl) pctEl.innerText = '100%';
+            if (msgEl && messages.length > 0) msgEl.innerText = messages[messages.length - 1];
+
+            if (autoAdvance) {
+              const timer = setTimeout(() => { this.nextStep(); }, 400);
+              this.stepTimers.push(timer);
+            } else if (ctaEl) {
+              ctaEl.style.display = 'block';
+              setTimeout(() => {
+                ctaEl.style.opacity = '1';
+                ctaEl.style.transition = 'opacity 0.4s ease';
+              }, 20);
+            }
+          }
+        };
+
+        const initialTimer = setTimeout(tick, 50);
+        this.stepTimers.push(initialTimer);
+      },
+
       renderStepHtml(step) {
-        return ${this.renderStepContentHtml.toString().replace(/^function[^{]+{/, '').replace(/}$/, '')};
+        if (!step) return '';
+        const blocks = step.blocks || [];
+        if (blocks.length === 0) {
+          return '<div style=\"text-align: center; padding: 36px 12px; color: var(--text-muted);\"><div style=\"font-size: 36px; margin-bottom: 8px;\">🧩</div><h4 style=\"font-weight: bold; color: var(--text); font-size: 15px;\">Etapa em branco</h4></div>';
+        }
+
+        let html = '';
+        blocks.forEach((block, bIdx) => {
+          let bHtml = '';
+
+          if (block.type === 'heading') {
+            bHtml += '<div class=\"step-header\">';
+            if (block.tag) bHtml += '<span class=\"step-tag\">' + this.escapeHtml(block.tag) + '</span>';
+            if (block.title) bHtml += '<h2 class=\"step-title\">' + this.escapeHtml(block.title) + '</h2>';
+            if (block.subtitle) bHtml += '<p class=\"step-subtitle\">' + this.escapeHtml(block.subtitle) + '</p>';
+            bHtml += '</div>';
+          }
+          else if (block.type === 'video') {
+            if (block.youtubeUrl) {
+              const videoId = this.extractYouTubeId(block.youtubeUrl);
+              const isVertical = block.orientation === 'vertical' || block.videoOrientation === 'vertical';
+              if (videoId) {
+                bHtml += '<div class=\"video-wrapper ' + (isVertical ? 'vertical' : 'horizontal') + '\">';
+                bHtml += '<iframe src=\"https://www.youtube-nocookie.com/embed/' + videoId + '?rel=0&modestbranding=1\" allow=\"accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture\" allowfullscreen></iframe>';
+                bHtml += '</div>';
+              }
+            }
+          }
+          else if (block.type === 'html') {
+            if (block.customHtml && block.customHtml.trim() !== '') {
+              bHtml += '<div class=\"custom-html-container\">' + block.customHtml + '</div>';
+            }
+          }
+          else if (block.type === 'question') {
+            if (block.options && block.options.length > 0) {
+              bHtml += '<div class=\"options-grid\">';
+              block.options.forEach((opt, optIdx) => {
+                const isSelected = this.userAnswers && this.userAnswers[step.id] === optIdx;
+                bHtml += '<button type=\"button\" class=\"option-btn ' + (isSelected ? 'selected' : '') + '\" onclick=\"QuizApp.handleOptionSelect(' + optIdx + ')\">';
+                if (opt.icon) bHtml += '<span class=\"option-icon\">' + opt.icon + '</span>';
+                bHtml += '<span style=\"flex:1;\">' + this.escapeHtml(opt.text || '') + '</span>';
+                bHtml += '<span class=\"option-indicator\"></span>';
+                bHtml += '</button>';
+              });
+              bHtml += '</div>';
+            }
+          }
+          else if (block.type === 'delay_button') {
+            const btnText = block.text || block.delayButtonText || 'Avançar para a próxima etapa →';
+            const btnUrl = block.url || block.delayButtonUrl || '';
+            bHtml += '<div id=\"delayed-btn-box\" class=\"delayed-cta-container\">';
+            if (btnUrl) {
+              bHtml += '<a href=\"' + btnUrl + '\" target=\"_blank\" class=\"cta-btn animate-appear link-trackable\">' + this.escapeHtml(btnText) + '</a>';
+            } else {
+              bHtml += '<button type=\"button\" class=\"cta-btn animate-appear\" onclick=\"QuizApp.nextStep()\">' + this.escapeHtml(btnText) + '</button>';
+            }
+            bHtml += '</div>';
+          }
+          else if (block.type === 'lead_form') {
+            const lead = this.leadData || {};
+            bHtml += '<form class=\"lead-form\" onsubmit=\"QuizApp.handleLeadSubmit(event)\">';
+            bHtml += '<div class=\"form-group\"><label class=\"form-label\">Seu Nome Completo:</label><input type=\"text\" id=\"lead-name\" class=\"form-input\" placeholder=\"Como podemos te chamar?\" required value=\"' + (lead.name || '') + '\"></div>';
+            bHtml += '<div class=\"form-group\"><label class=\"form-label\">Seu WhatsApp com DDD:</label><input type=\"tel\" id=\"lead-whatsapp\" class=\"form-input\" placeholder=\"(11) 99999-9999\" required value=\"' + (lead.whatsapp || '') + '\"></div>';
+            if (block.requireEmail !== false) {
+              bHtml += '<div class=\"form-group\"><label class=\"form-label\">Seu Melhor E-mail:</label><input type=\"email\" id=\"lead-email\" class=\"form-input\" placeholder=\"seuemail@exemplo.com\" required value=\"' + (lead.email || '') + '\"></div>';
+            }
+            bHtml += '<button type=\"submit\" class=\"cta-btn\" style=\"margin-top: 8px;\">' + this.escapeHtml(block.submitButtonText || 'Ver Meu Resultado Agora →') + '</button>';
+            bHtml += '</form>';
+          }
+          else if (block.type === 'offer') {
+            bHtml += '<div class=\"offer-container\"><div class=\"badge-result\">✨ Diagnóstico Concluído com Sucesso</div>';
+            if (block.productTitle) {
+              bHtml += '<div class=\"product-box\"><h4>' + this.escapeHtml(block.productTitle) + '</h4>';
+              if (block.productDescription) bHtml += '<p>' + this.escapeHtml(block.productDescription) + '</p>';
+              if (block.productPrice) bHtml += '<div style=\"margin-top: 8px; font-size: 18px; font-weight: 800; color: var(--accent);\">' + this.escapeHtml(block.productPrice) + '</div>';
+              bHtml += '</div>';
+            }
+            const ctaText = block.ctaText || 'Garantir Minha Oferta Exclusiva Agora →';
+            const ctaUrl = block.ctaUrl || '#';
+            bHtml += '<div style=\"margin-top: 6px;\"><a href=\"' + ctaUrl + '\" target=\"_blank\" class=\"cta-btn link-trackable\" style=\"text-align: center; text-decoration: none;\">' + this.escapeHtml(ctaText) + '</a></div></div>';
+          }
+          else if (block.type === 'fake_loader') {
+            const btnText = block.buttonText || 'Ver Meu Diagnóstico →';
+            bHtml += '<div class=\"fake-loader-card\">';
+            bHtml += '<div class=\"loader-spinner\"></div>';
+            bHtml += '<div id=\"loader-percent\" class=\"loader-percent\">0%</div>';
+            bHtml += '<div class=\"loader-bar-wrapper\"><div id=\"loader-bar\" class=\"loader-bar-fill\"></div></div>';
+            bHtml += '<div id=\"loader-msg\" class=\"loader-msg\">Iniciando análise...</div>';
+            bHtml += '<div id=\"loader-cta\" style=\"display: none; opacity: 0; width: 100%; margin-top: 8px;\">';
+            bHtml += '<button type=\"button\" class=\"cta-btn animate-appear\" onclick=\"QuizApp.nextStep()\">' + this.escapeHtml(btnText) + '</button>';
+            bHtml += '</div></div>';
+          }
+
+          const delay = parseInt(block.delaySeconds, 10) || 0;
+          if (delay > 0) {
+            html += '<div id=\"block-wrap-' + bIdx + '\" class=\"quiz-delayed-block\" data-delay=\"' + delay + '\" style=\"display: none; opacity: 0;\">' + bHtml + '</div>';
+          } else {
+            html += bHtml;
+          }
+        });
+
+        return html;
       },
 
       extractYouTubeId(url) {
@@ -816,9 +1220,9 @@ const QuizTemplateEngine = {
           points: selectedOpt.points || 0
         });
 
-        // Re-renderiza para destacar
         const container = document.getElementById('step-content');
         if (container) container.innerHTML = this.renderStepHtml(step);
+        this.applyUtmsToLinks();
 
         if (selectedOpt.targetStepIndex !== undefined && selectedOpt.targetStepIndex !== '') {
           const targetIndex = parseInt(selectedOpt.targetStepIndex, 10);
@@ -826,7 +1230,7 @@ const QuizTemplateEngine = {
           return;
         }
 
-        const hasDelay = (step.blocks || []).some(b => b.type === 'delay_button');
+        const hasDelay = (step.blocks || []).some(b => (parseInt(b.delaySeconds, 10) || 0) > 0);
         if (!hasDelay) {
           setTimeout(() => this.nextStep(), 250);
         }
@@ -872,6 +1276,7 @@ const QuizTemplateEngine = {
           quizId: this.config.id || 'meu-quiz',
           quizTitle: this.config.title || 'Quiz de Vendas',
           timestamp: new Date().toISOString(),
+          utms: this.utmParams,
           lead: this.leadData,
           answers: this.userAnswers,
           totalScore: this.totalScore,
@@ -909,6 +1314,7 @@ const QuizTemplateEngine = {
       QuizApp.init();
     }
   </script>
+  ${tracking.customBodyBottomScripts || ''}
 </body>
 </html>`;
   },

@@ -203,15 +203,18 @@
       <!-- PAINEL ESQUERDO: CONFIGURAÇÕES & ETAPAS -->
       <div id="panel-editor-left" class="w-full md:w-[56%] lg:w-[58%] border-r border-slate-800 flex flex-col bg-slate-900/60 min-h-screen">
         <!-- Abas de Navegação do Painel (Fixas no topo durante a rolagem) -->
-        <div class="sticky top-[118px] z-20 flex border-b border-slate-800 bg-slate-900/95 backdrop-blur px-4 shrink-0 shadow-sm">
-          <button id="tab-btn-steps" onclick="App.switchEditorTab('steps')" class="px-4 py-3 font-bold text-xs uppercase tracking-wider text-indigo-400 border-b-2 border-indigo-500 flex items-center gap-2">
+        <div class="sticky top-[118px] z-20 flex border-b border-slate-800 bg-slate-900/95 backdrop-blur px-4 shrink-0 shadow-sm overflow-x-auto">
+          <button id="tab-btn-steps" onclick="App.switchEditorTab('steps')" class="px-4 py-3 font-bold text-xs uppercase tracking-wider text-indigo-400 border-b-2 border-indigo-500 flex items-center gap-2 whitespace-nowrap">
             <i class="ph ph-list-numbers text-base"></i> Etapas do Funil
           </button>
-          <button id="tab-btn-design" onclick="App.switchEditorTab('design')" class="px-4 py-3 font-bold text-xs uppercase tracking-wider text-slate-400 hover:text-white border-b-2 border-transparent flex items-center gap-2">
+          <button id="tab-btn-design" onclick="App.switchEditorTab('design')" class="px-4 py-3 font-bold text-xs uppercase tracking-wider text-slate-400 hover:text-white border-b-2 border-transparent flex items-center gap-2 whitespace-nowrap">
             <i class="ph ph-paint-brush text-base"></i> Visual & Cores
           </button>
-          <button id="tab-btn-tracking" onclick="App.switchEditorTab('tracking')" class="px-4 py-3 font-bold text-xs uppercase tracking-wider text-slate-400 hover:text-white border-b-2 border-transparent flex items-center gap-2">
-            <i class="ph ph-chart-line-up text-base"></i> Métricas & Retenção
+          <button id="tab-btn-tracking" onclick="App.switchEditorTab('tracking')" class="px-4 py-3 font-bold text-xs uppercase tracking-wider text-slate-400 hover:text-white border-b-2 border-transparent flex items-center gap-2 whitespace-nowrap">
+            <i class="ph ph-code text-base"></i> UTMs & Scripts
+          </button>
+          <button id="tab-btn-analytics" onclick="App.switchEditorTab('analytics')" class="px-4 py-3 font-bold text-xs uppercase tracking-wider text-slate-400 hover:text-white border-b-2 border-transparent flex items-center gap-2 whitespace-nowrap">
+            <i class="ph ph-funnel text-base"></i> Dashboard de Retenção
           </button>
         </div>
 
@@ -348,13 +351,71 @@
                 </select>
               </div>
             </div>
+
+            <!-- Seção de Psicologia da Barra de Progresso (Demanda 2) -->
+            <div class="bg-slate-800/80 p-5 rounded-2xl border border-slate-700 space-y-4">
+              <div class="flex items-center gap-2.5">
+                <span class="w-8 h-8 rounded-lg bg-indigo-500/20 text-indigo-400 flex items-center justify-center font-bold">📊</span>
+                <div>
+                  <h4 class="font-bold text-white text-sm">Psicologia & Barra de Progresso</h4>
+                  <p class="text-[11px] text-slate-400">Controle a exibição, formato de etapas e simulação de avanço acelerado.</p>
+                </div>
+              </div>
+
+              <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2">
+                <!-- Ativar / Desativar Barra -->
+                <div>
+                  <label class="block text-xs font-bold text-slate-300 mb-2">Exibir Barra de Progresso</label>
+                  <select id="theme-show-progress" onchange="App.updateThemeProp('showProgressBar', this.value === 'true')" class="w-full bg-slate-900 border border-slate-700 px-3 py-2 rounded-lg text-xs text-white">
+                    <option value="true">Sim (Exibir Barra)</option>
+                    <option value="false">Não (Ocultar Barra)</option>
+                  </select>
+                </div>
+
+                <!-- Formato do Texto da Etapa -->
+                <div>
+                  <label class="block text-xs font-bold text-slate-300 mb-2">Formato do Texto da Etapa</label>
+                  <select id="theme-progress-format" onchange="App.updateThemeProp('progressTextFormat', this.value)" class="w-full bg-slate-900 border border-slate-700 px-3 py-2 rounded-lg text-xs text-white">
+                    <option value="full">Completo (Ex: Etapa 1 de 4)</option>
+                    <option value="simple">Sem total (Ex: Etapa 1)</option>
+                    <option value="percent_only">Apenas Porcentagem (Ex: 70%)</option>
+                    <option value="none">Ocultar Texto (Apenas Barra)</option>
+                  </select>
+                </div>
+
+                <!-- Progresso Acelerado -->
+                <div>
+                  <label class="block text-xs font-bold text-slate-300 mb-2">Progresso Inicial Acelerado (%)</label>
+                  <div class="flex items-center gap-2">
+                    <input type="number" id="theme-start-percent" min="0" max="90" step="5" onchange="App.updateThemeProp('startPercent', parseInt(this.value, 10) || 0)" placeholder="0" class="w-full bg-slate-900 border border-slate-700 px-3 py-2 rounded-lg text-xs font-mono text-white">
+                    <span class="text-xs text-slate-400 font-bold">%</span>
+                  </div>
+                </div>
+              </div>
+
+              <p class="text-[11px] text-indigo-300/80 bg-indigo-950/40 p-2.5 rounded-lg border border-indigo-900/40">
+                💡 <b>Dica de Conversão:</b> Definir um progresso inicial de <b>60% ou 70%</b> gera a sensação psicológica imediata de que a conclusão é rápida, aumentando muito a retenção até a oferta final.
+              </p>
+            </div>
           </div>
 
-          <!-- ABA 3: RASTREAMENTO & RETENÇÃO -->
+          <!-- ABA 3: RASTREAMENTO, UTMS & INJEÇÃO DE SCRIPTS -->
           <div id="tab-content-tracking" class="hidden space-y-6">
             <div>
-              <h3 class="font-extrabold text-white text-lg">Métricas de Retenção & Tracking</h3>
-              <p class="text-xs text-slate-400">Monitore abandono por etapa e alimente seu tráfego pago sem intermediários pagos.</p>
+              <h3 class="font-extrabold text-white text-lg">Métricas, UTMs & Injeção de Scripts</h3>
+              <p class="text-xs text-slate-400">Rastreie seu funil, capture parâmetros de tráfego pago e injete pixels em qualquer posição da página.</p>
+            </div>
+
+            <!-- Card Preservação e Repasse de UTMs (Demanda 6) -->
+            <div class="bg-gradient-to-r from-indigo-950/40 to-slate-900 p-5 rounded-2xl border border-indigo-500/30 space-y-2">
+              <div class="flex items-center gap-2.5">
+                <i class="ph ph-link-simple text-indigo-400 text-xl"></i>
+                <h4 class="font-bold text-white text-sm">Preservação & Repasse Automático de UTMs</h4>
+                <span class="text-[10px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-2 py-0.5 rounded-full uppercase">Nativo Ativo</span>
+              </div>
+              <p class="text-xs text-slate-300 leading-relaxed">
+                O quiz captura automaticamente todos os parâmetros de anúncio da URL (<code>utm_source</code>, <code>utm_campaign</code>, <code>utm_medium</code>, <code>src</code>, <code>sck</code>, etc.) e os <b>repassa dinamicamente</b> para todos os botões de checkout e links de saída, garantindo que suas vendas sejam rastreadas nas plataformas (Hotmart, Kiwify, Eduzz, etc.).
+              </p>
             </div>
 
             <!-- Webhook Google Planilhas -->
@@ -374,28 +435,109 @@
               <input type="url" id="tracking-webhook" onchange="App.updateTrackingProp('webhookUrl', this.value)" placeholder="https://script.google.com/macros/s/AKfycbx.../exec" class="w-full bg-slate-900 border border-slate-700 px-3.5 py-2.5 rounded-xl text-xs text-white focus:border-indigo-500 outline-none">
             </div>
 
-            <!-- Meta Pixel ID -->
-            <div class="bg-slate-800/80 p-5 rounded-2xl border border-slate-700 space-y-3">
-              <div class="flex items-center gap-2">
-                <i class="ph ph-meta-logo text-blue-400 text-xl"></i>
-                <h4 class="font-bold text-white text-sm">Meta Pixel ID (Facebook & Instagram Ads)</h4>
+            <!-- Meta Pixel ID & GA4 -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div class="bg-slate-800/80 p-4 rounded-2xl border border-slate-700 space-y-2">
+                <div class="flex items-center gap-2">
+                  <i class="ph ph-meta-logo text-blue-400 text-lg"></i>
+                  <h4 class="font-bold text-white text-xs">Meta Pixel ID (Facebook Ads)</h4>
+                </div>
+                <input type="text" id="tracking-pixel" onchange="App.updateTrackingProp('metaPixelId', this.value)" placeholder="Ex: 123456789012345" class="w-full bg-slate-900 border border-slate-700 px-3 py-2 rounded-xl text-xs text-white focus:border-indigo-500 outline-none">
+                <p class="text-[11px] text-slate-500">Dispara PageView, Quiz_Etapa_X, Lead e Oferta.</p>
               </div>
-              <p class="text-xs text-slate-400">
-                Dispara eventos automáticos: <code>Quiz_Iniciado</code>, <code>Quiz_Etapa_X</code>, <code>Lead</code> e <code>Quiz_Chegou_Oferta</code> para criar públicos de remarketing personalizados.
-              </p>
-              <input type="text" id="tracking-pixel" onchange="App.updateTrackingProp('metaPixelId', this.value)" placeholder="Ex: 123456789012345" class="w-full bg-slate-900 border border-slate-700 px-3.5 py-2.5 rounded-xl text-xs text-white focus:border-indigo-500 outline-none">
+
+              <div class="bg-slate-800/80 p-4 rounded-2xl border border-slate-700 space-y-2">
+                <div class="flex items-center gap-2">
+                  <i class="ph ph-google-logo text-amber-400 text-lg"></i>
+                  <h4 class="font-bold text-white text-xs">Google Analytics 4 (GA4 ID)</h4>
+                </div>
+                <input type="text" id="tracking-ga4" onchange="App.updateTrackingProp('ga4Id', this.value)" placeholder="Ex: G-XXXXXXXXXX" class="w-full bg-slate-900 border border-slate-700 px-3 py-2 rounded-xl text-xs text-white focus:border-indigo-500 outline-none">
+                <p class="text-[11px] text-slate-500">Envia eventos para seus relatórios do GA4.</p>
+              </div>
             </div>
 
-            <!-- Google Analytics 4 (GA4) -->
-            <div class="bg-slate-800/80 p-5 rounded-2xl border border-slate-700 space-y-3">
+            <!-- Injeção de Scripts em 3 Posições (Demanda 6) -->
+            <div class="bg-slate-800/80 p-5 rounded-2xl border border-slate-700 space-y-4">
               <div class="flex items-center gap-2">
-                <i class="ph ph-google-logo text-amber-400 text-xl"></i>
-                <h4 class="font-bold text-white text-sm">Google Analytics 4 (Measurement ID)</h4>
+                <i class="ph ph-code-block text-violet-400 text-xl"></i>
+                <h4 class="font-bold text-white text-sm">Injeção de Scripts Externos</h4>
               </div>
-              <p class="text-xs text-slate-400">
-                Rastreia o funil de retenção dentro dos relatórios do GA4.
-              </p>
-              <input type="text" id="tracking-ga4" onchange="App.updateTrackingProp('ga4Id', this.value)" placeholder="Ex: G-XXXXXXXXXX" class="w-full bg-slate-900 border border-slate-700 px-3.5 py-2.5 rounded-xl text-xs text-white focus:border-indigo-500 outline-none">
+              <p class="text-xs text-slate-400">Cole códigos personalizados escolhendo a posição exata de inserção no HTML gerado:</p>
+
+              <!-- 1. Scripts no <head> -->
+              <div class="space-y-1.5">
+                <label class="block text-xs font-bold text-slate-300">1. Scripts dentro do &lt;head&gt; (Pixels personalizados, GTM head, tags de verificação):</label>
+                <textarea id="tracking-head-scripts" onchange="App.updateTrackingProp('customHeadScripts', this.value)" rows="3" placeholder="<script> /* seu script aqui */ </script>" class="w-full bg-slate-900 border border-slate-700 p-2.5 rounded-xl font-mono text-xs text-indigo-300 focus:border-indigo-500 outline-none"></textarea>
+              </div>
+
+              <!-- 2. Scripts no início do <body> -->
+              <div class="space-y-1.5">
+                <label class="block text-xs font-bold text-slate-300">2. Scripts no início do &lt;body&gt; (Ex: &lt;noscript&gt; do GTM, banners de topo):</label>
+                <textarea id="tracking-body-top-scripts" onchange="App.updateTrackingProp('customBodyTopScripts', this.value)" rows="2" placeholder="<noscript> /* código noscript */ </noscript>" class="w-full bg-slate-900 border border-slate-700 p-2.5 rounded-xl font-mono text-xs text-indigo-300 focus:border-indigo-500 outline-none"></textarea>
+              </div>
+
+              <!-- 3. Scripts no rodapé antes de </body> -->
+              <div class="space-y-1.5">
+                <label class="block text-xs font-bold text-slate-300">3. Scripts no rodapé antes de fechar o &lt;/body&gt; (Ex: chats de suporte, widgets):</label>
+                <textarea id="tracking-body-bottom-scripts" onchange="App.updateTrackingProp('customBodyBottomScripts', this.value)" rows="2" placeholder="<script> /* script de rodapé */ </script>" class="w-full bg-slate-900 border border-slate-700 p-2.5 rounded-xl font-mono text-xs text-indigo-300 focus:border-indigo-500 outline-none"></textarea>
+              </div>
+            </div>
+          </div>
+
+          <!-- ABA 4: DASHBOARD VISUAL DE RETENÇÃO & FUNIL (Demanda 7) -->
+          <div id="tab-content-analytics" class="hidden space-y-6">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <h3 class="font-extrabold text-white text-lg">Dashboard de Retenção & Análise do Funil</h3>
+                <p class="text-xs text-slate-400">Acompanhe abandono, taxa de retenção por pergunta e conversão final diretamente aqui.</p>
+              </div>
+              <div class="flex items-center gap-2">
+                <button onclick="App.simulateFunnelTraffic()" class="px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold transition flex items-center gap-1.5 shadow-md shadow-indigo-500/20">
+                  <i class="ph ph-lightning"></i> Simular Tráfego (500)
+                </button>
+                <button onclick="App.resetFunnelAnalytics()" class="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold border border-slate-700 transition" title="Zerar Dados">
+                  <i class="ph ph-arrow-counter-clockwise"></i> Limpar
+                </button>
+              </div>
+            </div>
+
+            <!-- Cards de KPI Resumo -->
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <div class="bg-slate-800/80 p-4 rounded-2xl border border-slate-700">
+                <span class="text-[11px] text-slate-400 font-semibold block mb-1">Iniciaram o Quiz</span>
+                <span id="kpi-total-started" class="text-2xl font-black text-white">0</span>
+                <span class="text-[10px] text-indigo-400 block mt-0.5">100% dos acessos</span>
+              </div>
+              <div class="bg-slate-800/80 p-4 rounded-2xl border border-slate-700">
+                <span class="text-[11px] text-slate-400 font-semibold block mb-1">Chegaram à Oferta</span>
+                <span id="kpi-total-completed" class="text-2xl font-black text-emerald-400">0</span>
+                <span id="kpi-completion-sub" class="text-[10px] text-emerald-500 block mt-0.5">0% concluídos</span>
+              </div>
+              <div class="bg-slate-800/80 p-4 rounded-2xl border border-slate-700">
+                <span class="text-[11px] text-slate-400 font-semibold block mb-1">Taxa de Conversão</span>
+                <span id="kpi-conversion-rate" class="text-2xl font-black text-violet-400">0.0%</span>
+                <span class="text-[10px] text-violet-300 block mt-0.5">Funil Completo</span>
+              </div>
+              <div class="bg-slate-800/80 p-4 rounded-2xl border border-slate-700">
+                <span class="text-[11px] text-slate-400 font-semibold block mb-1">Maior Abandono</span>
+                <span id="kpi-biggest-drop" class="text-base font-extrabold text-amber-400 truncate block">Nenhum</span>
+                <span id="kpi-drop-pct" class="text-[10px] text-amber-300 block mt-0.5">Ponto de melhoria</span>
+              </div>
+            </div>
+
+            <!-- Gráfico Visual de Barras do Funil -->
+            <div class="bg-slate-800/80 p-5 rounded-2xl border border-slate-700 space-y-4">
+              <div class="flex items-center justify-between">
+                <h4 class="font-bold text-white text-sm flex items-center gap-2">
+                  <i class="ph ph-chart-bar text-indigo-400"></i> Visualização Gráfica do Funil por Etapa
+                </h4>
+                <span class="text-[11px] text-slate-400">Retenção vs Abandono</span>
+              </div>
+
+              <!-- Container dinâmico das barras do funil -->
+              <div id="analytics-funnel-container" class="space-y-3.5 pt-2">
+                <!-- Injetado via App.renderFunnelDashboard() -->
+              </div>
             </div>
           </div>
 
