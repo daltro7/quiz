@@ -868,12 +868,26 @@ const QuizTemplateEngine = {
       leadData: {},
       stepTimers: [],
       utmParams: {},
+      sessionId: null,
 
       init() {
+        this.sessionId = this.getOrCreateSessionId();
         this.utmParams = this.captureUtms();
         const startStep = (typeof window.QUIZ_INITIAL_STEP === 'number' && window.QUIZ_INITIAL_STEP < this.config.steps.length) ? window.QUIZ_INITIAL_STEP : 0;
         this.renderStep(startStep);
-        this.trackFunnelEvent('Quiz_Iniciado', { step: startStep });
+      },
+
+      getOrCreateSessionId() {
+        try {
+          let sid = sessionStorage.getItem('q_session_id');
+          if (!sid) {
+            sid = 's_' + Date.now().toString(36) + '_' + Math.random().toString(36).substr(2, 6);
+            sessionStorage.setItem('q_session_id', sid);
+          }
+          return sid;
+        } catch (e) {
+          return 's_' + Date.now().toString(36);
+        }
       },
 
       captureUtms() {
@@ -1271,12 +1285,21 @@ const QuizTemplateEngine = {
       },
 
       trackFunnelEvent(eventName, eventData) {
+        const utms = this.utmParams || {};
+        const srcVal = utms.src || utms.sck || utms.SRC || utms.SCK || '';
         const payload = {
+          sessionId: this.sessionId,
           event: eventName,
           quizId: this.config.id || 'meu-quiz',
           quizTitle: this.config.title || 'Quiz de Vendas',
           timestamp: new Date().toISOString(),
-          utms: this.utmParams,
+          src: srcVal,
+          utm_source: utms.utm_source || utms.source || '',
+          utm_campaign: utms.utm_campaign || utms.campaign || '',
+          utm_medium: utms.utm_medium || utms.medium || '',
+          utm_content: utms.utm_content || utms.content || '',
+          utm_term: utms.utm_term || utms.term || '',
+          utms: utms,
           lead: this.leadData,
           answers: this.userAnswers,
           totalScore: this.totalScore,

@@ -1608,7 +1608,10 @@ const App = {
                       <td class="py-2.5 px-3 text-center">
                         <span class="px-2 py-0.5 rounded bg-indigo-500/20 text-indigo-300 font-mono font-bold text-[11px]">${lead.score || 0} pts</span>
                       </td>
-                      <td class="py-2.5 px-3 text-slate-400 text-[11px] truncate max-w-[140px]">${this.escape(lead.utm || '-')}</td>
+                      <td class="py-2.5 px-3 text-slate-400 text-[11px] truncate max-w-[160px]">
+                        ${lead.src && lead.src !== '-' ? `<span class="bg-indigo-500/20 text-indigo-300 px-1.5 py-0.5 rounded font-mono font-bold text-[10px] mr-1">SRC: ${this.escape(lead.src)}</span>` : ''}
+                        <span>${this.escape(lead.utm || '-')}</span>
+                      </td>
                     </tr>
                   `;
                 }).join('')}

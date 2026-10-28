@@ -655,7 +655,7 @@
           <button onclick="App.copySheetsScript()" class="sticky top-0 float-right bg-indigo-600 hover:bg-indigo-500 text-white px-2.5 py-1 rounded text-[10px] font-bold flex items-center gap-1 transition shadow-md z-10">
             <i class="ph ph-copy"></i> Copiar Código Completo
           </button>
-          <pre id="sheets-script-code">// 1. LEITURA DOS DADOS (QuizForge ➔ Planilha)
+          <pre id="sheets-script-code">// 1. LEITURA DOS DADOS (QuizForge ➔ Planilha com Visitante Único)
 function doGet(e) {
   try {
     var sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
@@ -665,88 +665,135 @@ function doGet(e) {
         status: 'success', totalStarts: 0, totalCompletions: 0, totalLeads: 0, stepViews: {}, recentLeads: []
       })).setMimeType(ContentService.MimeType.JSON);
     }
-    var rows = sheet.getDataRange().getValues();
-    var stepViews = {}, leadsMap = {}, recentLeads = [];
-    var totalStarts = 0, totalCompletions = 0;
+    var lastCol = sheet.getLastColumn();
+    var rows = sheet.getRange(1, 1, lastRow, lastCol).getValues();
+    var headers = rows[0], colMap = {};
+    for (var c = 0; c &lt; headers.length; c++) colMap[String(headers[c] || '').trim().toLowerCase()] = c;
+    function getCol(row, candidates) {
+      for (var j = 0; j &lt; candidates.length; j++) {
+        var idx = colMap[candidates[j].toLowerCase()];
+        if (idx !== undefined &amp;&amp; row[idx] !== undefined) return row[idx];
+      }
+      return '';
+    }
+    var stepVisitors = {}, uniqueStarts = {}, uniqueCompletions = {}, leadsMap = {}, recentLeads = [];
     for (var i = 1; i &lt; rows.length; i++) {
       var row = rows[i];
-      var event = String(row[1] || '').trim();
-      var stepIdx = String(row[3] || '').trim();
-      var leadName = String(row[7] || '').trim();
-      var leadPhone = String(row[8] || '').trim();
-      var leadEmail = String(row[9] || '').trim();
-      var points = row[6], rowDate = row[0];
-      var utmSrc = String(row[10] || '').trim(), utmCmp = String(row[11] || '').trim();
-      var numStep = parseInt(stepIdx, 10);
-      if (!isNaN(numStep) &amp;&amp; numStep &gt;= 1) {
-        var key = 'step_' + (numStep - 1);
-        stepViews[key] = (stepViews[key] || 0) + 1;
-        if (numStep === 1) totalStarts++;
-      } else if (event.indexOf('Quiz_Etapa_') === 0) {
-        var parsed = parseInt(event.replace('Quiz_Etapa_', ''), 10);
-        if (!isNaN(parsed) &amp;&amp; parsed &gt;= 1) {
-          var key2 = 'step_' + (parsed - 1);
-          stepViews[key2] = (stepViews[key2] || 0) + 1;
-          if (parsed === 1) totalStarts++;
+      var rowDate = getCol(row, ['data/hora', 'data', 'timestamp']);
+      var rawSession = String(getCol(row, ['sessão (id)', 'sessão', 'sessao', 'session', 'sessao (id)']) || '').trim();
+      var event = String(getCol(row, ['evento', 'event']) || '').trim();
+      var stepIdx = String(getCol(row, ['etapa', 'step']) || '').trim();
+      var leadName = String(getCol(row, ['nome']) || '').trim();
+      var leadPhone = String(getCol(row, ['whatsapp', 'telefone']) || '').trim();
+      var leadEmail = String(getCol(row, ['email', 'e-mail']) || '').trim();
+      var points = getCol(row, ['pontos / score', 'pontos', 'score']);
+      var src = String(getCol(row, ['src', 'src (rastreamento)']) || '').trim();
+      var utmSrc = String(getCol(row, ['utm_source', 'source']) || '').trim();
+      var utmCmp = String(getCol(row, ['utm_campaign', 'campaign']) || '').trim();
+
+      var sessionKey = rawSession;
+      if (!sessionKey) {
+        var timeCluster = rowDate ? Utilities.formatDate(new Date(rowDate), "GMT", "yyyy-MM-dd_HH") + '_' + Math.floor(new Date(rowDate).getMinutes() / 15) : ('leg_' + i);
+        sessionKey = (leadPhone || leadEmail || 'visitante') + '_' + timeCluster;
+      }
+
+      if (event.indexOf('Quiz_Etapa_') === 0) {
+        var numStep = parseInt(event.replace('Quiz_Etapa_', ''), 10);
+        if (!isNaN(numStep) &amp;&amp; numStep &gt;= 1) {
+          var k = 'step_' + (numStep - 1);
+          if (!stepVisitors[k]) stepVisitors[k] = {};
+          stepVisitors[k][sessionKey] = true;
+          if (numStep === 1) uniqueStarts[sessionKey] = true;
         }
       } else if (event === 'Quiz_Iniciado') {
-        stepViews['step_0'] = (stepViews['step_0'] || 0) + 1;
-        totalStarts++;
+        if (!stepVisitors['step_0']) stepVisitors['step_0'] = {};
+        stepVisitors['step_0'][sessionKey] = true;
+        uniqueStarts[sessionKey] = true;
+      } else if (stepIdx &amp;&amp; !isNaN(parseInt(stepIdx, 10)) &amp;&amp; event !== 'Quiz_Resposta') {
+        var num = parseInt(stepIdx, 10);
+        if (num &gt;= 1) {
+          var k2 = 'step_' + (num - 1);
+          if (!stepVisitors[k2]) stepVisitors[k2] = {};
+          stepVisitors[k2][sessionKey] = true;
+          if (num === 1) uniqueStarts[sessionKey] = true;
+        }
       }
-      if (event === 'Quiz_Concluido' || event === 'Oferta_Visualizada') totalCompletions++;
+      if (event === 'Quiz_Concluido' || event === 'Oferta_Visualizada') uniqueCompletions[sessionKey] = true;
       if (leadName || leadPhone || leadEmail) {
-        var leadKey = leadPhone || leadEmail || (leadName + '_' + i);
-        if (!leadsMap[leadKey]) {
-          leadsMap[leadKey] = true;
+        var lKey = leadPhone || leadEmail || (leadName + '_' + sessionKey);
+        if (!leadsMap[lKey]) {
+          leadsMap[lKey] = true;
+          var originTag = src ? ('SRC: ' + src) : [utmSrc, utmCmp].filter(Boolean).join(' / ');
           recentLeads.unshift({
             date: rowDate ? Utilities.formatDate(new Date(rowDate), Session.getScriptTimeZone() || "GMT-3", "dd/MM/yyyy HH:mm") : '',
-            name: leadName || 'Anônimo',
-            whatsapp: leadPhone || '',
-            email: leadEmail || '',
-            score: points || 0,
-            utm: [utmSrc, utmCmp].filter(Boolean).join(' / ') || '-'
+            name: leadName || 'Anônimo', whatsapp: leadPhone || '', email: leadEmail || '', score: points || 0, src: src || '-', utm: originTag || '-'
           });
         }
       }
     }
-    if (recentLeads.length &gt; 30) recentLeads = recentLeads.slice(0, 30);
+    var stepViews = {};
+    for (var sKey in stepVisitors) stepViews[sKey] = Object.keys(stepVisitors[sKey]).length;
+    if (recentLeads.length &gt; 50) recentLeads = recentLeads.slice(0, 50);
     return ContentService.createTextOutput(JSON.stringify({
-      status: 'success', totalStarts: totalStarts, totalCompletions: totalCompletions,
-      totalLeads: Object.keys(leadsMap).length, stepViews: stepViews, recentLeads: recentLeads,
-      lastUpdated: new Date().toISOString()
+      status: 'success', totalStarts: Object.keys(uniqueStarts).length, totalCompletions: Object.keys(uniqueCompletions).length,
+      totalLeads: Object.keys(leadsMap).length, stepViews: stepViews, recentLeads: recentLeads, lastUpdated: new Date().toISOString()
     })).setMimeType(ContentService.MimeType.JSON);
-  } catch (err) {
+  } catch(err) {
     return ContentService.createTextOutput(JSON.stringify({ status: 'error', message: err.toString() })).setMimeType(ContentService.MimeType.JSON);
   }
 }
 
-// 2. GRAVAÇÃO DOS DADOS (Quiz do Visitante ➔ Planilha)
+// 2. GRAVAÇÃO DOS DADOS (Quiz do Visitante ➔ Planilha com Mapeamento Dinâmico)
 function doPost(e) {
   try {
     var sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
-    if (sheet.getLastRow() === 0) {
-      sheet.appendRow(['Data/Hora', 'Evento', 'Quiz', 'Etapa', 'Pergunta / Título', 'Resposta', 'Pontos / Score', 'Nome', 'WhatsApp', 'Email', 'UTM_Source', 'UTM_Campaign']);
-      sheet.getRange(1, 1, 1, 12).setFontWeight('bold').setBackground('#e2e8f0');
+    var lastCol = sheet.getLastColumn();
+    if (lastCol === 0) {
+      sheet.appendRow(['Data/Hora', 'Sessão (ID)', 'Evento', 'Quiz', 'Etapa', 'Pergunta / Título', 'Resposta', 'Pontos / Score', 'Nome', 'WhatsApp', 'Email', 'SRC', 'UTM_Source', 'UTM_Campaign', 'UTM_Medium', 'UTM_Content']);
+      sheet.getRange(1, 1, 1, 16).setFontWeight('bold').setBackground('#e2e8f0');
       sheet.setFrozenRows(1);
+      lastCol = 16;
+    } else {
+      var curHeaders = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
+      var hasSrc = curHeaders.some(function(h) { return String(h).toUpperCase().indexOf('SRC') !== -1; });
+      var hasSess = curHeaders.some(function(h) { return String(h).toLowerCase().indexOf('sess') !== -1; });
+      if (!hasSrc) { lastCol++; sheet.getRange(1, lastCol).setValue('SRC').setFontWeight('bold').setBackground('#e2e8f0'); }
+      if (!hasSess) { lastCol++; sheet.getRange(1, lastCol).setValue('Sessão (ID)').setFontWeight('bold').setBackground('#e2e8f0'); }
     }
     var data = {};
     if (e.postData &amp;&amp; e.postData.contents) {
       try { data = JSON.parse(e.postData.contents); } catch(p) { data = e.parameter || {}; }
     } else { data = e.parameter || {}; }
-    sheet.appendRow([
-      new Date(),
-      data.event || '',
-      data.quizTitle || '',
-      (data.data &amp;&amp; data.data.stepIndex) || '',
-      (data.data &amp;&amp; (data.data.stepTitle || data.data.question)) || '',
-      (data.data &amp;&amp; data.data.answer) || '',
-      (data.data &amp;&amp; data.data.points) !== undefined ? data.data.points : (data.totalScore || ''),
-      (data.lead &amp;&amp; data.lead.name) || '',
-      (data.lead &amp;&amp; data.lead.whatsapp) || '',
-      (data.lead &amp;&amp; data.lead.email) || '',
-      (data.utms &amp;&amp; data.utms.utm_source) || '',
-      (data.utms &amp;&amp; data.utms.utm_campaign) || ''
-    ]);
+    var utms = data.utms || {};
+    var src = data.src || utms.src || utms.sck || utms.SRC || utms.SCK || '';
+    var headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+    var colMap = {};
+    for (var c = 0; c &lt; headers.length; c++) colMap[String(headers[c] || '').trim().toLowerCase()] = c;
+    var newRow = new Array(headers.length);
+    for (var k = 0; k &lt; newRow.length; k++) newRow[k] = '';
+    function setVal(candidates, val) {
+      for (var j = 0; j &lt; candidates.length; j++) {
+        var idx = colMap[candidates[j].toLowerCase()];
+        if (idx !== undefined) { newRow[idx] = val; return; }
+      }
+    }
+    setVal(['data/hora', 'data', 'timestamp'], new Date());
+    setVal(['sessão (id)', 'sessão', 'sessao', 'session', 'sessao (id)'], data.sessionId || '');
+    setVal(['evento', 'event'], data.event || '');
+    setVal(['quiz', 'quiztitle', 'título do quiz'], data.quizTitle || '');
+    setVal(['etapa', 'step'], (data.data &amp;&amp; data.data.stepIndex) || '');
+    setVal(['pergunta / título', 'pergunta / titulo', 'pergunta', 'título'], (data.data &amp;&amp; (data.data.stepTitle || data.data.question)) || '');
+    setVal(['resposta', 'answer'], (data.data &amp;&amp; data.data.answer) || '');
+    setVal(['pontos / score', 'pontos', 'score'], (data.data &amp;&amp; data.data.points) !== undefined ? data.data.points : (data.totalScore || ''));
+    setVal(['nome', 'leadname'], (data.lead &amp;&amp; data.lead.name) || '');
+    setVal(['whatsapp', 'telefone', 'phone'], (data.lead &amp;&amp; data.lead.whatsapp) || '');
+    setVal(['email', 'e-mail'], (data.lead &amp;&amp; data.lead.email) || '');
+    setVal(['src', 'src (rastreamento)'], src);
+    setVal(['utm_source', 'source'], data.utm_source || utms.utm_source || '');
+    setVal(['utm_campaign', 'campaign'], data.utm_campaign || utms.utm_campaign || '');
+    setVal(['utm_medium', 'medium'], data.utm_medium || utms.utm_medium || '');
+    setVal(['utm_content', 'content'], data.utm_content || utms.utm_content || '');
+    sheet.appendRow(newRow);
     return ContentService.createTextOutput(JSON.stringify({ status: 'success' })).setMimeType(ContentService.MimeType.JSON);
   } catch (err) {
     return ContentService.createTextOutput(JSON.stringify({ status: 'error', message: err.toString() })).setMimeType(ContentService.MimeType.JSON);

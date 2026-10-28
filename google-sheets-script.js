@@ -1,38 +1,32 @@
 /**
- * SCRIPT PARA GOOGLE PLANILHAS (Google Apps Script) - Versão 2.0 (Duas Vias)
+ * SCRIPT PARA GOOGLE PLANILHAS (Google Apps Script) - Versão 3.0 (Métricas por Visitante Único & Suporte a SRC)
  * 
- * Funcionalidades:
- * 1. doPost(e): Recebe cada acesso, resposta, lead e conclusão do quiz e salva na planilha.
- * 2. doGet(e): Lê os dados da planilha e devolve as métricas calculadas em tempo real para o QuizForge.
- * 3. Auto-configuração: Se a planilha for nova/em branco, cria os cabeçalhos automaticamente!
+ * Melhoras desta versão:
+ * 1. MÉTRICAS PRECISAS: Calcula o funil por VISITANTE ÚNICO (Sessão). Se 1 usuário responder 5 etapas,
+ *    ele será contabilizado como EXATAMENTE 1 PESSOA avançando no funil (e não 5 pessoas como antes).
+ * 2. SUPORTE A SRC: Coluna dedicada para capturar parâmetros de tráfego direto (?src=... ou ?sck=...).
+ * 3. RETROCOMPATÍVEL INTELIGENTE: Adapta-se automaticamente à sua planilha existente (mesmo com dados antigos),
+ *    adicionando a coluna SRC sem quebrar nada.
  * 
  * =========================================================================
- * PASSO A PASSO PARA CONFIGURAR EM 2 MINUTOS:
+ * INSTRUÇÕES RÁPIDAS DE ATUALIZAÇÃO NO APPS SCRIPT:
  * =========================================================================
- * 1. Abra o Google Planilhas (https://sheets.new) e crie uma planilha para o seu funil.
- *    (Dê o nome que preferir, ex: "Métricas - Quiz 1").
- * 2. No menu superior da planilha, clique em: Extensões > Apps Script.
- * 3. Apague todo o código que estiver na tela e cole TODO o código deste arquivo.
- * 4. Clique no botão azul "Implantar" (canto superior direito) > "Nova implantação".
- * 5. Na engrenagem, escolha "App da Web".
- * 6. Preencha as opções exatamente assim:
- *    - Descrição: Webhook QuizForge
- *    - Executar como: "Eu (seu email)"
- *    - Quem pode acessar: "Qualquer pessoa" (MUITO IMPORTANTE para permitir que o quiz envie os dados)
- * 7. Clique em "Implantar", autorize o acesso com sua conta Google e copie a "URL do app da Web"
- *    (ela começa com https://script.google.com/macros/s/...).
- * 8. Abra o Construtor do Quiz no QuizForge, vá na aba "Rastreamento & Métricas" e cole a URL no campo:
- *    "URL da Planilha Google (Webhook & Sincronização)".
+ * 1. Abra a sua planilha Google existente.
+ * 2. Clique em: Extensões > Apps Script.
+ * 3. Apague tudo e cole TODO o código deste arquivo.
+ * 4. Clique em "Implantar" (botão azul) > "Gerenciar implantações".
+ * 5. Clique no ícone de lápis (Editar) no canto superior direito.
+ * 6. Em "Versão", selecione "Nova versão" (MUITO IMPORTANTE para aplicar as mudanças).
+ * 7. Clique em "Implantar" e depois em "Concluído".
  * =========================================================================
  */
 
-// 1. LEITURA DOS DADOS (QuizForge ➔ Planilha)
+// 1. LEITURA DOS DADOS (QuizForge ➔ Planilha com Contagem de Visitantes Únicos)
 function doGet(e) {
   try {
     var sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
     var lastRow = sheet.getLastRow();
     
-    // Se a planilha estiver vazia ou só tiver o cabeçalho
     if (lastRow <= 1) {
       return ContentService.createTextOutput(JSON.stringify({
         status: 'success',
@@ -41,87 +35,123 @@ function doGet(e) {
         totalLeads: 0,
         stepViews: {},
         recentLeads: [],
-        message: 'Planilha conectada! Aguardando os primeiros acessos do quiz.'
+        message: 'Planilha conectada! Aguardando novos acessos.'
       })).setMimeType(ContentService.MimeType.JSON);
     }
     
-    var rows = sheet.getDataRange().getValues();
-    var stepViews = {};
+    var lastCol = sheet.getLastColumn();
+    var rows = sheet.getRange(1, 1, lastRow, lastCol).getValues();
+    var headers = rows[0];
+    var colMap = {};
+    for (var c = 0; c < headers.length; c++) {
+      colMap[String(headers[c] || '').trim().toLowerCase()] = c;
+    }
+    
+    function getCol(row, candidates) {
+      for (var j = 0; j < candidates.length; j++) {
+        var idx = colMap[candidates[j].toLowerCase()];
+        if (idx !== undefined && row[idx] !== undefined) return row[idx];
+      }
+      return '';
+    }
+
+    // Estruturas de agregação por VISITANTE ÚNICO (Sessão)
+    var stepVisitors = {};      // { 'step_0': { 'sessao_1': true }, 'step_1': { ... } }
+    var uniqueStarts = {};      // { 'sessao_1': true }
+    var uniqueCompletions = {}; // { 'sessao_1': true }
     var leadsMap = {};
     var recentLeads = [];
-    var totalStarts = 0;
-    var totalCompletions = 0;
-    
-    // Mapeamento das colunas (Linha 1 é cabeçalho):
-    // 0: Data/Hora | 1: Evento | 2: Quiz | 3: Etapa | 4: Pergunta/Título | 5: Resposta | 6: Pontos | 7: Nome | 8: WhatsApp | 9: Email | 10: UTM_Source | 11: UTM_Campaign
+
     for (var i = 1; i < rows.length; i++) {
       var row = rows[i];
-      var event = String(row[1] || '').trim();
-      var stepIdx = String(row[3] || '').trim();
-      var leadName = String(row[7] || '').trim();
-      var leadPhone = String(row[8] || '').trim();
-      var leadEmail = String(row[9] || '').trim();
-      var points = row[6];
-      var rowDate = row[0];
-      var utmSrc = String(row[10] || '').trim();
-      var utmCmp = String(row[11] || '').trim();
-      
-      // Contabiliza visualizações por etapa
-      var numStep = parseInt(stepIdx, 10);
-      if (!isNaN(numStep) && numStep >= 1) {
-        var key = 'step_' + (numStep - 1);
-        stepViews[key] = (stepViews[key] || 0) + 1;
-        if (numStep === 1) totalStarts++;
-      } else if (event.indexOf('Quiz_Etapa_') === 0) {
-        var parsed = parseInt(event.replace('Quiz_Etapa_', ''), 10);
-        if (!isNaN(parsed) && parsed >= 1) {
-          var key2 = 'step_' + (parsed - 1);
-          stepViews[key2] = (stepViews[key2] || 0) + 1;
-          if (parsed === 1) totalStarts++;
+      var rowDate = getCol(row, ['data/hora', 'data', 'timestamp']);
+      var rawSession = String(getCol(row, ['sessão (id)', 'sessão', 'sessao', 'session', 'sessao (id)']) || '').trim();
+      var event = String(getCol(row, ['evento', 'event']) || '').trim();
+      var stepIdx = String(getCol(row, ['etapa', 'step']) || '').trim();
+      var leadName = String(getCol(row, ['nome']) || '').trim();
+      var leadPhone = String(getCol(row, ['whatsapp', 'telefone']) || '').trim();
+      var leadEmail = String(getCol(row, ['email', 'e-mail']) || '').trim();
+      var points = getCol(row, ['pontos / score', 'pontos', 'score']);
+      var src = String(getCol(row, ['src', 'src (rastreamento)']) || '').trim();
+      var utmSrc = String(getCol(row, ['utm_source', 'source']) || '').trim();
+      var utmCmp = String(getCol(row, ['utm_campaign', 'campaign']) || '').trim();
+
+      // Se a linha for antiga e não tiver sessionId gravado, agrupa por data/hora aproximada (janela de 15min)
+      var sessionKey = rawSession;
+      if (!sessionKey) {
+        var timeCluster = rowDate ? Utilities.formatDate(new Date(rowDate), "GMT", "yyyy-MM-dd_HH") + '_' + Math.floor(new Date(rowDate).getMinutes() / 15) : ('leg_' + i);
+        sessionKey = (leadPhone || leadEmail || 'visitante') + '_' + timeCluster;
+      }
+
+      // 1. Contabilização de Etapas (Apenas eventos de VISUALIZAÇÃO contam como passo no funil)
+      // Quiz_Resposta é apenas o registro da opção clicada e NÃO duplica o acesso da etapa!
+      if (event.indexOf('Quiz_Etapa_') === 0) {
+        var numStep = parseInt(event.replace('Quiz_Etapa_', ''), 10);
+        if (!isNaN(numStep) && numStep >= 1) {
+          var k = 'step_' + (numStep - 1);
+          if (!stepVisitors[k]) stepVisitors[k] = {};
+          stepVisitors[k][sessionKey] = true;
+          if (numStep === 1) uniqueStarts[sessionKey] = true;
         }
       } else if (event === 'Quiz_Iniciado') {
-        stepViews['step_0'] = (stepViews['step_0'] || 0) + 1;
-        totalStarts++;
+        if (!stepVisitors['step_0']) stepVisitors['step_0'] = {};
+        stepVisitors['step_0'][sessionKey] = true;
+        uniqueStarts[sessionKey] = true;
+      } else if (stepIdx && !isNaN(parseInt(stepIdx, 10)) && event !== 'Quiz_Resposta') {
+        var num = parseInt(stepIdx, 10);
+        if (num >= 1) {
+          var k2 = 'step_' + (num - 1);
+          if (!stepVisitors[k2]) stepVisitors[k2] = {};
+          stepVisitors[k2][sessionKey] = true;
+          if (num === 1) uniqueStarts[sessionKey] = true;
+        }
       }
-      
-      // Conclusão / Oferta
+
+      // 2. Conclusão / Oferta
       if (event === 'Quiz_Concluido' || event === 'Oferta_Visualizada') {
-        totalCompletions++;
+        uniqueCompletions[sessionKey] = true;
       }
-      
-      // Coleta Leads únicos
+
+      // 3. Coleta de Leads Únicos
       if (leadName || leadPhone || leadEmail) {
-        var leadKey = leadPhone || leadEmail || (leadName + '_' + i);
-        if (!leadsMap[leadKey]) {
-          leadsMap[leadKey] = true;
+        var lKey = leadPhone || leadEmail || (leadName + '_' + sessionKey);
+        if (!leadsMap[lKey]) {
+          leadsMap[lKey] = true;
+          var originTag = src ? ('SRC: ' + src) : [utmSrc, utmCmp].filter(Boolean).join(' / ');
           recentLeads.unshift({
             date: rowDate ? Utilities.formatDate(new Date(rowDate), Session.getScriptTimeZone() || "GMT-3", "dd/MM/yyyy HH:mm") : '',
             name: leadName || 'Anônimo',
             whatsapp: leadPhone || '',
             email: leadEmail || '',
             score: points || 0,
-            utm: [utmSrc, utmCmp].filter(Boolean).join(' / ') || '-'
+            src: src || '-',
+            utm: originTag || '-'
           });
         }
       }
     }
-    
-    // Limita aos 30 leads mais recentes
-    if (recentLeads.length > 30) {
-      recentLeads = recentLeads.slice(0, 30);
+
+    // Calcula total de visitantes únicos por etapa
+    var stepViews = {};
+    for (var sKey in stepVisitors) {
+      stepViews[sKey] = Object.keys(stepVisitors[sKey]).length;
     }
-    
+
+    if (recentLeads.length > 50) {
+      recentLeads = recentLeads.slice(0, 50);
+    }
+
     return ContentService.createTextOutput(JSON.stringify({
       status: 'success',
-      totalStarts: totalStarts,
-      totalCompletions: totalCompletions,
+      totalStarts: Object.keys(uniqueStarts).length,
+      totalCompletions: Object.keys(uniqueCompletions).length,
       totalLeads: Object.keys(leadsMap).length,
       stepViews: stepViews,
       recentLeads: recentLeads,
       lastUpdated: new Date().toISOString()
     })).setMimeType(ContentService.MimeType.JSON);
-    
-  } catch (err) {
+
+  } catch(err) {
     return ContentService.createTextOutput(JSON.stringify({
       status: 'error',
       message: err.toString()
@@ -129,15 +159,17 @@ function doGet(e) {
   }
 }
 
-// 2. GRAVAÇÃO DOS DADOS (Quiz do Visitante ➔ Planilha)
+// 2. GRAVAÇÃO DOS DADOS (Quiz do Visitante ➔ Planilha com Mapeamento Dinâmico de Colunas)
 function doPost(e) {
   try {
     var sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
+    var lastCol = sheet.getLastColumn();
     
-    // Se a planilha estiver vazia, cria o cabeçalho visualmente estilizado
-    if (sheet.getLastRow() === 0) {
+    // Se a planilha for completamente nova, cria o cabeçalho padrão
+    if (lastCol === 0) {
       sheet.appendRow([
         'Data/Hora',
+        'Sessão (ID)',
         'Evento',
         'Quiz',
         'Etapa',
@@ -147,25 +179,39 @@ function doPost(e) {
         'Nome',
         'WhatsApp',
         'Email',
+        'SRC',
         'UTM_Source',
-        'UTM_Campaign'
+        'UTM_Campaign',
+        'UTM_Medium',
+        'UTM_Content'
       ]);
-      sheet.getRange(1, 1, 1, 12).setFontWeight('bold').setBackground('#e2e8f0');
+      sheet.getRange(1, 1, 1, 16).setFontWeight('bold').setBackground('#e2e8f0');
       sheet.setFrozenRows(1);
+      lastCol = 16;
+    } else {
+      // Se for uma planilha já existente, garante que SRC e Sessão existam no cabeçalho
+      var curHeaders = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
+      var hasSrc = curHeaders.some(function(h) { return String(h).toUpperCase().indexOf('SRC') !== -1; });
+      var hasSess = curHeaders.some(function(h) { return String(h).toLowerCase().indexOf('sess') !== -1; });
+      
+      if (!hasSrc) {
+        lastCol++;
+        sheet.getRange(1, lastCol).setValue('SRC').setFontWeight('bold').setBackground('#e2e8f0');
+      }
+      if (!hasSess) {
+        lastCol++;
+        sheet.getRange(1, lastCol).setValue('Sessão (ID)').setFontWeight('bold').setBackground('#e2e8f0');
+      }
     }
     
     var data = {};
     if (e.postData && e.postData.contents) {
-      try {
-        data = JSON.parse(e.postData.contents);
-      } catch(pErr) {
-        data = e.parameter || {};
-      }
-    } else {
-      data = e.parameter || {};
-    }
+      try { data = JSON.parse(e.postData.contents); } catch(p) { data = e.parameter || {}; }
+    } else { data = e.parameter || {}; }
     
+    // Captura os dados do evento
     var timestamp = new Date();
+    var sessionId = data.sessionId || '';
     var event = data.event || '';
     var quizTitle = data.quizTitle || '';
     var stepIndex = (data.data && data.data.stepIndex) || '';
@@ -177,24 +223,51 @@ function doPost(e) {
     var leadWhatsApp = (data.lead && data.lead.whatsapp) || '';
     var leadEmail = (data.lead && data.lead.email) || '';
     
-    var utmSource = (data.utms && data.utms.utm_source) || '';
-    var utmCampaign = (data.utms && data.utms.utm_campaign) || '';
+    var utms = data.utms || {};
+    var src = data.src || utms.src || utms.sck || utms.SRC || utms.SCK || '';
+    var utmSource = data.utm_source || utms.utm_source || '';
+    var utmCampaign = data.utm_campaign || utms.utm_campaign || '';
+    var utmMedium = data.utm_medium || utms.utm_medium || '';
+    var utmContent = data.utm_content || utms.utm_content || '';
 
-    // Insere linha no final da planilha
-    sheet.appendRow([
-      timestamp,
-      event,
-      quizTitle,
-      stepIndex,
-      stepTitle,
-      answer,
-      points,
-      leadName,
-      leadWhatsApp,
-      leadEmail,
-      utmSource,
-      utmCampaign
-    ]);
+    // Mapeamento dinâmico pelo nome das colunas
+    var headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+    var colMap = {};
+    for (var c = 0; c < headers.length; c++) {
+      colMap[String(headers[c] || '').trim().toLowerCase()] = c;
+    }
+    
+    var newRow = new Array(headers.length);
+    for (var k = 0; k < newRow.length; k++) newRow[k] = '';
+    
+    function setVal(candidates, val) {
+      for (var j = 0; j < candidates.length; j++) {
+        var idx = colMap[candidates[j].toLowerCase()];
+        if (idx !== undefined) {
+          newRow[idx] = val;
+          return;
+        }
+      }
+    }
+    
+    setVal(['data/hora', 'data', 'timestamp'], timestamp);
+    setVal(['sessão (id)', 'sessão', 'sessao', 'session', 'sessao (id)'], sessionId);
+    setVal(['evento', 'event'], event);
+    setVal(['quiz', 'quiztitle', 'título do quiz'], quizTitle);
+    setVal(['etapa', 'step'], stepIndex);
+    setVal(['pergunta / título', 'pergunta / titulo', 'pergunta', 'título'], stepTitle);
+    setVal(['resposta', 'answer'], answer);
+    setVal(['pontos / score', 'pontos', 'score'], points);
+    setVal(['nome', 'leadname'], leadName);
+    setVal(['whatsapp', 'telefone', 'phone'], leadWhatsApp);
+    setVal(['email', 'e-mail'], leadEmail);
+    setVal(['src', 'src (rastreamento)'], src);
+    setVal(['utm_source', 'source'], utmSource);
+    setVal(['utm_campaign', 'campaign'], utmCampaign);
+    setVal(['utm_medium', 'medium'], utmMedium);
+    setVal(['utm_content', 'content'], utmContent);
+
+    sheet.appendRow(newRow);
 
     return ContentService
       .createTextOutput(JSON.stringify({ status: 'success' }))
