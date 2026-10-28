@@ -984,7 +984,8 @@ const App = {
   renderTracking() {
     if (!this.currentQuiz) return;
     const tracking = this.currentQuiz.tracking || {};
-    if (document.getElementById('tracking-webhook')) document.getElementById('tracking-webhook').value = tracking.webhookUrl || '';
+    const sheetVal = tracking.sheetUrl || tracking.webhookUrl || '';
+    if (document.getElementById('tracking-webhook')) document.getElementById('tracking-webhook').value = sheetVal;
     if (document.getElementById('tracking-pixel')) document.getElementById('tracking-pixel').value = tracking.metaPixelId || '';
     if (document.getElementById('tracking-ga4')) document.getElementById('tracking-ga4').value = tracking.ga4Id || '';
 
@@ -1449,7 +1450,7 @@ const App = {
     // Renderiza Banner de Status da Planilha Google
     const banner = document.getElementById('analytics-sheet-status-banner');
     if (banner) {
-      const sheetUrl = (this.currentQuiz.tracking && this.currentQuiz.tracking.sheetUrl) || '';
+      const sheetUrl = (this.currentQuiz.tracking && (this.currentQuiz.tracking.sheetUrl || this.currentQuiz.tracking.webhookUrl)) || '';
       const lastSync = analytics.lastSync ? new Date(analytics.lastSync).toLocaleString('pt-BR') : null;
 
       if (sheetUrl) {
@@ -1625,7 +1626,7 @@ const App = {
 
   async syncMetricsFromGoogleSheet() {
     if (!this.currentQuiz) return;
-    const sheetUrl = (this.currentQuiz.tracking && this.currentQuiz.tracking.sheetUrl) || '';
+    const sheetUrl = (this.currentQuiz.tracking && (this.currentQuiz.tracking.sheetUrl || this.currentQuiz.tracking.webhookUrl)) || '';
     if (!sheetUrl || sheetUrl.trim() === '') {
       alert('⚠️ Nenhuma URL de Planilha Google configurada para este funil!\n\nVá até a aba "Rastreamento & Métricas" e cole a URL do seu Google Apps Script.');
       this.switchEditorTab('tracking');
