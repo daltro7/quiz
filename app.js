@@ -85,12 +85,10 @@ const App = {
     const dash = document.getElementById('view-dashboard');
     const editor = document.getElementById('view-editor');
     const btnBack = document.getElementById('btn-header-back-dashboard');
-    const btnExport = document.getElementById('btn-header-export-html');
 
     if (dash) dash.classList.remove('hidden');
     if (editor) editor.classList.add('hidden');
     if (btnBack) btnBack.classList.add('hidden');
-    if (btnExport) btnExport.classList.add('hidden');
 
     const grid = document.getElementById('quiz-list-grid');
     if (!grid) return;
@@ -247,8 +245,6 @@ const App = {
     if (editor) editor.classList.remove('hidden');
     const btnBack = document.getElementById('btn-header-back-dashboard');
     if (btnBack) btnBack.classList.remove('hidden');
-    const btnExport = document.getElementById('btn-header-export-html');
-    if (btnExport) btnExport.classList.remove('hidden');
 
     const titleInput = document.getElementById('editor-quiz-title');
     if (titleInput) titleInput.value = quiz.title || '';
