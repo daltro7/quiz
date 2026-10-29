@@ -852,9 +852,15 @@ function doPost(e) {
     setVal(['evento', 'event'], data.event || '');
     setVal(['quiz', 'quiztitle', 'título do quiz'], data.quizTitle || '');
     setVal(['etapa', 'step'], (data.data &amp;&amp; data.data.stepIndex) || '');
-    setVal(['pergunta / título', 'pergunta / titulo', 'pergunta', 'título'], (data.data &amp;&amp; (data.data.stepTitle || data.data.question)) || '');
+    setVal(['pergunta / título', 'pergunta / titulo', 'pergunta', 'título'], (data.data &amp;&amp; (data.data.question || data.data.stepTitle || data.data.title)) || '');
     setVal(['resposta', 'answer'], (data.data &amp;&amp; data.data.answer) || '');
-    setVal(['pontos / score', 'pontos', 'score'], (data.data &amp;&amp; data.data.points) !== undefined ? data.data.points : (data.totalScore || ''));
+    var rowPts = '';
+    if (data.data &amp;&amp; data.data.points !== undefined &amp;&amp; data.data.points !== null &amp;&amp; data.data.points !== '') {
+      rowPts = data.data.points;
+    } else if (data.event === 'Quiz_Concluido' || data.event === 'Lead') {
+      rowPts = (data.totalScore !== undefined &amp;&amp; data.totalScore &gt; 0) ? data.totalScore : '';
+    }
+    setVal(['pontos / score', 'pontos', 'score'], rowPts);
     setVal(['nome', 'leadname'], (data.lead &amp;&amp; data.lead.name) || '');
     setVal(['whatsapp', 'telefone', 'phone'], (data.lead &amp;&amp; data.lead.whatsapp) || '');
     setVal(['email', 'e-mail'], (data.lead &amp;&amp; data.lead.email) || '');

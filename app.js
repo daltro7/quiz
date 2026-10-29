@@ -584,17 +584,35 @@ const App = {
       `;
     }
 
-    // 3. BLOCO DE PERGUNTA COM OPÇÕES (Demanda 9: Alinhamento)
+    // 3. BLOCO DE PERGUNTA COM OPÇÕES (Demanda 9: Alinhamento e Controle de Pontuação)
     else if (block.type === 'question') {
       blockBadge = '<span class="text-indigo-400 font-bold text-xs flex items-center gap-1.5"><span>❓</span> Pergunta com Alternativas</span>';
       const options = block.options || [];
+      const useScoring = block.useScoring === true;
+
       blockBody = `
         <div class="space-y-2.5 pt-1">
-          <div class="flex items-center justify-between">
+          <!-- Barra Superior: Alinhamento e Chave de Pontuação -->
+          <div class="flex flex-wrap items-center justify-between gap-2 pb-1.5 border-b border-slate-800">
             <div class="flex items-center gap-2">
-              <label class="text-[11px] font-bold text-slate-400">Alternativas de Escolha:</label>
+              <span class="text-[10px] font-bold text-slate-400">Alinhamento:</span>
               ${this.renderAlignPicker(stepIdx, bIdx, block.align || 'left')}
             </div>
+
+            <!-- Chave para Ativar ou Desativar Pontuação -->
+            <label class="inline-flex items-center gap-1.5 cursor-pointer text-xs text-slate-300 bg-slate-900 border border-slate-700 px-2.5 py-1 rounded-lg hover:border-slate-500 transition">
+              <input type="checkbox" ${useScoring ? 'checked' : ''} onchange="App.updateBlockProp(${stepIdx}, ${bIdx}, 'useScoring', this.checked); App.renderSteps();" class="rounded bg-slate-800 border-slate-600 text-indigo-600 focus:ring-0">
+              <span class="text-[11px] font-bold ${useScoring ? 'text-amber-400' : 'text-slate-300'}">Atribuir Pontos (Score)</span>
+            </label>
+          </div>
+
+          <!-- Informação sobre o Modo Ativo -->
+          <div class="flex items-center justify-between text-xs">
+            <span class="text-[10px]">
+              ${useScoring 
+                ? '<span class="text-amber-300 font-semibold">⭐ Modo Pontuação:</span> <span class="text-slate-400">As opções acumulam pontos para o score final.</span>' 
+                : '<span class="text-emerald-400 font-semibold">📝 Modo Resposta:</span> <span class="text-slate-400">A opção escolhida vai para a coluna Resposta na planilha (sem pontos).</span>'}
+            </span>
             <button onclick="App.addOptionToQuestionBlock(${stepIdx}, ${bIdx})" class="text-xs font-bold text-indigo-400 hover:text-indigo-300 flex items-center gap-1">
               <i class="ph ph-plus-circle"></i> + Adicionar Alternativa
             </button>
@@ -605,10 +623,14 @@ const App = {
               <div class="flex items-center gap-2 bg-slate-900 p-2 rounded-xl border border-slate-700">
                 <input type="text" value="${this.escape(opt.icon || '👉')}" oninput="App.updateOptionProp(${stepIdx}, ${bIdx}, ${optIdx}, 'icon', this.value)" title="Ícone ou Emoji" class="w-9 text-center bg-slate-800 border border-slate-700 py-1 rounded text-xs text-white">
                 <input type="text" value="${this.escape(opt.text || '')}" oninput="App.updateOptionProp(${stepIdx}, ${bIdx}, ${optIdx}, 'text', this.value)" placeholder="Texto da alternativa..." class="flex-1 bg-slate-800 border border-slate-700 px-2.5 py-1 rounded text-xs text-white">
-                <div class="flex items-center gap-1">
-                  <span class="text-[10px] text-slate-400">Pts:</span>
-                  <input type="number" value="${opt.points || 0}" oninput="App.updateOptionProp(${stepIdx}, ${bIdx}, ${optIdx}, 'points', parseInt(this.value, 10))" title="Pontos" class="w-12 text-center bg-slate-800 border border-slate-700 py-1 rounded text-xs text-white">
-                </div>
+                
+                ${useScoring ? `
+                  <div class="flex items-center gap-1 bg-slate-800/80 px-2 py-0.5 rounded border border-slate-700" title="Pontos atribuídos caso escolha esta alternativa">
+                    <span class="text-[10px] text-slate-400 font-semibold">Pts:</span>
+                    <input type="number" value="${opt.points !== undefined ? opt.points : 0}" oninput="App.updateOptionProp(${stepIdx}, ${bIdx}, ${optIdx}, 'points', parseInt(this.value, 10) || 0)" class="w-12 text-center bg-transparent border-0 text-xs text-amber-400 font-bold focus:ring-0 p-0">
+                  </div>
+                ` : ''}
+
                 <button onclick="App.deleteOptionFromQuestionBlock(${stepIdx}, ${bIdx}, ${optIdx})" class="p-1 text-slate-500 hover:text-red-400 transition" title="Excluir">
                   <i class="ph ph-x text-sm"></i>
                 </button>
@@ -1147,9 +1169,10 @@ const App = {
       clean_light: {
         primaryColor: '#2563eb',
         accentColor: '#059669',
-        bgColor: '#f8fafc',
+        bgColor: '#f1f5f9',
         cardBg: '#ffffff',
         textColor: '#0f172a',
+        borderColor: '#cbd5e1',
         borderRadius: '16px',
         shadow: 'subtle'
       },
@@ -1487,7 +1510,7 @@ const App = {
     const opt = qBlock.options[optIdx];
     this.preview.userAnswers[step.id] = optIdx;
 
-    if (opt.points) {
+    if (qBlock.useScoring === true && opt.points) {
       this.preview.totalScore += parseInt(opt.points, 10) || 0;
     }
 

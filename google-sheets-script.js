@@ -215,9 +215,14 @@ function doPost(e) {
     var event = data.event || '';
     var quizTitle = data.quizTitle || '';
     var stepIndex = (data.data && data.data.stepIndex) || '';
-    var stepTitle = (data.data && (data.data.stepTitle || data.data.question)) || '';
+    var stepTitle = (data.data && (data.data.question || data.data.stepTitle || data.data.title)) || '';
     var answer = (data.data && data.data.answer) || '';
-    var points = (data.data && data.data.points) !== undefined ? data.data.points : (data.totalScore || '');
+    var points = '';
+    if (data.data && data.data.points !== undefined && data.data.points !== null && data.data.points !== '') {
+      points = data.data.points;
+    } else if (event === 'Quiz_Concluido' || event === 'Lead') {
+      points = (data.totalScore !== undefined && data.totalScore > 0) ? data.totalScore : '';
+    }
     
     var leadName = (data.lead && data.lead.name) || '';
     var leadWhatsApp = (data.lead && data.lead.whatsapp) || '';

@@ -161,6 +161,17 @@ const QuizTemplateEngine = {
     const selectedShadow = shadowStyles[shadowIntensity] || shadowStyles.medium;
     const rootTarget = scope || ':root';
 
+    const hexToRgb = (hex) => {
+      const clean = (hex || '#000000').replace('#', '');
+      const full = clean.length === 3 ? clean.split('').map(c => c + c).join('') : clean;
+      const num = parseInt(full, 16) || 0;
+      return { r: (num >> 16) & 255, g: (num >> 8) & 255, b: num & 255 };
+    };
+
+    const cardRgb = hexToRgb(cardBg);
+    const isLightCard = (0.299 * cardRgb.r + 0.587 * cardRgb.g + 0.114 * cardRgb.b) > 150;
+    const primRgb = hexToRgb(primaryColor);
+
     return `
     ${rootTarget} {
       --primary: ${primaryColor};
@@ -174,6 +185,15 @@ const QuizTemplateEngine = {
       --border-w: ${borderWidth};
       --border-c: ${borderColor};
       --shadow: ${selectedShadow};
+      --opt-bg: ${isLightCard ? '#f8fafc' : 'rgba(255, 255, 255, 0.04)'};
+      --opt-border: ${isLightCard ? '#cbd5e1' : 'rgba(255, 255, 255, 0.08)'};
+      --opt-hover-bg: ${isLightCard ? '#f1f5f9' : 'rgba(255, 255, 255, 0.08)'};
+      --opt-hover-border: ${primaryColor};
+      --opt-shadow: ${isLightCard ? '0 2px 4px rgba(0, 0, 0, 0.05)' : 'none'};
+      --opt-indicator-border: ${isLightCard ? '#94a3b8' : 'rgba(255, 255, 255, 0.25)'};
+      --opt-selected-bg: ${isLightCard ? 'rgba(' + primRgb.r + ',' + primRgb.g + ',' + primRgb.b + ', 0.1)' : 'rgba(' + primRgb.r + ',' + primRgb.g + ',' + primRgb.b + ', 0.18)'};
+      --progress-bg: ${isLightCard ? 'rgba(0, 0, 0, 0.08)' : 'rgba(255, 255, 255, 0.08)'};
+      --step-tag-bg: ${isLightCard ? 'rgba(' + primRgb.r + ',' + primRgb.g + ',' + primRgb.b + ', 0.12)' : 'rgba(99, 102, 241, 0.12)'};
     }
 
     ${scope ? scope + ' *' : '*'} {
@@ -388,9 +408,10 @@ const QuizTemplateEngine = {
       gap: 12px;
       width: 100%;
       padding: 14px 16px;
-      background: rgba(255, 255, 255, 0.04);
-      border: 1.5px solid rgba(255, 255, 255, 0.08);
+      background: var(--opt-bg);
+      border: 1.5px solid var(--opt-border);
       border-radius: calc(var(--radius) - 4px);
+      box-shadow: var(--opt-shadow);
       color: var(--text);
       font-size: 14px;
       font-weight: 600;
@@ -404,13 +425,14 @@ const QuizTemplateEngine = {
     }
 
     ${scope} .option-btn:hover {
-      background: rgba(255, 255, 255, 0.08);
-      border-color: var(--primary);
+      background: var(--opt-hover-bg);
+      border-color: var(--opt-hover-border);
       transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
     }
 
     ${scope} .option-btn.selected {
-      background: rgba(99, 102, 241, 0.15);
+      background: var(--opt-selected-bg);
       border-color: var(--primary);
       box-shadow: 0 0 0 2px var(--primary);
     }
@@ -425,7 +447,7 @@ const QuizTemplateEngine = {
       width: 18px;
       height: 18px;
       border-radius: 50%;
-      border: 2px solid rgba(255, 255, 255, 0.25);
+      border: 2px solid var(--opt-indicator-border);
       margin-left: auto;
       flex-shrink: 0;
       transition: all 0.2s;
@@ -1375,14 +1397,20 @@ const QuizTemplateEngine = {
         const selectedOpt = qBlock.options[optIdx];
         this.userAnswers[step.id] = optIdx;
 
-        if (selectedOpt.points) {
+        const useScoring = qBlock.useScoring === true && selectedOpt.points !== undefined && selectedOpt.points !== null && selectedOpt.points !== '' && parseInt(selectedOpt.points, 10) > 0;
+
+        if (useScoring) {
           this.totalScore += parseInt(selectedOpt.points, 10) || 0;
         }
 
+        const headingBlock = (step.blocks || []).find(b => b.type === 'heading');
+        const questionTitle = (headingBlock && (headingBlock.title || headingBlock.tag)) || step.title || ('Etapa ' + (this.currentStepIndex + 1));
+
         this.trackFunnelEvent('Quiz_Resposta', {
           stepIndex: this.currentStepIndex + 1,
-          answer: selectedOpt.text,
-          points: selectedOpt.points || 0
+          question: questionTitle,
+          answer: selectedOpt.text || '',
+          points: useScoring ? (parseInt(selectedOpt.points, 10) || 0) : ''
         });
 
         const container = document.getElementById('step-content');
