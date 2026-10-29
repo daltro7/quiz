@@ -255,10 +255,80 @@
           <!-- ABA 2: VISUAL & CORES (DESIGN) -->
           <div id="tab-content-design" class="hidden space-y-6">
             <div>
-              <h3 class="font-extrabold text-white text-lg">Personalização Visual</h3>
-              <p class="text-xs text-slate-400">Ajuste cores, bordas, sombras e espaçamentos do seu quiz.</p>
+              <h3 class="font-extrabold text-white text-lg">Personalização Visual & Cores</h3>
+              <p class="text-xs text-slate-400">Escolha um estilo pronto ou personalize cores, fontes e alinhamentos.</p>
             </div>
 
+            <!-- Abordagem A: Presets de Temas Prontos -->
+            <div class="bg-slate-800/80 p-4 rounded-xl border border-slate-700 space-y-3">
+              <div class="flex items-center justify-between">
+                <span class="text-xs font-bold text-white flex items-center gap-1.5">
+                  <span>🎨</span> Temas Rápidos Prontos (1 Clique):
+                </span>
+                <span class="text-[10px] text-slate-400">Harmonia visual testada</span>
+              </div>
+              <div class="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                <button type="button" onclick="App.applyThemePreset('dark_modern')" class="theme-preset-card p-2.5 rounded-lg bg-slate-900 border border-slate-700 text-left flex items-center gap-2 hover:border-indigo-500">
+                  <div class="w-5 h-5 rounded-full flex items-center justify-center text-[10px] text-white font-bold" style="background: linear-gradient(135deg, #6366f1, #10b981);">🌑</div>
+                  <div>
+                    <div class="text-xs font-bold text-white leading-tight">Dark Modern</div>
+                    <div class="text-[9px] text-slate-400">Índigo & Grafite</div>
+                  </div>
+                </button>
+                <button type="button" onclick="App.applyThemePreset('clean_light')" class="theme-preset-card p-2.5 rounded-lg bg-slate-900 border border-slate-700 text-left flex items-center gap-2 hover:border-indigo-500">
+                  <div class="w-5 h-5 rounded-full flex items-center justify-center text-[10px] text-white font-bold" style="background: linear-gradient(135deg, #2563eb, #059669);">☀️</div>
+                  <div>
+                    <div class="text-xs font-bold text-white leading-tight">Clean Light</div>
+                    <div class="text-[9px] text-slate-400">Fundo Claro</div>
+                  </div>
+                </button>
+                <button type="button" onclick="App.applyThemePreset('emerald_sales')" class="theme-preset-card p-2.5 rounded-lg bg-slate-900 border border-slate-700 text-left flex items-center gap-2 hover:border-indigo-500">
+                  <div class="w-5 h-5 rounded-full flex items-center justify-center text-[10px] text-white font-bold" style="background: linear-gradient(135deg, #10b981, #f59e0b);">💎</div>
+                  <div>
+                    <div class="text-xs font-bold text-white leading-tight">Emerald Sales</div>
+                    <div class="text-[9px] text-slate-400">Verde & Ouro</div>
+                  </div>
+                </button>
+                <button type="button" onclick="App.applyThemePreset('midnight_violet')" class="theme-preset-card p-2.5 rounded-lg bg-slate-900 border border-slate-700 text-left flex items-center gap-2 hover:border-indigo-500">
+                  <div class="w-5 h-5 rounded-full flex items-center justify-center text-[10px] text-white font-bold" style="background: linear-gradient(135deg, #8b5cf6, #ec4899);">🔮</div>
+                  <div>
+                    <div class="text-xs font-bold text-white leading-tight">Midnight Violet</div>
+                    <div class="text-[9px] text-slate-400">Roxo & Pink</div>
+                  </div>
+                </button>
+                <button type="button" onclick="App.applyThemePreset('high_energy')" class="theme-preset-card p-2.5 rounded-lg bg-slate-900 border border-slate-700 text-left flex items-center gap-2 hover:border-indigo-500">
+                  <div class="w-5 h-5 rounded-full flex items-center justify-center text-[10px] text-white font-bold" style="background: linear-gradient(135deg, #f97316, #eab308);">🔥</div>
+                  <div>
+                    <div class="text-xs font-bold text-white leading-tight">High Energy</div>
+                    <div class="text-[9px] text-slate-400">Preto & Laranja</div>
+                  </div>
+                </button>
+                <button type="button" onclick="App.applyThemePreset('ocean_blue')" class="theme-preset-card p-2.5 rounded-lg bg-slate-900 border border-slate-700 text-left flex items-center gap-2 hover:border-indigo-500">
+                  <div class="w-5 h-5 rounded-full flex items-center justify-center text-[10px] text-white font-bold" style="background: linear-gradient(135deg, #0284c7, #06b6d4);">🌊</div>
+                  <div>
+                    <div class="text-xs font-bold text-white leading-tight">Ocean Blue</div>
+                    <div class="text-[9px] text-slate-400">Azul Oceano</div>
+                  </div>
+                </button>
+              </div>
+            </div>
+
+            <!-- Abordagem A: Gerador Dinâmico de Harmonia a partir de 2 cores -->
+            <div class="bg-indigo-950/40 p-4 rounded-xl border border-indigo-500/30 space-y-3">
+              <div class="flex items-center justify-between">
+                <div>
+                  <h4 class="text-xs font-extrabold text-indigo-300 flex items-center gap-1.5">
+                    <span>🪄</span> Gerador Automático de Harmonia (2 Cores Base)
+                  </h4>
+                  <p class="text-[10px] text-slate-400">Defina sua Cor Primária e Secundária e deixe o algoritmo calibrar contrastes e fundos automaticamente.</p>
+                </div>
+                <button type="button" onclick="App.applyHarmoniousPalette()" class="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs rounded-lg shadow-md transition flex items-center gap-1.5 whitespace-nowrap">
+                  <span>✨</span> Aplicar Harmonia
+                </button>
+              </div>
+            </div>
+
+            <!-- Controle Fino de Cores Individuais -->
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <!-- Cor Primária -->
               <div class="bg-slate-800/80 p-4 rounded-xl border border-slate-700">

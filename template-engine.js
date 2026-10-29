@@ -237,6 +237,21 @@ const QuizTemplateEngine = {
       transition: all 0.3s ease;
     }
 
+    /* Alinhamentos e Utilitários de Texto */
+    ${scope} .text-left { text-align: left !important; }
+    ${scope} .text-center { text-align: center !important; }
+    ${scope} .text-right { text-align: right !important; }
+
+    /* Escala de Tamanho de Títulos e Subtítulos */
+    ${scope} .title-sm { font-size: 16px !important; line-height: 1.35 !important; }
+    ${scope} .title-md { font-size: 20px !important; line-height: 1.35 !important; }
+    ${scope} .title-lg { font-size: 24px !important; line-height: 1.3 !important; }
+    ${scope} .title-xl { font-size: 28px !important; line-height: 1.25 !important; }
+
+    ${scope} .sub-xs { font-size: 11px !important; line-height: 1.4 !important; }
+    ${scope} .sub-sm { font-size: 13px !important; line-height: 1.5 !important; }
+    ${scope} .sub-base { font-size: 15px !important; line-height: 1.55 !important; }
+
     /* Cabeçalho da Etapa */
     ${scope} .step-header {
       margin-bottom: 18px;
@@ -254,6 +269,8 @@ const QuizTemplateEngine = {
       padding: 4px 12px;
       border-radius: 9999px;
       margin-bottom: 10px;
+      white-space: pre-line;
+      word-break: break-word;
     }
 
     ${scope} .step-title {
@@ -262,12 +279,49 @@ const QuizTemplateEngine = {
       color: var(--text);
       line-height: 1.3;
       margin-bottom: 8px;
+      white-space: pre-line;
+      word-break: break-word;
     }
 
     ${scope} .step-subtitle {
       font-size: 13px;
       color: var(--text-muted);
       line-height: 1.5;
+      white-space: pre-line;
+      word-break: break-word;
+    }
+
+    /* Bloco de Imagem e Banner */
+    ${scope} .quiz-image-card {
+      width: 100%;
+      margin: 12px 0 16px 0;
+      display: flex;
+      flex-direction: column;
+    }
+
+    ${scope} .quiz-image-card.align-left { align-items: flex-start; text-align: left; }
+    ${scope} .quiz-image-card.align-center { align-items: center; text-align: center; }
+    ${scope} .quiz-image-card.align-right { align-items: flex-end; text-align: right; }
+
+    ${scope} .quiz-image-card img {
+      max-width: 100%;
+      height: auto;
+      display: block;
+      border-radius: calc(var(--radius) - 4px);
+      box-shadow: 0 4px 16px rgba(0,0,0,0.25);
+      object-fit: cover;
+    }
+
+    ${scope} .quiz-image-small img { max-width: 180px; }
+    ${scope} .quiz-image-medium img { max-width: 360px; }
+    ${scope} .quiz-image-full img { width: 100%; }
+
+    ${scope} .quiz-image-caption {
+      margin-top: 6px;
+      font-size: 12px;
+      color: var(--text-muted);
+      white-space: pre-line;
+      word-break: break-word;
     }
 
     /* Vídeos Responsivos */
@@ -345,6 +399,8 @@ const QuizTemplateEngine = {
       transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
       position: relative;
       user-select: none;
+      white-space: pre-line;
+      word-break: break-word;
     }
 
     ${scope} .option-btn:hover {
@@ -418,6 +474,31 @@ const QuizTemplateEngine = {
       gap: 10px;
       text-decoration: none;
       transition: all 0.25s ease;
+      white-space: pre-line;
+      word-break: break-word;
+    }
+
+    /* Variações de Tamanho do Botão */
+    ${scope} .btn-size-normal {
+      padding: 12px 18px !important;
+      font-size: 14px !important;
+      min-height: 44px;
+    }
+
+    ${scope} .btn-size-large {
+      padding: 16px 24px !important;
+      font-size: 16px !important;
+      font-weight: 800 !important;
+      min-height: 52px;
+    }
+
+    ${scope} .btn-size-featured {
+      padding: 20px 28px !important;
+      font-size: 18px !important;
+      font-weight: 900 !important;
+      letter-spacing: 0.02em !important;
+      box-shadow: 0 8px 25px -4px rgba(99, 102, 241, 0.5) !important;
+      min-height: 60px;
     }
 
     ${scope} .cta-btn:hover {
@@ -589,12 +670,16 @@ const QuizTemplateEngine = {
       font-weight: 700;
       margin-bottom: 4px;
       color: var(--text);
+      white-space: pre-line;
+      word-break: break-word;
     }
 
     ${scope} .product-box p {
       font-size: 13px;
       color: var(--text-muted);
       line-height: 1.4;
+      white-space: pre-line;
+      word-break: break-word;
     }
 
     /* Botão Voltar */
@@ -657,15 +742,37 @@ const QuizTemplateEngine = {
 
       // 1. Bloco de Título / Texto
       if (block.type === 'heading') {
-        blockHtml += '<div class="step-header">';
+        const align = block.align || 'center';
+        const titleSize = block.titleSize || 'md';
+        const subtitleSize = block.subtitleSize || 'sm';
+        const titleStyle = block.textColor ? `style="color: ${block.textColor};"` : '';
+
+        blockHtml += `<div class="step-header text-${align}">`;
+        if (block.imageUrl) {
+          blockHtml += `<div class="quiz-image-card align-${align} quiz-image-${block.imageSize || 'medium'}"><img src="${this.escapeHtml(block.imageUrl)}" alt="${this.escapeHtml(block.title || '')}" loading="lazy"></div>`;
+        }
         if (block.tag) {
           blockHtml += '<span class="step-tag">' + this.escapeHtml(block.tag) + '</span>';
         }
         if (block.title) {
-          blockHtml += '<h2 class="step-title">' + this.escapeHtml(block.title) + '</h2>';
+          blockHtml += `<h2 class="step-title title-${titleSize}" ${titleStyle}>` + this.escapeHtml(block.title) + '</h2>';
         }
         if (block.subtitle) {
-          blockHtml += '<p class="step-subtitle">' + this.escapeHtml(block.subtitle) + '</p>';
+          blockHtml += `<p class="step-subtitle sub-${subtitleSize}">` + this.escapeHtml(block.subtitle) + '</p>';
+        }
+        blockHtml += '</div>';
+      }
+
+      // 1.1 Bloco de Imagem / Banner Independente
+      else if (block.type === 'image') {
+        const align = block.align || 'center';
+        const size = block.imageSize || 'medium';
+        blockHtml += `<div class="quiz-image-card align-${align} quiz-image-${size}">`;
+        if (block.imageUrl) {
+          blockHtml += `<img src="${this.escapeHtml(block.imageUrl)}" alt="${this.escapeHtml(block.altText || '')}" loading="lazy">`;
+        }
+        if (block.caption) {
+          blockHtml += `<p class="quiz-image-caption">${this.escapeHtml(block.caption)}</p>`;
         }
         blockHtml += '</div>';
       }
@@ -692,15 +799,16 @@ const QuizTemplateEngine = {
 
       // 4. Bloco de Perguntas com Alternativas
       else if (block.type === 'question') {
+        const align = block.align || 'left';
         if (block.options && block.options.length > 0) {
-          blockHtml += '<div class="options-grid">';
+          blockHtml += `<div class="options-grid text-${align}">`;
           block.options.forEach((opt, optIdx) => {
             const isSelected = state.userAnswers && state.userAnswers[step.id] === optIdx;
             blockHtml += '<button type="button" class="option-btn ' + (isSelected ? 'selected' : '') + '" onclick="' + clickPrefix + '(' + optIdx + ')">';
             if (opt.icon) {
               blockHtml += '<span class="option-icon">' + opt.icon + '</span>';
             }
-            blockHtml += '<span style="flex:1;">' + this.escapeHtml(opt.text || '') + '</span>';
+            blockHtml += '<span style="flex:1; text-align: ' + align + ';">' + this.escapeHtml(opt.text || '') + '</span>';
             blockHtml += '<span class="option-indicator"></span>';
             blockHtml += '</button>';
           });
@@ -712,12 +820,15 @@ const QuizTemplateEngine = {
       else if (block.type === 'delay_button') {
         const buttonText = block.text || block.delayButtonText || 'Avançar para a próxima etapa →';
         const buttonUrl = block.url || block.delayButtonUrl || '';
+        const btnSize = block.buttonSize || 'large';
+        const customColor = block.buttonColor ? `style="background: ${block.buttonColor}; border-color: ${block.buttonColor};"` : '';
+        const sizeClass = `btn-size-${btnSize}`;
 
         blockHtml += '<div id="delayed-btn-box" class="delayed-cta-container">';
         if (buttonUrl) {
-          blockHtml += '<a href="' + buttonUrl + '" target="_blank" class="cta-btn animate-appear link-trackable">' + this.escapeHtml(buttonText) + '</a>';
+          blockHtml += '<a href="' + buttonUrl + '" target="_blank" class="cta-btn animate-appear link-trackable ' + sizeClass + '" ' + customColor + '>' + this.escapeHtml(buttonText) + '</a>';
         } else {
-          blockHtml += '<button type="button" class="cta-btn animate-appear" onclick="' + nextPrefix + '">' + this.escapeHtml(buttonText) + '</button>';
+          blockHtml += '<button type="button" class="cta-btn animate-appear ' + sizeClass + '" ' + customColor + ' onclick="' + nextPrefix + '">' + this.escapeHtml(buttonText) + '</button>';
         }
         blockHtml += '</div>';
       }
@@ -749,8 +860,16 @@ const QuizTemplateEngine = {
 
       // 7. Bloco de Oferta / Checkout Final
       else if (block.type === 'offer') {
+        const btnSize = block.buttonSize || 'featured';
+        const customColor = block.buttonColor ? `style="background: ${block.buttonColor}; border-color: ${block.buttonColor};"` : '';
+        const sizeClass = `btn-size-${btnSize}`;
+
         blockHtml += '<div class="offer-container">';
         blockHtml += '<div class="badge-result">✨ Diagnóstico Concluído com Sucesso</div>';
+
+        if (block.imageUrl) {
+          blockHtml += `<div class="quiz-image-card align-center quiz-image-medium"><img src="${this.escapeHtml(block.imageUrl)}" alt="${this.escapeHtml(block.productTitle || '')}"></div>`;
+        }
 
         if (block.productTitle) {
           blockHtml += '<div class="product-box">';
@@ -761,13 +880,13 @@ const QuizTemplateEngine = {
           if (block.productPrice) {
             blockHtml += '<div style="margin-top: 8px; font-size: 18px; font-weight: 800; color: var(--accent);">' + this.escapeHtml(block.productPrice) + '</div>';
           }
-          html += '</div>';
+          blockHtml += '</div>';
         }
 
         const ctaText = block.ctaText || 'Garantir Minha Oferta Exclusiva Agora →';
         const ctaUrl = block.ctaUrl || '#';
         blockHtml += '<div style="margin-top: 6px;">';
-        blockHtml += '<a href="' + ctaUrl + '" target="_blank" class="cta-btn link-trackable" style="text-align: center; text-decoration: none;">' + this.escapeHtml(ctaText) + '</a>';
+        blockHtml += '<a href="' + ctaUrl + '" target="_blank" class="cta-btn link-trackable ' + sizeClass + '" ' + customColor + ' style="text-align: center; text-decoration: none;">' + this.escapeHtml(ctaText) + '</a>';
         blockHtml += '</div>';
         blockHtml += '</div>';
       }
@@ -1106,10 +1225,30 @@ const QuizTemplateEngine = {
           let bHtml = '';
 
           if (block.type === 'heading') {
-            bHtml += '<div class=\"step-header\">';
+            const align = block.align || 'center';
+            const titleSize = block.titleSize || 'md';
+            const subtitleSize = block.subtitleSize || 'sm';
+            const titleStyle = block.textColor ? 'style=\"color: ' + block.textColor + ';\"' : '';
+
+            bHtml += '<div class=\"step-header text-' + align + '\">';
+            if (block.imageUrl) {
+              bHtml += '<div class=\"quiz-image-card align-' + align + ' quiz-image-' + (block.imageSize || 'medium') + '\"><img src=\"' + this.escapeHtml(block.imageUrl) + '\" alt=\"' + this.escapeHtml(block.title || '') + '\" loading=\"lazy\"></div>';
+            }
             if (block.tag) bHtml += '<span class=\"step-tag\">' + this.escapeHtml(block.tag) + '</span>';
-            if (block.title) bHtml += '<h2 class=\"step-title\">' + this.escapeHtml(block.title) + '</h2>';
-            if (block.subtitle) bHtml += '<p class=\"step-subtitle\">' + this.escapeHtml(block.subtitle) + '</p>';
+            if (block.title) bHtml += '<h2 class=\"step-title title-' + titleSize + '\" ' + titleStyle + '>' + this.escapeHtml(block.title) + '</h2>';
+            if (block.subtitle) bHtml += '<p class=\"step-subtitle sub-' + subtitleSize + '\">' + this.escapeHtml(block.subtitle) + '</p>';
+            bHtml += '</div>';
+          }
+          else if (block.type === 'image') {
+            const align = block.align || 'center';
+            const size = block.imageSize || 'medium';
+            bHtml += '<div class=\"quiz-image-card align-' + align + ' quiz-image-' + size + '\">';
+            if (block.imageUrl) {
+              bHtml += '<img src=\"' + this.escapeHtml(block.imageUrl) + '\" alt=\"' + this.escapeHtml(block.altText || '') + '\" loading=\"lazy\">';
+            }
+            if (block.caption) {
+              bHtml += '<p class=\"quiz-image-caption\">' + this.escapeHtml(block.caption) + '</p>';
+            }
             bHtml += '</div>';
           }
           else if (block.type === 'video') {
@@ -1129,13 +1268,14 @@ const QuizTemplateEngine = {
             }
           }
           else if (block.type === 'question') {
+            const align = block.align || 'left';
             if (block.options && block.options.length > 0) {
-              bHtml += '<div class=\"options-grid\">';
+              bHtml += '<div class=\"options-grid text-' + align + '\">';
               block.options.forEach((opt, optIdx) => {
                 const isSelected = this.userAnswers && this.userAnswers[step.id] === optIdx;
                 bHtml += '<button type=\"button\" class=\"option-btn ' + (isSelected ? 'selected' : '') + '\" onclick=\"QuizApp.handleOptionSelect(' + optIdx + ')\">';
                 if (opt.icon) bHtml += '<span class=\"option-icon\">' + opt.icon + '</span>';
-                bHtml += '<span style=\"flex:1;\">' + this.escapeHtml(opt.text || '') + '</span>';
+                bHtml += '<span style=\"flex:1; text-align: ' + align + ';\">' + this.escapeHtml(opt.text || '') + '</span>';
                 bHtml += '<span class=\"option-indicator\"></span>';
                 bHtml += '</button>';
               });
@@ -1145,11 +1285,15 @@ const QuizTemplateEngine = {
           else if (block.type === 'delay_button') {
             const btnText = block.text || block.delayButtonText || 'Avançar para a próxima etapa →';
             const btnUrl = block.url || block.delayButtonUrl || '';
+            const btnSize = block.buttonSize || 'large';
+            const customColor = block.buttonColor ? 'style=\"background: ' + block.buttonColor + '; border-color: ' + block.buttonColor + ';\"' : '';
+            const sizeClass = 'btn-size-' + btnSize;
+
             bHtml += '<div id=\"delayed-btn-box\" class=\"delayed-cta-container\">';
             if (btnUrl) {
-              bHtml += '<a href=\"' + btnUrl + '\" target=\"_blank\" class=\"cta-btn animate-appear link-trackable\">' + this.escapeHtml(btnText) + '</a>';
+              bHtml += '<a href=\"' + btnUrl + '\" target=\"_blank\" class=\"cta-btn animate-appear link-trackable ' + sizeClass + '\" ' + customColor + '>' + this.escapeHtml(btnText) + '</a>';
             } else {
-              bHtml += '<button type=\"button\" class=\"cta-btn animate-appear\" onclick=\"QuizApp.nextStep()\">' + this.escapeHtml(btnText) + '</button>';
+              bHtml += '<button type=\"button\" class=\"cta-btn animate-appear ' + sizeClass + '\" ' + customColor + ' onclick=\"QuizApp.nextStep()\">' + this.escapeHtml(btnText) + '</button>';
             }
             bHtml += '</div>';
           }
@@ -1165,7 +1309,14 @@ const QuizTemplateEngine = {
             bHtml += '</form>';
           }
           else if (block.type === 'offer') {
+            const btnSize = block.buttonSize || 'featured';
+            const customColor = block.buttonColor ? 'style=\"background: ' + block.buttonColor + '; border-color: ' + block.buttonColor + ';\"' : '';
+            const sizeClass = 'btn-size-' + btnSize;
+
             bHtml += '<div class=\"offer-container\"><div class=\"badge-result\">✨ Diagnóstico Concluído com Sucesso</div>';
+            if (block.imageUrl) {
+              bHtml += '<div class=\"quiz-image-card align-center quiz-image-medium\"><img src=\"' + this.escapeHtml(block.imageUrl) + '\" alt=\"' + this.escapeHtml(block.productTitle || '') + '\"></div>';
+            }
             if (block.productTitle) {
               bHtml += '<div class=\"product-box\"><h4>' + this.escapeHtml(block.productTitle) + '</h4>';
               if (block.productDescription) bHtml += '<p>' + this.escapeHtml(block.productDescription) + '</p>';
@@ -1174,7 +1325,7 @@ const QuizTemplateEngine = {
             }
             const ctaText = block.ctaText || 'Garantir Minha Oferta Exclusiva Agora →';
             const ctaUrl = block.ctaUrl || '#';
-            bHtml += '<div style=\"margin-top: 6px;\"><a href=\"' + ctaUrl + '\" target=\"_blank\" class=\"cta-btn link-trackable\" style=\"text-align: center; text-decoration: none;\">' + this.escapeHtml(ctaText) + '</a></div></div>';
+            bHtml += '<div style=\"margin-top: 6px;\"><a href=\"' + ctaUrl + '\" target=\"_blank\" class=\"cta-btn link-trackable ' + sizeClass + '\" ' + customColor + ' style=\"text-align: center; text-decoration: none;\">' + this.escapeHtml(ctaText) + '</a></div></div>';
           }
           else if (block.type === 'fake_loader') {
             const btnText = block.buttonText || 'Ver Meu Diagnóstico →';

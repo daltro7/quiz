@@ -407,6 +407,9 @@ const App = {
         <button onclick="App.addBlockToStep(${stepIdx}, 'heading')" class="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold border border-slate-700 transition flex items-center gap-1">
           <span>📝</span> Título / Texto
         </button>
+        <button onclick="App.addBlockToStep(${stepIdx}, 'image')" class="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-sky-400 text-xs font-semibold border border-slate-700 transition flex items-center gap-1">
+          <span>🖼️</span> Imagem / Banner
+        </button>
         <button onclick="App.addBlockToStep(${stepIdx}, 'video')" class="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-red-400 text-xs font-semibold border border-slate-700 transition flex items-center gap-1">
           <span>🎬</span> Vídeo YouTube
         </button>
@@ -432,29 +435,128 @@ const App = {
     `;
   },
 
+  // Seletor de Alinhamento Reutilizável (Demanda 9)
+  renderAlignPicker(stepIdx, bIdx, currentAlign = 'center') {
+    const align = currentAlign || 'center';
+    return `
+      <div class="inline-flex rounded-lg bg-slate-900 border border-slate-700 p-0.5" title="Alinhamento do Texto">
+        <button type="button" onclick="App.updateBlockProp(${stepIdx}, ${bIdx}, 'align', 'left')" class="px-2 py-1 text-xs rounded transition ${align === 'left' ? 'bg-indigo-600 text-white font-bold' : 'text-slate-400 hover:text-slate-200'}" title="Alinhar à Esquerda">
+          <i class="ph ph-text-align-left"></i>
+        </button>
+        <button type="button" onclick="App.updateBlockProp(${stepIdx}, ${bIdx}, 'align', 'center')" class="px-2 py-1 text-xs rounded transition ${align === 'center' ? 'bg-indigo-600 text-white font-bold' : 'text-slate-400 hover:text-slate-200'}" title="Centralizado">
+          <i class="ph ph-text-align-center"></i>
+        </button>
+        <button type="button" onclick="App.updateBlockProp(${stepIdx}, ${bIdx}, 'align', 'right')" class="px-2 py-1 text-xs rounded transition ${align === 'right' ? 'bg-indigo-600 text-white font-bold' : 'text-slate-400 hover:text-slate-200'}" title="Alinhar à Direita">
+          <i class="ph ph-text-align-right"></i>
+        </button>
+      </div>
+    `;
+  },
+
   // Renderiza o Cartão de um Bloco Individual
   renderBlockCardHtml(stepIdx, block, bIdx, totalBlocks) {
     let blockBadge = '';
     let blockBody = '';
 
-    // 1. BLOCO DE TÍTULO / TEXTO
+    // 1. BLOCO DE TÍTULO / TEXTO (Demandas 8, 9, 10, 11 e Imagens)
     if (block.type === 'heading') {
       blockBadge = '<span class="text-slate-300 font-bold text-xs flex items-center gap-1.5"><span>📝</span> Título & Subtítulo</span>';
       blockBody = `
-        <div class="space-y-2.5 pt-1">
+        <div class="space-y-3 pt-1">
+          <!-- Tag e Título Principal (com suporte a quebra de linha Enter) -->
           <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
             <div>
               <label class="block text-[10px] font-bold text-slate-400 mb-1">Tag Superior (Opcional)</label>
               <input type="text" value="${this.escape(block.tag || '')}" oninput="App.updateBlockProp(${stepIdx}, ${bIdx}, 'tag', this.value)" placeholder="Ex: Passo 1 de 3" class="w-full bg-slate-900 border border-slate-700 px-2.5 py-1.5 rounded-lg text-xs text-white">
             </div>
             <div class="sm:col-span-2">
-              <label class="block text-[10px] font-bold text-slate-400 mb-1">Título Principal</label>
-              <input type="text" value="${this.escape(block.title || '')}" oninput="App.updateBlockProp(${stepIdx}, ${bIdx}, 'title', this.value)" placeholder="Ex: Qual o seu maior desafio hoje?" class="w-full bg-slate-900 border border-slate-700 px-2.5 py-1.5 rounded-lg text-xs text-white font-semibold">
+              <label class="block text-[10px] font-bold text-slate-400 mb-1">Título Principal (Enter aceito)</label>
+              <textarea rows="2" oninput="App.updateBlockProp(${stepIdx}, ${bIdx}, 'title', this.value)" placeholder="Ex: Qual o seu maior desafio hoje?" class="quiz-textarea w-full bg-slate-900 border border-slate-700 px-2.5 py-1.5 rounded-lg text-xs text-white font-semibold">${this.escape(block.title || '')}</textarea>
             </div>
           </div>
+
+          <!-- Subtítulo Explicativo (com suporte a quebra de linha Enter) -->
           <div>
-            <label class="block text-[10px] font-bold text-slate-400 mb-1">Subtítulo Explicativo</label>
-            <input type="text" value="${this.escape(block.subtitle || '')}" oninput="App.updateBlockProp(${stepIdx}, ${bIdx}, 'subtitle', this.value)" placeholder="Ex: Selecione uma das opções abaixo para prosseguir..." class="w-full bg-slate-900 border border-slate-700 px-2.5 py-1.5 rounded-lg text-xs text-white">
+            <label class="block text-[10px] font-bold text-slate-400 mb-1">Subtítulo Explicativo (Enter aceito)</label>
+            <textarea rows="2" oninput="App.updateBlockProp(${stepIdx}, ${bIdx}, 'subtitle', this.value)" placeholder="Ex: Selecione uma das opções abaixo para prosseguir..." class="quiz-textarea w-full bg-slate-900 border border-slate-700 px-2.5 py-1.5 rounded-lg text-xs text-slate-300">${this.escape(block.subtitle || '')}</textarea>
+          </div>
+
+          <!-- Barra de Controles: Alinhamento, Escala de Fontes e Cor -->
+          <div class="bg-slate-900/80 p-2.5 rounded-xl border border-slate-800 flex flex-wrap items-center justify-between gap-3 text-xs">
+            <!-- Alinhamento (Demanda 9) -->
+            <div class="flex items-center gap-2">
+              <span class="text-[10px] font-bold text-slate-400">Alinhamento:</span>
+              ${this.renderAlignPicker(stepIdx, bIdx, block.align || 'center')}
+            </div>
+
+            <!-- Escala de Tamanho de Título (Demanda 10) -->
+            <div class="flex items-center gap-1.5">
+              <span class="text-[10px] font-bold text-slate-400">Tam. Título:</span>
+              <select onchange="App.updateBlockProp(${stepIdx}, ${bIdx}, 'titleSize', this.value)" class="bg-slate-800 border border-slate-700 px-2 py-1 rounded text-xs text-white">
+                <option value="sm" ${block.titleSize === 'sm' ? 'selected' : ''}>Pequeno (16px)</option>
+                <option value="md" ${!block.titleSize || block.titleSize === 'md' ? 'selected' : ''}>Médio (20px)</option>
+                <option value="lg" ${block.titleSize === 'lg' ? 'selected' : ''}>Grande (24px)</option>
+                <option value="xl" ${block.titleSize === 'xl' ? 'selected' : ''}>Extra (28px)</option>
+              </select>
+            </div>
+
+            <!-- Escala de Tamanho de Subtítulo (Demanda 10) -->
+            <div class="flex items-center gap-1.5">
+              <span class="text-[10px] font-bold text-slate-400">Tam. Subtítulo:</span>
+              <select onchange="App.updateBlockProp(${stepIdx}, ${bIdx}, 'subtitleSize', this.value)" class="bg-slate-800 border border-slate-700 px-2 py-1 rounded text-xs text-white">
+                <option value="xs" ${block.subtitleSize === 'xs' ? 'selected' : ''}>Discreto (11px)</option>
+                <option value="sm" ${!block.subtitleSize || block.subtitleSize === 'sm' ? 'selected' : ''}>Padrão (13px)</option>
+                <option value="base" ${block.subtitleSize === 'base' ? 'selected' : ''}>Destacado (15px)</option>
+              </select>
+            </div>
+
+            <!-- Cor Pontual do Texto (Demanda 11 - Abordagem B) -->
+            <div class="flex items-center gap-1.5">
+              <span class="text-[10px] font-bold text-slate-400">Cor do Texto:</span>
+              <input type="color" value="${block.textColor || '#ffffff'}" onchange="App.updateBlockProp(${stepIdx}, ${bIdx}, 'textColor', this.value)" class="w-6 h-6 rounded cursor-pointer bg-transparent border-0" title="Cor individual deste título">
+              ${block.textColor ? `<button onclick="App.updateBlockProp(${stepIdx}, ${bIdx}, 'textColor', '')" class="text-[10px] text-red-400 hover:underline" title="Restaurar cor do tema">reset</button>` : ''}
+            </div>
+          </div>
+
+          <!-- Imagem Ilustrativa Opcional no Cabeçalho -->
+          <div class="pt-1">
+            <label class="block text-[10px] font-bold text-slate-400 mb-1">Imagem / Banner Opcional (Link HTTPS Externo)</label>
+            <input type="url" value="${this.escape(block.imageUrl || '')}" oninput="App.updateBlockProp(${stepIdx}, ${bIdx}, 'imageUrl', this.value)" placeholder="https://exemplo.com/banner.png ou .jpg" class="w-full bg-slate-900 border border-slate-700 px-2.5 py-1.5 rounded-lg text-xs text-white">
+          </div>
+        </div>
+      `;
+    }
+
+    // 1.1 NOVO BLOCO DE IMAGEM / BANNER DEDICADO
+    else if (block.type === 'image') {
+      blockBadge = '<span class="text-sky-400 font-bold text-xs flex items-center gap-1.5"><span>🖼️</span> Imagem / Banner</span>';
+      blockBody = `
+        <div class="space-y-3 pt-1">
+          <div>
+            <label class="block text-[10px] font-bold text-slate-400 mb-1">URL da Imagem (Link Externo HTTPS)</label>
+            <input type="url" value="${this.escape(block.imageUrl || '')}" oninput="App.updateBlockProp(${stepIdx}, ${bIdx}, 'imageUrl', this.value)" placeholder="https://exemplo.com/foto.jpg ou .png, .webp" class="w-full bg-slate-900 border border-slate-700 px-2.5 py-1.5 rounded-lg text-xs text-white">
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+            <div>
+              <label class="block text-[10px] font-bold text-slate-400 mb-1">Tamanho da Imagem</label>
+              <select onchange="App.updateBlockProp(${stepIdx}, ${bIdx}, 'imageSize', this.value)" class="w-full bg-slate-900 border border-slate-700 px-2.5 py-1.5 rounded-lg text-xs text-white">
+                <option value="small" ${block.imageSize === 'small' ? 'selected' : ''}>Pequena (Ícone / Logo ~180px)</option>
+                <option value="medium" ${!block.imageSize || block.imageSize === 'medium' ? 'selected' : ''}>Média (Destaque ~360px)</option>
+                <option value="full" ${block.imageSize === 'full' ? 'selected' : ''}>Largura Total (100% do Cartão)</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-[10px] font-bold text-slate-400 mb-1">Alinhamento</label>
+              <div class="pt-0.5">
+                ${this.renderAlignPicker(stepIdx, bIdx, block.align || 'center')}
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-[10px] font-bold text-slate-400 mb-1">Legenda Opcional (abaixo da foto)</label>
+            <textarea rows="1" oninput="App.updateBlockProp(${stepIdx}, ${bIdx}, 'caption', this.value)" placeholder="Ex: Resultado obtido pelos nossos clientes..." class="quiz-textarea w-full bg-slate-900 border border-slate-700 px-2.5 py-1.5 rounded-lg text-xs text-slate-300">${this.escape(block.caption || '')}</textarea>
           </div>
         </div>
       `;
@@ -482,14 +584,17 @@ const App = {
       `;
     }
 
-    // 3. BLOCO DE PERGUNTA COM OPÇÕES
+    // 3. BLOCO DE PERGUNTA COM OPÇÕES (Demanda 9: Alinhamento)
     else if (block.type === 'question') {
       blockBadge = '<span class="text-indigo-400 font-bold text-xs flex items-center gap-1.5"><span>❓</span> Pergunta com Alternativas</span>';
       const options = block.options || [];
       blockBody = `
         <div class="space-y-2.5 pt-1">
           <div class="flex items-center justify-between">
-            <label class="text-[11px] font-bold text-slate-400">Alternativas de Escolha:</label>
+            <div class="flex items-center gap-2">
+              <label class="text-[11px] font-bold text-slate-400">Alternativas de Escolha:</label>
+              ${this.renderAlignPicker(stepIdx, bIdx, block.align || 'left')}
+            </div>
             <button onclick="App.addOptionToQuestionBlock(${stepIdx}, ${bIdx})" class="text-xs font-bold text-indigo-400 hover:text-indigo-300 flex items-center gap-1">
               <i class="ph ph-plus-circle"></i> + Adicionar Alternativa
             </button>
@@ -514,24 +619,43 @@ const App = {
       `;
     }
 
-    // 4. BLOCO DE BOTÃO COM DELAY
+    // 4. BLOCO DE BOTÃO COM DELAY (Demandas 10 e 11)
     else if (block.type === 'delay_button') {
-      blockBadge = '<span class="text-amber-400 font-bold text-xs flex items-center gap-1.5"><span>⏱️</span> Botão com Delay Programável</span>';
+      blockBadge = '<span class="text-amber-400 font-bold text-xs flex items-center gap-1.5"><span>⏱️</span> Botão de Ação / Avanço</span>';
       blockBody = `
         <div class="space-y-2.5 pt-1">
           <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
             <div>
               <label class="block text-[10px] font-bold text-slate-400 mb-1">Tempo de Espera (Segundos)</label>
-              <input type="number" min="1" max="3600" value="${block.delaySeconds || 5}" oninput="App.updateBlockProp(${stepIdx}, ${bIdx}, 'delaySeconds', parseInt(this.value, 10))" class="w-full bg-slate-900 border border-slate-700 px-2.5 py-1.5 rounded-lg text-xs text-white font-bold text-amber-400">
+              <input type="number" min="0" max="3600" value="${block.delaySeconds !== undefined ? block.delaySeconds : 5}" oninput="App.updateBlockProp(${stepIdx}, ${bIdx}, 'delaySeconds', parseInt(this.value, 10))" class="w-full bg-slate-900 border border-slate-700 px-2.5 py-1.5 rounded-lg text-xs text-white font-bold text-amber-400">
             </div>
             <div class="sm:col-span-2">
-              <label class="block text-[10px] font-bold text-slate-400 mb-1">Texto do Botão</label>
+              <label class="block text-[10px] font-bold text-slate-400 mb-1">Texto do Botão (Enter aceito)</label>
               <input type="text" value="${this.escape(block.text || block.delayButtonText || 'Avançar para a próxima etapa →')}" oninput="App.updateBlockProp(${stepIdx}, ${bIdx}, 'text', this.value)" class="w-full bg-slate-900 border border-slate-700 px-2.5 py-1.5 rounded-lg text-xs text-white font-semibold">
             </div>
           </div>
-          <div>
-            <label class="block text-[10px] font-bold text-slate-400 mb-1">Link de Destino Opcional (deixe vazio para avançar o quiz)</label>
-            <input type="url" value="${this.escape(block.url || block.delayButtonUrl || '')}" oninput="App.updateBlockProp(${stepIdx}, ${bIdx}, 'url', this.value)" placeholder="https://..." class="w-full bg-slate-900 border border-slate-700 px-2.5 py-1.5 rounded-lg text-xs text-white">
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+            <div>
+              <label class="block text-[10px] font-bold text-slate-400 mb-1">Link de Destino Opcional (vazio = avança quiz)</label>
+              <input type="url" value="${this.escape(block.url || block.delayButtonUrl || '')}" oninput="App.updateBlockProp(${stepIdx}, ${bIdx}, 'url', this.value)" placeholder="https://..." class="w-full bg-slate-900 border border-slate-700 px-2.5 py-1.5 rounded-lg text-xs text-white">
+            </div>
+            <div class="flex items-center gap-3 pt-4">
+              <!-- Tamanho do Botão (Demanda 10) -->
+              <div class="flex-1">
+                <select onchange="App.updateBlockProp(${stepIdx}, ${bIdx}, 'buttonSize', this.value)" class="w-full bg-slate-900 border border-slate-700 px-2 py-1.5 rounded-lg text-xs text-white">
+                  <option value="normal" ${block.buttonSize === 'normal' ? 'selected' : ''}>Tamanho Normal</option>
+                  <option value="large" ${!block.buttonSize || block.buttonSize === 'large' ? 'selected' : ''}>Tamanho Grande</option>
+                  <option value="featured" ${block.buttonSize === 'featured' ? 'selected' : ''}>Destaque Alto Impacto</option>
+                </select>
+              </div>
+
+              <!-- Cor Pontual do Botão (Demanda 11 - Abordagem B) -->
+              <div class="flex items-center gap-1.5">
+                <input type="color" value="${block.buttonColor || '#6366f1'}" onchange="App.updateBlockProp(${stepIdx}, ${bIdx}, 'buttonColor', this.value)" class="w-7 h-7 rounded cursor-pointer bg-transparent border-0" title="Cor individual deste botão">
+                ${block.buttonColor ? `<button onclick="App.updateBlockProp(${stepIdx}, ${bIdx}, 'buttonColor', '')" class="text-[10px] text-red-400 hover:underline">reset</button>` : ''}
+              </div>
+            </div>
           </div>
         </div>
       `;
@@ -574,7 +698,7 @@ const App = {
       `;
     }
 
-    // 7. BLOCO DE OFERTA / CHECKOUT
+    // 7. BLOCO DE OFERTA / CHECKOUT (Demandas 8, 10, 11 e Imagens)
     else if (block.type === 'offer') {
       blockBadge = '<span class="text-violet-400 font-bold text-xs flex items-center gap-1.5"><span>🎁</span> Oferta Final & Checkout</span>';
       blockBody = `
@@ -582,30 +706,49 @@ const App = {
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
             <div>
               <label class="block text-[10px] font-bold text-slate-400 mb-1">Nome do Produto / Serviço</label>
-              <input type="text" value="${this.escape(block.productTitle || '')}" oninput="App.updateBlockProp(${stepIdx}, ${bIdx}, 'productTitle', this.value)" placeholder="Ex: Método Vendas Rápidas" class="w-full bg-slate-900 border border-slate-700 px-2.5 py-1.5 rounded-lg text-xs text-white">
+              <textarea rows="1" oninput="App.updateBlockProp(${stepIdx}, ${bIdx}, 'productTitle', this.value)" placeholder="Ex: Método Vendas Rápidas" class="quiz-textarea w-full bg-slate-900 border border-slate-700 px-2.5 py-1.5 rounded-lg text-xs text-white font-semibold">${this.escape(block.productTitle || '')}</textarea>
             </div>
             <div>
               <label class="block text-[10px] font-bold text-slate-400 mb-1">Preço em Destaque</label>
               <input type="text" value="${this.escape(block.productPrice || '')}" oninput="App.updateBlockProp(${stepIdx}, ${bIdx}, 'productPrice', this.value)" placeholder="Ex: 12x de R$ 19,90" class="w-full bg-slate-900 border border-slate-700 px-2.5 py-1.5 rounded-lg text-xs text-emerald-400 font-bold">
             </div>
             <div class="sm:col-span-2">
-              <label class="block text-[10px] font-bold text-slate-400 mb-1">Descrição Curta / Benefícios</label>
-              <input type="text" value="${this.escape(block.productDescription || '')}" oninput="App.updateBlockProp(${stepIdx}, ${bIdx}, 'productDescription', this.value)" placeholder="Ex: Acesso imediato + bônus exclusivos..." class="w-full bg-slate-900 border border-slate-700 px-2.5 py-1.5 rounded-lg text-xs text-white">
+              <label class="block text-[10px] font-bold text-slate-400 mb-1">Descrição Curta / Benefícios (Enter aceito)</label>
+              <textarea rows="2" oninput="App.updateBlockProp(${stepIdx}, ${bIdx}, 'productDescription', this.value)" placeholder="Ex: Acesso imediato + bônus exclusivos..." class="quiz-textarea w-full bg-slate-900 border border-slate-700 px-2.5 py-1.5 rounded-lg text-xs text-white">${this.escape(block.productDescription || '')}</textarea>
+            </div>
+            <div>
+              <label class="block text-[10px] font-bold text-slate-400 mb-1">Imagem do Produto (Link Externo HTTPS)</label>
+              <input type="url" value="${this.escape(block.imageUrl || '')}" oninput="App.updateBlockProp(${stepIdx}, ${bIdx}, 'imageUrl', this.value)" placeholder="https://..." class="w-full bg-slate-900 border border-slate-700 px-2.5 py-1.5 rounded-lg text-xs text-white">
+            </div>
+            <div>
+              <label class="block text-[10px] font-bold text-slate-400 mb-1">Link de Pagamento / WhatsApp</label>
+              <input type="url" value="${this.escape(block.ctaUrl || '')}" oninput="App.updateBlockProp(${stepIdx}, ${bIdx}, 'ctaUrl', this.value)" placeholder="https://pay.hotmart.com/..." class="w-full bg-slate-900 border border-slate-700 px-2.5 py-1.5 rounded-lg text-xs text-white">
             </div>
             <div>
               <label class="block text-[10px] font-bold text-slate-400 mb-1">Texto do Botão de Compra</label>
               <input type="text" value="${this.escape(block.ctaText || 'Garantir Minha Oferta Exclusiva Agora →')}" oninput="App.updateBlockProp(${stepIdx}, ${bIdx}, 'ctaText', this.value)" class="w-full bg-slate-900 border border-slate-700 px-2.5 py-1.5 rounded-lg text-xs text-white font-bold">
             </div>
-            <div>
-              <label class="block text-[10px] font-bold text-slate-400 mb-1">Link de Pagamento / WhatsApp</label>
-              <input type="url" value="${this.escape(block.ctaUrl || '')}" oninput="App.updateBlockProp(${stepIdx}, ${bIdx}, 'ctaUrl', this.value)" placeholder="https://pay.hotmart.com/..." class="w-full bg-slate-900 border border-slate-700 px-2.5 py-1.5 rounded-lg text-xs text-white">
+            <div class="flex items-center gap-3 pt-4">
+              <!-- Tamanho do Botão -->
+              <div class="flex-1">
+                <select onchange="App.updateBlockProp(${stepIdx}, ${bIdx}, 'buttonSize', this.value)" class="w-full bg-slate-900 border border-slate-700 px-2 py-1.5 rounded-lg text-xs text-white">
+                  <option value="normal" ${block.buttonSize === 'normal' ? 'selected' : ''}>Normal</option>
+                  <option value="large" ${block.buttonSize === 'large' ? 'selected' : ''}>Grande</option>
+                  <option value="featured" ${!block.buttonSize || block.buttonSize === 'featured' ? 'selected' : ''}>Destaque Alto Impacto</option>
+                </select>
+              </div>
+              <!-- Cor do Botão -->
+              <div class="flex items-center gap-1.5">
+                <input type="color" value="${block.buttonColor || '#6366f1'}" onchange="App.updateBlockProp(${stepIdx}, ${bIdx}, 'buttonColor', this.value)" class="w-7 h-7 rounded cursor-pointer bg-transparent border-0" title="Cor individual deste botão de oferta">
+                ${block.buttonColor ? `<button onclick="App.updateBlockProp(${stepIdx}, ${bIdx}, 'buttonColor', '')" class="text-[10px] text-red-400 hover:underline">reset</button>` : ''}
+              </div>
             </div>
           </div>
         </div>
       `;
     }
 
-    // 8. BLOCO DE DIAGNÓSTICO FALSO / CARREGAMENTO (fake_loader - Demanda 5)
+    // 8. BLOCO DE DIAGNÓSTICO FALSO / CARREGAMENTO (fake_loader)
     else if (block.type === 'fake_loader') {
       blockBadge = '<span class="text-teal-400 font-bold text-xs flex items-center gap-1.5"><span>⏳</span> Barra de Diagnóstico Falso (0% a 100%)</span>';
       blockBody = `
@@ -785,10 +928,20 @@ const App = {
       newBlock.tag = 'Etapa ' + (stepIdx + 1);
       newBlock.title = 'Qual o seu principal objetivo?';
       newBlock.subtitle = 'Escolha a opção que melhor te descreve:';
+      newBlock.align = 'center';
+      newBlock.titleSize = 'md';
+      newBlock.subtitleSize = 'sm';
+    } else if (blockType === 'image') {
+      newBlock.imageUrl = 'https://images.unsplash.com/photo-1579546929518-9e396f3cc809?w=600&auto=format&fit=crop&q=80';
+      newBlock.altText = 'Imagem Ilustrativa';
+      newBlock.caption = '';
+      newBlock.imageSize = 'medium';
+      newBlock.align = 'center';
     } else if (blockType === 'video') {
       newBlock.youtubeUrl = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ';
       newBlock.orientation = 'horizontal';
     } else if (blockType === 'question') {
+      newBlock.align = 'left';
       newBlock.options = [
         { icon: '🚀', text: 'Quero aumentar minhas vendas', points: 10, targetStepIndex: '' },
         { icon: '⚙️', text: 'Quero economizar tempo', points: 5, targetStepIndex: '' }
@@ -802,6 +955,7 @@ const App = {
       newBlock.delaySeconds = 5;
       newBlock.text = 'Avançar para a próxima etapa →';
       newBlock.url = '';
+      newBlock.buttonSize = 'large';
     } else if (blockType === 'html') {
       newBlock.customHtml = '<div style="background:linear-gradient(135deg, #1e1b4b, #312e81); border:1px solid #4338ca; padding:18px; border-radius:12px; text-align:center; color:#fff;"><h4 style="font-weight:bold; margin-bottom:6px;">🚀 Demonstração do Produto</h4><p style="font-size:13px; opacity:0.85;">Você pode interagir e testar o produto aqui dentro.</p></div>';
     } else if (blockType === 'lead_form') {
@@ -813,6 +967,7 @@ const App = {
       newBlock.productDescription = 'Tudo o que você precisa para implementar e ter resultados rápidos.';
       newBlock.ctaText = 'Quero Garantir Minha Vaga Agora →';
       newBlock.ctaUrl = '#';
+      newBlock.buttonSize = 'featured';
     }
 
     step.blocks.push(newBlock);
@@ -971,6 +1126,121 @@ const App = {
 
     this.currentQuiz.updatedAt = new Date().toISOString();
     this.saveQuizzesToStorage();
+    this.refreshPreview();
+  },
+
+  // Demanda 11 - Abordagem A: Presets de Tema Rápido
+  applyThemePreset(presetKey) {
+    if (!this.currentQuiz) return;
+    if (!this.currentQuiz.theme) this.currentQuiz.theme = {};
+
+    const presets = {
+      dark_modern: {
+        primaryColor: '#6366f1',
+        accentColor: '#10b981',
+        bgColor: '#0f172a',
+        cardBg: '#1e293b',
+        textColor: '#f8fafc',
+        borderRadius: '16px',
+        shadow: 'medium'
+      },
+      clean_light: {
+        primaryColor: '#2563eb',
+        accentColor: '#059669',
+        bgColor: '#f8fafc',
+        cardBg: '#ffffff',
+        textColor: '#0f172a',
+        borderRadius: '16px',
+        shadow: 'subtle'
+      },
+      emerald_sales: {
+        primaryColor: '#10b981',
+        accentColor: '#f59e0b',
+        bgColor: '#061a12',
+        cardBg: '#0f291e',
+        textColor: '#f0fdf4',
+        borderRadius: '16px',
+        shadow: 'glow'
+      },
+      midnight_violet: {
+        primaryColor: '#8b5cf6',
+        accentColor: '#ec4899',
+        bgColor: '#0f0920',
+        cardBg: '#1b1238',
+        textColor: '#faf5ff',
+        borderRadius: '20px',
+        shadow: 'glow'
+      },
+      high_energy: {
+        primaryColor: '#f97316',
+        accentColor: '#eab308',
+        bgColor: '#0a0a0a',
+        cardBg: '#171717',
+        textColor: '#ffffff',
+        borderRadius: '12px',
+        shadow: 'intense'
+      },
+      ocean_blue: {
+        primaryColor: '#0284c7',
+        accentColor: '#06b6d4',
+        bgColor: '#081c2b',
+        cardBg: '#0e2a42',
+        textColor: '#f0f9ff',
+        borderRadius: '16px',
+        shadow: 'medium'
+      }
+    };
+
+    const p = presets[presetKey];
+    if (!p) return;
+
+    Object.assign(this.currentQuiz.theme, p);
+    this.currentQuiz.updatedAt = new Date().toISOString();
+    this.saveQuizzesToStorage();
+    this.renderDesign();
+    this.refreshPreview();
+  },
+
+  // Demanda 11 - Abordagem A: Algoritmo de Harmonia Automática
+  applyHarmoniousPalette() {
+    if (!this.currentQuiz) return;
+    if (!this.currentQuiz.theme) this.currentQuiz.theme = {};
+
+    const primary = this.currentQuiz.theme.primaryColor || '#6366f1';
+    const accent = this.currentQuiz.theme.accentColor || '#10b981';
+
+    const hexToRgb = (hex) => {
+      const clean = (hex || '#000000').replace('#', '');
+      const full = clean.length === 3 ? clean.split('').map(c => c + c).join('') : clean;
+      const num = parseInt(full, 16) || 0;
+      return { r: (num >> 16) & 255, g: (num >> 8) & 255, b: num & 255 };
+    };
+
+    const toHex = (n) => Math.min(255, Math.max(0, Math.round(n))).toString(16).padStart(2, '0');
+
+    const curBgRgb = hexToRgb(this.currentQuiz.theme.bgColor || '#0f172a');
+    const isDark = (0.299 * curBgRgb.r + 0.587 * curBgRgb.g + 0.114 * curBgRgb.b) < 140;
+    const primRgb = hexToRgb(primary);
+
+    if (isDark) {
+      // Tom harmonioso escuro derivado da primária
+      const bgR = Math.max(10, Math.floor(primRgb.r * 0.08));
+      const bgG = Math.max(14, Math.floor(primRgb.g * 0.08));
+      const bgB = Math.max(26, Math.floor(primRgb.b * 0.14));
+
+      this.currentQuiz.theme.bgColor = `#${toHex(bgR)}${toHex(bgG)}${toHex(bgB)}`;
+      this.currentQuiz.theme.cardBg = `#${toHex(bgR + 14)}${toHex(bgG + 16)}${toHex(bgB + 24)}`;
+      this.currentQuiz.theme.textColor = '#f8fafc';
+    } else {
+      // Tom claro de alto contraste
+      this.currentQuiz.theme.bgColor = '#f8fafc';
+      this.currentQuiz.theme.cardBg = '#ffffff';
+      this.currentQuiz.theme.textColor = '#0f172a';
+    }
+
+    this.currentQuiz.updatedAt = new Date().toISOString();
+    this.saveQuizzesToStorage();
+    this.renderDesign();
     this.refreshPreview();
   },
 
