@@ -431,6 +431,9 @@ const App = {
         <button onclick="App.addBlockToStep(${stepIdx}, 'offer')" class="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-violet-400 text-xs font-semibold border border-slate-700 transition flex items-center gap-1">
           <span>🎁</span> Oferta / Checkout
         </button>
+        <button onclick="App.addBlockToStep(${stepIdx}, 'potential_chart')" class="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-rose-400 text-xs font-semibold border border-rose-500/30 transition flex items-center gap-1 shadow-sm">
+          <span>📈</span> Gráfico de Potencial
+        </button>
       </div>
     `;
   },
@@ -803,6 +806,89 @@ const App = {
       `;
     }
 
+    // 9. NOVO BLOCO: Gráfico de Projeção & Potencial (potential_chart)
+    else if (block.type === 'potential_chart') {
+      blockBadge = '<span class="text-rose-400 font-bold text-xs flex items-center gap-1.5"><span>📈</span> Gráfico de Projeção & Potencial</span>';
+      const showValues = block.showValues !== false;
+      const chartStyle = block.chartStyle || 'curve';
+
+      blockBody = `
+        <div class="space-y-3 pt-1">
+          <!-- Título Opcional do Gráfico e Estilo -->
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+            <div class="sm:col-span-2">
+              <label class="block text-[10px] font-bold text-slate-400 mb-1">Título do Gráfico (Opcional)</label>
+              <input type="text" value="${this.escape(block.chartTitle || '')}" oninput="App.updateBlockProp(${stepIdx}, ${bIdx}, 'chartTitle', this.value)" placeholder="Ex: Projeção de Transformação Estimada" class="w-full bg-slate-900 border border-slate-700 px-2.5 py-1.5 rounded-lg text-xs text-white">
+            </div>
+            <div>
+              <label class="block text-[10px] font-bold text-slate-400 mb-1">Formato Visual</label>
+              <select onchange="App.updateBlockProp(${stepIdx}, ${bIdx}, 'chartStyle', this.value)" class="w-full bg-slate-900 border border-slate-700 px-2 py-1.5 rounded-lg text-xs text-white font-medium">
+                <option value="curve" ${chartStyle === 'curve' ? 'selected' : ''}>📈 Linha Curva Animada</option>
+                <option value="bars" ${chartStyle === 'bars' ? 'selected' : ''}>📊 Barras Comparativas</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Ponto A (Inicial / Dor) e Ponto B (Final / Transformação) -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-slate-900/60 p-3 rounded-xl border border-slate-800">
+            <!-- Ponto Inicial (Vermelho / Dor) -->
+            <div class="space-y-2 border-r border-slate-800/80 pr-2">
+              <div class="flex items-center justify-between">
+                <span class="text-[11px] font-bold text-red-400 flex items-center gap-1">
+                  <span class="w-2.5 h-2.5 rounded-full bg-red-500 inline-block"></span> Estágio Atual (Ponto A)
+                </span>
+                <input type="color" value="${block.startColor || '#ef4444'}" onchange="App.updateBlockProp(${stepIdx}, ${bIdx}, 'startColor', this.value)" class="w-6 h-6 rounded cursor-pointer bg-transparent border-0" title="Cor do Ponto Inicial">
+              </div>
+              <div>
+                <label class="block text-[10px] font-bold text-slate-400 mb-1">Texto / Rótulo</label>
+                <input type="text" value="${this.escape(block.startLabel || 'Seu estado hoje')}" oninput="App.updateBlockProp(${stepIdx}, ${bIdx}, 'startLabel', this.value)" placeholder="Ex: Seu físico hoje..." class="w-full bg-slate-950 border border-slate-700 px-2.5 py-1.5 rounded-lg text-xs text-white">
+              </div>
+              ${showValues ? `
+                <div>
+                  <label class="block text-[10px] font-bold text-slate-400 mb-1">Valor / Porcentagem</label>
+                  <input type="text" value="${this.escape(block.startValue !== undefined ? block.startValue : '24%')}" oninput="App.updateBlockProp(${stepIdx}, ${bIdx}, 'startValue', this.value)" placeholder="Ex: 24% ou 85 kg ou R$ 2.000" class="w-full bg-slate-950 border border-slate-700 px-2.5 py-1.5 rounded-lg text-xs text-red-400 font-bold font-mono">
+                </div>
+              ` : ''}
+            </div>
+
+            <!-- Ponto Final (Verde / Potencial) -->
+            <div class="space-y-2">
+              <div class="flex items-center justify-between">
+                <span class="text-[11px] font-bold text-emerald-400 flex items-center gap-1">
+                  <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block"></span> Estágio Alcançável (Ponto B)
+                </span>
+                <input type="color" value="${block.endColor || '#10b981'}" onchange="App.updateBlockProp(${stepIdx}, ${bIdx}, 'endColor', this.value)" class="w-6 h-6 rounded cursor-pointer bg-transparent border-0" title="Cor do Ponto Final">
+              </div>
+              <div>
+                <label class="block text-[10px] font-bold text-slate-400 mb-1">Texto / Rótulo</label>
+                <input type="text" value="${this.escape(block.endLabel || 'Seu potencial com o método')}" oninput="App.updateBlockProp(${stepIdx}, ${bIdx}, 'endLabel', this.value)" placeholder="Ex: Seu corpo ideal em 8 semanas..." class="w-full bg-slate-950 border border-slate-700 px-2.5 py-1.5 rounded-lg text-xs text-white">
+              </div>
+              ${showValues ? `
+                <div>
+                  <label class="block text-[10px] font-bold text-slate-400 mb-1">Valor / Porcentagem</label>
+                  <input type="text" value="${this.escape(block.endValue !== undefined ? block.endValue : '92%')}" oninput="App.updateBlockProp(${stepIdx}, ${bIdx}, 'endValue', this.value)" placeholder="Ex: 92% ou 72 kg ou R$ 15.000" class="w-full bg-slate-950 border border-slate-700 px-2.5 py-1.5 rounded-lg text-xs text-emerald-400 font-bold font-mono">
+                </div>
+              ` : ''}
+            </div>
+          </div>
+
+          <!-- Controle de Números e Tempo de Animação -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+            <div class="flex items-center pt-2">
+              <label class="inline-flex items-center gap-2 cursor-pointer text-xs text-slate-300">
+                <input type="checkbox" ${showValues ? 'checked' : ''} onchange="App.updateBlockProp(${stepIdx}, ${bIdx}, 'showValues', this.checked); App.renderSteps();" class="rounded bg-slate-800 border-slate-700 text-indigo-600 focus:ring-0">
+                <span>Exibir valores numéricos / porcentagens</span>
+              </label>
+            </div>
+            <div>
+              <label class="block text-[10px] font-bold text-slate-400 mb-1">Duração da Animação (segundos)</label>
+              <input type="number" min="1" max="10" step="0.5" value="${block.animationDuration || 2.5}" oninput="App.updateBlockProp(${stepIdx}, ${bIdx}, 'animationDuration', parseFloat(this.value) || 2.5)" class="w-full bg-slate-900 border border-slate-700 px-2.5 py-1.5 rounded-lg text-xs text-white font-mono font-bold">
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
     // Demanda 4: Delay Universal Programável em TODOS os componentes
     const universalDelayControl = `
       <div class="mt-3 pt-2.5 border-t border-slate-800/80 flex items-center justify-between text-xs">
@@ -990,6 +1076,17 @@ const App = {
       newBlock.ctaText = 'Quero Garantir Minha Vaga Agora →';
       newBlock.ctaUrl = '#';
       newBlock.buttonSize = 'featured';
+    } else if (blockType === 'potential_chart') {
+      newBlock.chartTitle = 'Projeção de Transformação & Potencial';
+      newBlock.chartStyle = 'curve'; // 'curve' | 'bars'
+      newBlock.startLabel = 'Sua Situação Atual';
+      newBlock.endLabel = 'Seu Potencial com o Método';
+      newBlock.showValues = true;
+      newBlock.startValue = '24%';
+      newBlock.endValue = '92%';
+      newBlock.startColor = '#ef4444';
+      newBlock.endColor = '#10b981';
+      newBlock.animationDuration = 2.5;
     }
 
     step.blocks.push(newBlock);

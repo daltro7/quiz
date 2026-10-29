@@ -607,6 +607,170 @@ const QuizTemplateEngine = {
       transition: opacity 0.2s ease;
     }
 
+    /* Bloco de Gráfico de Potencial & Projeção */
+    ${scope} .potential-chart-card {
+      width: 100%;
+      background: var(--opt-bg);
+      border: 1.5px solid var(--opt-border);
+      border-radius: var(--radius);
+      box-shadow: var(--opt-shadow);
+      padding: 20px 16px;
+      margin: 16px 0;
+      position: relative;
+      box-sizing: border-box;
+    }
+
+    ${scope} .potential-chart-title {
+      font-size: 13px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--text);
+      text-align: center;
+      margin-bottom: 14px;
+    }
+
+    /* Gráfico em Curva */
+    ${scope} .curve-chart-wrapper {
+      position: relative;
+      width: 100%;
+    }
+
+    ${scope} .curve-svg {
+      width: 100%;
+      height: 145px;
+      display: block;
+      overflow: visible;
+    }
+
+    @keyframes drawCurveLine {
+      from { stroke-dashoffset: 450; }
+      to { stroke-dashoffset: 0; }
+    }
+
+    ${scope} .chart-curve-path {
+      stroke-dasharray: 450;
+      stroke-dashoffset: 450;
+      animation: drawCurveLine var(--anim-dur, 2.5s) cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+    }
+
+    @keyframes fadeInArea {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+
+    ${scope} .chart-area-fade {
+      animation: fadeInArea 1.8s ease-out 0.4s forwards;
+    }
+
+    ${scope} .chart-badges-container {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-top: 10px;
+      gap: 12px;
+    }
+
+    ${scope} .chart-badge {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      background: rgba(0, 0, 0, 0.08);
+      padding: 8px 12px;
+      border-radius: 8px;
+      max-width: 48%;
+      box-sizing: border-box;
+    }
+
+    ${scope} .chart-badge.start-badge {
+      border-left: 3.5px solid #ef4444;
+      text-align: left;
+    }
+
+    ${scope} .chart-badge.end-badge {
+      border-right: 3.5px solid #10b981;
+      text-align: right;
+    }
+
+    ${scope} .chart-badge .badge-title {
+      font-size: 11px;
+      color: var(--text-muted);
+      line-height: 1.3;
+      white-space: pre-line;
+      word-break: break-word;
+    }
+
+    ${scope} .chart-badge .badge-number {
+      font-size: 17px;
+      font-weight: 900;
+      line-height: 1.1;
+      letter-spacing: -0.02em;
+    }
+
+    /* Gráfico em Barras */
+    ${scope} .bars-chart-container {
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+      gap: 24px;
+      height: 160px;
+      padding: 10px 0;
+    }
+
+    ${scope} .bar-col {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      width: 110px;
+    }
+
+    ${scope} .bar-value {
+      font-size: 15px;
+      font-weight: 900;
+      line-height: 1;
+    }
+
+    ${scope} .bar-track {
+      width: 44px;
+      height: 100px;
+      background: rgba(0, 0, 0, 0.06);
+      border-radius: 8px;
+      overflow: hidden;
+      display: flex;
+      align-items: flex-end;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    @keyframes growBar {
+      from { height: 0%; }
+      to { height: var(--target-height, 50%); }
+    }
+
+    ${scope} .bar-fill {
+      width: 100%;
+      height: 0%;
+      background: var(--bar-color, #10b981);
+      border-radius: 6px 6px 0 0;
+      animation: growBar 2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+
+    ${scope} .bar-arrow {
+      font-size: 22px;
+      color: var(--text-muted);
+      margin-bottom: 45px;
+      opacity: 0.5;
+    }
+
+    ${scope} .bar-label {
+      font-size: 11px;
+      color: var(--text-muted);
+      text-align: center;
+      line-height: 1.3;
+      white-space: pre-line;
+      word-break: break-word;
+    }
+
     /* Formulário de Lead */
     ${scope} .lead-form {
       display: flex;
@@ -926,6 +1090,97 @@ const QuizTemplateEngine = {
         blockHtml += '<div id="loader-cta" style="display: none; opacity: 0; width: 100%; margin-top: 8px;">';
         blockHtml += '<button type="button" class="cta-btn animate-appear" onclick="' + nextPrefix + '">' + this.escapeHtml(btnText) + '</button>';
         blockHtml += '</div>';
+        blockHtml += '</div>';
+      }
+
+      // 9. NOVO BLOCO: Gráfico de Potencial e Projeção (potential_chart)
+      else if (block.type === 'potential_chart') {
+        const title = block.chartTitle || 'Projeção de Evolução';
+        const style = block.chartStyle || 'curve';
+        const startLabel = block.startLabel || 'Seu estágio hoje';
+        const endLabel = block.endLabel || 'Seu potencial com o método';
+        const showValues = block.showValues !== false;
+        const startVal = block.startValue || '24%';
+        const endVal = block.endValue || '92%';
+        const startColor = block.startColor || '#ef4444';
+        const endColor = block.endColor || '#10b981';
+        const duration = parseFloat(block.animationDuration) || 2.5;
+        const chartId = 'chart_' + Math.random().toString(36).substr(2, 6);
+
+        blockHtml += '<div class="potential-chart-card">';
+        if (title.trim()) {
+          blockHtml += '<div class="potential-chart-title">' + this.escapeHtml(title) + '</div>';
+        }
+
+        if (style === 'bars') {
+          let sHeight = parseInt(startVal, 10);
+          if (isNaN(sHeight)) sHeight = 28;
+          sHeight = Math.max(15, Math.min(100, sHeight));
+          let eHeight = parseInt(endVal, 10);
+          if (isNaN(eHeight)) eHeight = 92;
+          eHeight = Math.max(15, Math.min(100, eHeight));
+
+          blockHtml += '<div class="bars-chart-container">';
+          blockHtml += '<div class="bar-col">';
+          if (showValues) {
+            blockHtml += '<div class="bar-value" style="color: ' + startColor + ';">' + this.escapeHtml(startVal) + '</div>';
+          }
+          blockHtml += '<div class="bar-track"><div class="bar-fill" style="--bar-color: ' + startColor + '; --target-height: ' + sHeight + '%;"></div></div>';
+          blockHtml += '<div class="bar-label">' + this.escapeHtml(startLabel) + '</div>';
+          blockHtml += '</div>';
+
+          blockHtml += '<div class="bar-arrow">➔</div>';
+
+          blockHtml += '<div class="bar-col">';
+          if (showValues) {
+            blockHtml += '<div class="bar-value" style="color: ' + endColor + ';">' + this.escapeHtml(endVal) + '</div>';
+          }
+          blockHtml += '<div class="bar-track"><div class="bar-fill" style="--bar-color: ' + endColor + '; --target-height: ' + eHeight + '%;"></div></div>';
+          blockHtml += '<div class="bar-label">' + this.escapeHtml(endLabel) + '</div>';
+          blockHtml += '</div>';
+          blockHtml += '</div>';
+        } else {
+          blockHtml += '<div class="curve-chart-wrapper" style="--anim-dur: ' + duration + 's;">';
+          blockHtml += '<svg class="curve-svg" viewBox="0 0 320 130" preserveAspectRatio="none">';
+          blockHtml += '<defs>';
+          blockHtml += '<linearGradient id="curveGrad_' + chartId + '" x1="0%" y1="0%" x2="100%" y2="0%">';
+          blockHtml += '<stop offset="0%" stop-color="' + startColor + '" />';
+          blockHtml += '<stop offset="100%" stop-color="' + endColor + '" />';
+          blockHtml += '</linearGradient>';
+          blockHtml += '<linearGradient id="areaGrad_' + chartId + '" x1="0%" y1="0%" x2="0%" y2="100%">';
+          blockHtml += '<stop offset="0%" stop-color="' + endColor + '" stop-opacity="0.22" />';
+          blockHtml += '<stop offset="100%" stop-color="' + endColor + '" stop-opacity="0.0" />';
+          blockHtml += '</linearGradient>';
+          blockHtml += '</defs>';
+
+          blockHtml += '<path class="chart-area-fade" d="M 20 105 C 100 105, 180 80, 300 25 L 300 120 L 20 120 Z" fill="url(#areaGrad_' + chartId + ')" />';
+          blockHtml += '<line x1="20" y1="120" x2="300" y2="120" stroke="rgba(128,128,128,0.2)" stroke-dasharray="3,3" stroke-width="1" />';
+          blockHtml += '<path class="chart-curve-path" d="M 20 105 C 100 105, 180 80, 300 25" fill="none" stroke="url(#curveGrad_' + chartId + ')" stroke-width="4" stroke-linecap="round" />';
+
+          blockHtml += '<circle cx="20" cy="105" r="5" fill="' + startColor + '" />';
+          blockHtml += '<circle cx="20" cy="105" r="8" fill="' + startColor + '" opacity="0.3" />';
+          blockHtml += '<circle cx="300" cy="25" r="6" fill="' + endColor + '" />';
+          blockHtml += '<circle cx="300" cy="25" r="10" fill="' + endColor + '" opacity="0.4" />';
+          blockHtml += '</svg>';
+
+          blockHtml += '<div class="chart-badges-container">';
+          blockHtml += '<div class="chart-badge start-badge" style="border-left-color: ' + startColor + ';">';
+          blockHtml += '<div class="badge-title">' + this.escapeHtml(startLabel) + '</div>';
+          if (showValues) {
+            blockHtml += '<div class="badge-number" style="color: ' + startColor + ';">' + this.escapeHtml(startVal) + '</div>';
+          }
+          blockHtml += '</div>';
+
+          blockHtml += '<div class="chart-badge end-badge" style="border-right-color: ' + endColor + ';">';
+          blockHtml += '<div class="badge-title">' + this.escapeHtml(endLabel) + '</div>';
+          if (showValues) {
+            blockHtml += '<div class="badge-number" style="color: ' + endColor + ';">' + this.escapeHtml(endVal) + '</div>';
+          }
+          blockHtml += '</div>';
+          blockHtml += '</div>';
+          blockHtml += '</div>';
+        }
+
         blockHtml += '</div>';
       }
 
@@ -1359,6 +1614,94 @@ const QuizTemplateEngine = {
             bHtml += '<div id=\"loader-cta\" style=\"display: none; opacity: 0; width: 100%; margin-top: 8px;\">';
             bHtml += '<button type=\"button\" class=\"cta-btn animate-appear\" onclick=\"QuizApp.nextStep()\">' + this.escapeHtml(btnText) + '</button>';
             bHtml += '</div></div>';
+          }
+          else if (block.type === 'potential_chart') {
+            const title = block.chartTitle || 'Projeção de Evolução';
+            const style = block.chartStyle || 'curve';
+            const startLabel = block.startLabel || 'Seu estágio hoje';
+            const endLabel = block.endLabel || 'Seu potencial com o método';
+            const showValues = block.showValues !== false;
+            const startVal = block.startValue || '24%';
+            const endVal = block.endValue || '92%';
+            const startColor = block.startColor || '#ef4444';
+            const endColor = block.endColor || '#10b981';
+            const duration = parseFloat(block.animationDuration) || 2.5;
+            const chartId = 'c_' + Math.random().toString(36).substr(2, 6);
+
+            bHtml += '<div class=\"potential-chart-card\">';
+            if (title.trim()) {
+              bHtml += '<div class=\"potential-chart-title\">' + this.escapeHtml(title) + '</div>';
+            }
+
+            if (style === 'bars') {
+              let sHeight = parseInt(startVal, 10);
+              if (isNaN(sHeight)) sHeight = 28;
+              sHeight = Math.max(15, Math.min(100, sHeight));
+              let eHeight = parseInt(endVal, 10);
+              if (isNaN(eHeight)) eHeight = 92;
+              eHeight = Math.max(15, Math.min(100, eHeight));
+
+              bHtml += '<div class=\"bars-chart-container\">';
+              bHtml += '<div class=\"bar-col\">';
+              if (showValues) {
+                bHtml += '<div class=\"bar-value\" style=\"color: ' + startColor + ';\">' + this.escapeHtml(startVal) + '</div>';
+              }
+              bHtml += '<div class=\"bar-track\"><div class=\"bar-fill\" style=\"--bar-color: ' + startColor + '; --target-height: ' + sHeight + '%;\"></div></div>';
+              bHtml += '<div class=\"bar-label\">' + this.escapeHtml(startLabel) + '</div>';
+              bHtml += '</div>';
+
+              bHtml += '<div class=\"bar-arrow\">➔</div>';
+
+              bHtml += '<div class=\"bar-col\">';
+              if (showValues) {
+                bHtml += '<div class=\"bar-value\" style=\"color: ' + endColor + ';\">' + this.escapeHtml(endVal) + '</div>';
+              }
+              bHtml += '<div class=\"bar-track\"><div class=\"bar-fill\" style=\"--bar-color: ' + endColor + '; --target-height: ' + eHeight + '%;\"></div></div>';
+              bHtml += '<div class=\"bar-label\">' + this.escapeHtml(endLabel) + '</div>';
+              bHtml += '</div>';
+              bHtml += '</div>';
+            } else {
+              bHtml += '<div class=\"curve-chart-wrapper\" style=\"--anim-dur: ' + duration + 's;\">';
+              bHtml += '<svg class=\"curve-svg\" viewBox=\"0 0 320 130\" preserveAspectRatio=\"none\">';
+              bHtml += '<defs>';
+              bHtml += '<linearGradient id=\"curveGrad_' + chartId + '\" x1=\"0%\" y1=\"0%\" x2=\"100%\" y2=\"0%\">';
+              bHtml += '<stop offset=\"0%\" stop-color=\"' + startColor + '\" />';
+              bHtml += '<stop offset=\"100%\" stop-color=\"' + endColor + '\" />';
+              bHtml += '</linearGradient>';
+              bHtml += '<linearGradient id=\"areaGrad_' + chartId + '\" x1=\"0%\" y1=\"0%\" x2=\"0%\" y2=\"100%\">';
+              bHtml += '<stop offset=\"0%\" stop-color=\"' + endColor + '\" stop-opacity=\"0.22\" />';
+              bHtml += '<stop offset=\"100%\" stop-color=\"' + endColor + '\" stop-opacity=\"0.0\" />';
+              bHtml += '</linearGradient>';
+              bHtml += '</defs>';
+
+              bHtml += '<path class=\"chart-area-fade\" d=\"M 20 105 C 100 105, 180 80, 300 25 L 300 120 L 20 120 Z\" fill=\"url(#areaGrad_' + chartId + ')\" />';
+              bHtml += '<line x1=\"20\" y1=\"120\" x2=\"300\" y2=\"120\" stroke=\"rgba(128,128,128,0.2)\" stroke-dasharray=\"3,3\" stroke-width=\"1\" />';
+              bHtml += '<path class=\"chart-curve-path\" d=\"M 20 105 C 100 105, 180 80, 300 25\" fill=\"none\" stroke=\"url(#curveGrad_' + chartId + ')\" stroke-width=\"4\" stroke-linecap=\"round\" />';
+              bHtml += '<circle cx=\"20\" cy=\"105\" r=\"5\" fill=\"' + startColor + '\" />';
+              bHtml += '<circle cx=\"20\" cy=\"105\" r=\"8\" fill=\"' + startColor + '\" opacity=\"0.3\" />';
+              bHtml += '<circle cx=\"300\" cy=\"25\" r=\"6\" fill=\"' + endColor + '\" />';
+              bHtml += '<circle cx=\"300\" cy=\"25\" r=\"10\" fill=\"' + endColor + '\" opacity=\"0.4\" />';
+              bHtml += '</svg>';
+
+              bHtml += '<div class=\"chart-badges-container\">';
+              bHtml += '<div class=\"chart-badge start-badge\" style=\"border-left-color: ' + startColor + ';\">';
+              bHtml += '<div class=\"badge-title\">' + this.escapeHtml(startLabel) + '</div>';
+              if (showValues) {
+                bHtml += '<div class=\"badge-number\" style=\"color: ' + startColor + ';\">' + this.escapeHtml(startVal) + '</div>';
+              }
+              bHtml += '</div>';
+
+              bHtml += '<div class=\"chart-badge end-badge\" style=\"border-right-color: ' + endColor + ';\">';
+              bHtml += '<div class=\"badge-title\">' + this.escapeHtml(endLabel) + '</div>';
+              if (showValues) {
+                bHtml += '<div class=\"badge-number\" style=\"color: ' + endColor + ';\">' + this.escapeHtml(endVal) + '</div>';
+              }
+              bHtml += '</div>';
+              bHtml += '</div>';
+              bHtml += '</div>';
+            }
+
+            bHtml += '</div>';
           }
 
           const delay = parseInt(block.delaySeconds, 10) || 0;
