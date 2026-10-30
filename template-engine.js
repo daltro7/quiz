@@ -382,14 +382,46 @@ const QuizTemplateEngine = {
       border: 0;
     }
 
-    /* Bloco HTML Customizado */
+    /* Bloco HTML Customizado / Full Mobile Width */
     ${scope} .custom-html-container {
-      margin: 16px 0;
-      padding: 12px;
-      background: rgba(0, 0, 0, 0.25);
-      border-radius: calc(var(--radius) - 6px);
-      border: 1px dashed rgba(255, 255, 255, 0.15);
-      overflow-x: auto;
+      width: 100%;
+      margin: 12px 0;
+      padding: 0;
+      background: transparent;
+      border: none;
+      box-sizing: border-box;
+      position: relative;
+    }
+
+    ${scope} .custom-html-container.full-bleed {
+      margin-left: -20px;
+      margin-right: -20px;
+      width: calc(100% + 40px);
+      max-width: none;
+    }
+
+    ${scope} .custom-html-container iframe,
+    ${scope} .custom-html-container embed,
+    ${scope} .custom-html-container object {
+      width: 100% !important;
+      max-width: 100% !important;
+      border: 0;
+      display: block;
+      margin: 0 auto;
+    }
+
+    ${scope} .custom-html-container img {
+      max-width: 100% !important;
+      height: auto;
+      display: block;
+    }
+
+    ${scope} .quiz-card.card-borderless {
+      background: transparent !important;
+      border: none !important;
+      box-shadow: none !important;
+      padding-left: 0 !important;
+      padding-right: 0 !important;
     }
 
     /* Opções de Resposta */
@@ -979,7 +1011,9 @@ const QuizTemplateEngine = {
       // 3. Bloco HTML Livre / Navegador de Produto (Iframe)
       else if (block.type === 'html') {
         if (block.customHtml && block.customHtml.trim() !== '') {
-          blockHtml += '<div class="custom-html-container">' + block.customHtml + '</div>';
+          const isFullWidth = block.fullWidth !== false;
+          const fullClass = isFullWidth ? 'full-bleed' : '';
+          blockHtml += '<div class="custom-html-container ' + fullClass + '">' + block.customHtml + '</div>';
         }
       }
 
@@ -1077,9 +1111,8 @@ const QuizTemplateEngine = {
         blockHtml += '</div>';
       }
 
-      // 8. NOVO BLOCO: Barra de Carregamento e Diagnóstico Falso (fake_loader)
+      // 8. NOVO BLOCO: Barra de Carregamento e Análise (fake_loader)
       else if (block.type === 'fake_loader') {
-        const btnText = block.buttonText || 'Ver Meu Diagnóstico →';
         blockHtml += '<div class="fake-loader-card">';
         blockHtml += '<div class="loader-spinner"></div>';
         blockHtml += '<div id="loader-percent" class="loader-percent">0%</div>';
@@ -1087,9 +1120,6 @@ const QuizTemplateEngine = {
         blockHtml += '<div id="loader-bar" class="loader-bar-fill"></div>';
         blockHtml += '</div>';
         blockHtml += '<div id="loader-msg" class="loader-msg">Iniciando análise...</div>';
-        blockHtml += '<div id="loader-cta" style="display: none; opacity: 0; width: 100%; margin-top: 8px;">';
-        blockHtml += '<button type="button" class="cta-btn animate-appear" onclick="' + nextPrefix + '">' + this.escapeHtml(btnText) + '</button>';
-        blockHtml += '</div>';
         blockHtml += '</div>';
       }
 
@@ -1378,6 +1408,14 @@ const QuizTemplateEngine = {
           backBtn.style.display = index > 0 ? 'inline-flex' : 'none';
         }
 
+        // Suporte a etapa com fundo transparente / sem moldura (bloco HTML borderless)
+        const cardEl = document.getElementById('quiz-card');
+        const hasBorderless = (step.blocks || []).some(b => b.type === 'html' && b.borderless);
+        if (cardEl) {
+          if (hasBorderless) cardEl.classList.add('card-borderless');
+          else cardEl.classList.remove('card-borderless');
+        }
+
         this.trackFunnelEvent('Quiz_Etapa_' + (index + 1), {
           stepIndex: index + 1,
           stepTitle: step.title || 'Sem título'
@@ -1437,7 +1475,6 @@ const QuizTemplateEngine = {
         const barEl = document.getElementById('loader-bar');
         const pctEl = document.getElementById('loader-percent');
         const msgEl = document.getElementById('loader-msg');
-        const ctaEl = document.getElementById('loader-cta');
         const autoAdvance = block.autoAdvance !== false;
 
         const startTime = performance.now();
@@ -1476,12 +1513,6 @@ const QuizTemplateEngine = {
             if (autoAdvance) {
               const timer = setTimeout(() => { this.nextStep(); }, 400);
               this.stepTimers.push(timer);
-            } else if (ctaEl) {
-              ctaEl.style.display = 'block';
-              setTimeout(() => {
-                ctaEl.style.opacity = '1';
-                ctaEl.style.transition = 'opacity 0.4s ease';
-              }, 20);
             }
           }
         };
@@ -1541,7 +1572,9 @@ const QuizTemplateEngine = {
           }
           else if (block.type === 'html') {
             if (block.customHtml && block.customHtml.trim() !== '') {
-              bHtml += '<div class=\"custom-html-container\">' + block.customHtml + '</div>';
+              const isFullWidth = block.fullWidth !== false;
+              const fullClass = isFullWidth ? 'full-bleed' : '';
+              bHtml += '<div class=\"custom-html-container ' + fullClass + '\">' + block.customHtml + '</div>';
             }
           }
           else if (block.type === 'question') {
@@ -1605,15 +1638,12 @@ const QuizTemplateEngine = {
             bHtml += '<div style=\"margin-top: 6px;\"><a href=\"' + ctaUrl + '\" target=\"_blank\" class=\"cta-btn link-trackable ' + sizeClass + '\" ' + customColor + ' style=\"text-align: center; text-decoration: none;\">' + this.escapeHtml(ctaText) + '</a></div></div>';
           }
           else if (block.type === 'fake_loader') {
-            const btnText = block.buttonText || 'Ver Meu Diagnóstico →';
             bHtml += '<div class=\"fake-loader-card\">';
             bHtml += '<div class=\"loader-spinner\"></div>';
             bHtml += '<div id=\"loader-percent\" class=\"loader-percent\">0%</div>';
             bHtml += '<div class=\"loader-bar-wrapper\"><div id=\"loader-bar\" class=\"loader-bar-fill\"></div></div>';
             bHtml += '<div id=\"loader-msg\" class=\"loader-msg\">Iniciando análise...</div>';
-            bHtml += '<div id=\"loader-cta\" style=\"display: none; opacity: 0; width: 100%; margin-top: 8px;\">';
-            bHtml += '<button type=\"button\" class=\"cta-btn animate-appear\" onclick=\"QuizApp.nextStep()\">' + this.escapeHtml(btnText) + '</button>';
-            bHtml += '</div></div>';
+            bHtml += '</div>';
           }
           else if (block.type === 'potential_chart') {
             const title = block.chartTitle || 'Projeção de Evolução';

@@ -417,7 +417,7 @@ const App = {
           <span>❓</span> Pergunta / Opções
         </button>
         <button onclick="App.addBlockToStep(${stepIdx}, 'fake_loader')" class="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-teal-300 text-xs font-semibold border border-teal-500/30 transition flex items-center gap-1 shadow-sm">
-          <span>⏳</span> Diagnóstico Falso (0% a 100%)
+          <span>⏳</span> Barra de Análise (0% a 100%)
         </button>
         <button onclick="App.addBlockToStep(${stepIdx}, 'delay_button')" class="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-amber-400 text-xs font-semibold border border-slate-700 transition flex items-center gap-1">
           <span>⏱️</span> Botão de Ação / Avanço
@@ -689,15 +689,33 @@ const App = {
     // 5. BLOCO HTML / NAVEGADOR DE PRODUTO
     else if (block.type === 'html') {
       blockBadge = '<span class="text-emerald-400 font-bold text-xs flex items-center gap-1.5"><span>🌐</span> Bloco HTML / Navegador de Produto</span>';
+      const isFullWidth = block.fullWidth !== false;
       blockBody = `
-        <div class="space-y-2 pt-1">
+        <div class="space-y-2.5 pt-1">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+            <div>
+              <label class="block text-[10px] font-bold text-slate-400 mb-1">Largura no Celular:</label>
+              <select onchange="App.updateBlockProp(${stepIdx}, ${bIdx}, 'fullWidth', this.value === 'true')" class="w-full bg-slate-900 border border-slate-700 px-2.5 py-1.5 rounded-lg text-xs text-white">
+                <option value="true" ${isFullWidth ? 'selected' : ''}>📱 Tela Cheia (100% Borda a Borda)</option>
+                <option value="false" ${!isFullWidth ? 'selected' : ''}>📐 Contido no Cartão (Com margens)</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-[10px] font-bold text-slate-400 mb-1">Moldura do Cartão:</label>
+              <select onchange="App.updateBlockProp(${stepIdx}, ${bIdx}, 'borderless', this.value === 'true')" class="w-full bg-slate-900 border border-slate-700 px-2.5 py-1.5 rounded-lg text-xs text-white">
+                <option value="false" ${!block.borderless ? 'selected' : ''}>Padrão (Dentro do Cartão)</option>
+                <option value="true" ${block.borderless ? 'selected' : ''}>Fundo Transparente (Sem bordas do quiz)</option>
+              </select>
+            </div>
+          </div>
           <div class="flex items-center justify-between">
             <label class="text-[10px] font-bold text-slate-400">Código HTML / Iframe:</label>
             <button onclick="App.insertSampleIframeToBlock(${stepIdx}, ${bIdx})" class="text-[10px] text-indigo-400 hover:text-indigo-300 font-semibold underline">
               Inserir Modelo Interativo
             </button>
           </div>
-          <textarea oninput="App.updateBlockProp(${stepIdx}, ${bIdx}, 'customHtml', this.value)" placeholder="Cole código HTML ou <iframe src='...'></iframe>" rows="2" class="w-full bg-slate-900 border border-slate-700 px-2.5 py-2 rounded-lg text-xs font-mono text-slate-200">${this.escape(block.customHtml || '')}</textarea>
+          <textarea oninput="App.updateBlockProp(${stepIdx}, ${bIdx}, 'customHtml', this.value)" placeholder="Cole código HTML ou <iframe src='...'></iframe>" rows="4" class="w-full bg-slate-900 border border-slate-700 px-2.5 py-2 rounded-lg text-xs font-mono text-slate-200">${this.escape(block.customHtml || '')}</textarea>
+          <span class="text-[10px] text-slate-500 block">💡 Dica: No modo Tela Cheia, iframes e elementos HTML preenchem 100% da largura do celular sem compressão ou distorção.</span>
         </div>
       `;
     }
@@ -773,9 +791,9 @@ const App = {
       `;
     }
 
-    // 8. BLOCO DE DIAGNÓSTICO FALSO / CARREGAMENTO (fake_loader)
+    // 8. BLOCO DE ANÁLISE / DIAGNÓSTICO (fake_loader)
     else if (block.type === 'fake_loader') {
-      blockBadge = '<span class="text-teal-400 font-bold text-xs flex items-center gap-1.5"><span>⏳</span> Barra de Diagnóstico Falso (0% a 100%)</span>';
+      blockBadge = '<span class="text-teal-400 font-bold text-xs flex items-center gap-1.5"><span>⏳</span> Barra de Análise / Diagnóstico (0% a 100%)</span>';
       blockBody = `
         <div class="space-y-3 pt-1">
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -787,16 +805,13 @@ const App = {
               <label class="block text-[10px] font-bold text-slate-400 mb-1">Ao atingir 100%:</label>
               <select onchange="App.updateBlockProp(${stepIdx}, ${bIdx}, 'autoAdvance', this.value === 'true')" class="w-full bg-slate-900 border border-slate-700 px-2.5 py-1.5 rounded-lg text-xs text-white">
                 <option value="true" ${block.autoAdvance !== false ? 'selected' : ''}>Avançar automaticamente para a próxima etapa</option>
-                <option value="false" ${block.autoAdvance === false ? 'selected' : ''}>Exibir botão de continuar</option>
+                <option value="false" ${block.autoAdvance === false ? 'selected' : ''}>Permanecer nesta etapa (sem avançar)</option>
               </select>
             </div>
           </div>
-          ${block.autoAdvance === false ? `
-            <div>
-              <label class="block text-[10px] font-bold text-slate-400 mb-1">Texto do Botão de Conclusão</label>
-              <input type="text" value="${this.escape(block.buttonText || 'Ver Meu Diagnóstico →')}" oninput="App.updateBlockProp(${stepIdx}, ${bIdx}, 'buttonText', this.value)" class="w-full bg-slate-900 border border-slate-700 px-2.5 py-1.5 rounded-lg text-xs text-white font-semibold">
-            </div>
-          ` : ''}
+          <div class="text-[10px] text-slate-500">
+            ${block.autoAdvance === false ? 'ℹ️ A barra alcançará 100% e permanecerá nesta etapa. Você pode adicionar um bloco independente de <strong>Botão de Ação / Avanço</strong> ou <strong>Oferta</strong> nesta etapa.' : 'ℹ️ Assim que a barra alcançar 100%, o quiz avançará automaticamente para a próxima etapa.'}
+          </div>
           <div>
             <label class="block text-[10px] font-bold text-slate-400 mb-1">Mensagens Dinâmicas de Status (uma por linha):</label>
             <textarea rows="4" onchange="App.updateBlockProp(${stepIdx}, ${bIdx}, 'messages', this.value)" class="w-full bg-slate-900 border border-slate-700 p-2.5 rounded-xl text-xs text-slate-200 font-mono">${this.escape(typeof block.messages === 'string' ? block.messages : (block.messages || []).join('\n'))}</textarea>
@@ -1057,7 +1072,6 @@ const App = {
     } else if (blockType === 'fake_loader') {
       newBlock.duration = 4;
       newBlock.autoAdvance = true;
-      newBlock.buttonText = 'Ver Meu Diagnóstico →';
       newBlock.messages = 'Analisando suas respostas...\nCruzando com nosso banco de dados...\nCalculando seu perfil ideal...\nDiagnóstico pronto!';
     } else if (blockType === 'delay_button') {
       newBlock.delaySeconds = 5;
@@ -1065,6 +1079,8 @@ const App = {
       newBlock.url = '';
       newBlock.buttonSize = 'large';
     } else if (blockType === 'html') {
+      newBlock.fullWidth = true;
+      newBlock.borderless = false;
       newBlock.customHtml = '<div style="background:linear-gradient(135deg, #1e1b4b, #312e81); border:1px solid #4338ca; padding:18px; border-radius:12px; text-align:center; color:#fff;"><h4 style="font-weight:bold; margin-bottom:6px;">🚀 Demonstração do Produto</h4><p style="font-size:13px; opacity:0.85;">Você pode interagir e testar o produto aqui dentro.</p></div>';
     } else if (blockType === 'lead_form') {
       newBlock.requireEmail = true;
@@ -1497,6 +1513,7 @@ const App = {
 
     // 3. Renderiza o conteúdo da etapa montado por blocos
     const contentEl = document.getElementById('preview-step-content');
+    const cardEl = document.getElementById('preview-quiz-card');
     if (contentEl && currentStep) {
       contentEl.innerHTML = QuizTemplateEngine.renderStepContentHtml(currentStep, this.preview, true);
 
@@ -1504,6 +1521,11 @@ const App = {
       if (!this.preview.stepTimers) this.preview.stepTimers = [];
 
       const blocks = currentStep.blocks || [];
+      const hasBorderless = blocks.some(b => b.type === 'html' && b.borderless);
+      if (cardEl) {
+        if (hasBorderless) cardEl.classList.add('card-borderless');
+        else cardEl.classList.remove('card-borderless');
+      }
 
       // Demanda 4: Universal Delay em todos os blocos no preview
       blocks.forEach((b, bIdx) => {
@@ -1540,7 +1562,6 @@ const App = {
     const barEl = document.querySelector('#preview-viewport #loader-bar');
     const pctEl = document.querySelector('#preview-viewport #loader-percent');
     const msgEl = document.querySelector('#preview-viewport #loader-msg');
-    const ctaEl = document.querySelector('#preview-viewport #loader-cta');
     const autoAdvance = block.autoAdvance !== false;
 
     const startTime = performance.now();
@@ -1581,12 +1602,6 @@ const App = {
             this.previewNextStep();
           }, 450);
           this.preview.stepTimers.push(timer);
-        } else if (ctaEl) {
-          ctaEl.style.display = 'block';
-          setTimeout(() => {
-            ctaEl.style.opacity = '1';
-            ctaEl.style.transition = 'opacity 0.4s ease';
-          }, 20);
         }
       }
     };
@@ -2240,14 +2255,13 @@ const App = {
         },
         {
           id: 'step_3',
-          title: 'Etapa 3: Diagnóstico Falso (0% a 100%)',
+          title: 'Etapa 3: Barra de Análise (0% a 100%)',
           blocks: [
             {
               id: 'b_loader',
               type: 'fake_loader',
               duration: 4,
               autoAdvance: true,
-              buttonText: 'Ver Meu Diagnóstico →',
               messages: 'Analisando suas respostas...\nCruzando com nosso banco de inteligência de vendas...\nCalculando seu perfil ideal de cliente...\nDiagnóstico concluído com sucesso!',
               delaySeconds: 0
             }
@@ -2268,6 +2282,7 @@ const App = {
             {
               id: 'b_7',
               type: 'html',
+              fullWidth: true,
               customHtml: '<div style="background:linear-gradient(135deg, #1e1b4b, #312e81); border:1px solid #4338ca; padding:18px; border-radius:12px; text-align:center; color:#fff;"><h4 style="margin-bottom:6px; font-weight:bold;">🚀 Simulador de Resultados</h4><p style="font-size:13px; opacity:0.85;">Com este funil implementado, sua taxa de conversão sobe expressivamente.</p></div>',
               delaySeconds: 0
             },
