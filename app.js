@@ -787,36 +787,69 @@ const App = {
       `;
     }
 
-    // 5. BLOCO HTML / NAVEGADOR DE PRODUTO
+    // 5. BLOCO HTML / APLICAÇÃO INTERATIVA (Iframe Sandbox e Snippets)
     else if (block.type === 'html') {
-      blockBadge = '<span class="text-emerald-400 font-bold text-xs flex items-center gap-1.5"><span>🌐</span> Bloco HTML / Navegador de Produto</span>';
+      blockBadge = '<span class="text-emerald-400 font-bold text-xs flex items-center gap-1.5"><span>🌐</span> Bloco HTML / Aplicação Interativa</span>';
       const isFullWidth = block.fullWidth !== false;
+      const htmlMode = block.htmlMode || 'auto';
+      const iframeUrl = block.iframeUrl || '';
+      const iframeHeight = block.iframeHeight || '650px';
+      const isDetectedFullDoc = typeof QuizTemplateEngine !== 'undefined' ? QuizTemplateEngine.isFullHtmlDoc(block.customHtml || '') : false;
+
       blockBody = `
-        <div class="space-y-2.5 pt-1">
+        <div class="space-y-3 pt-1">
+          <!-- Modo de Execução & Altura -->
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
             <div>
-              <label class="block text-[10px] font-bold text-slate-400 mb-1">Largura no Celular:</label>
-              <select onchange="App.updateBlockProp(${stepIdx}, ${bIdx}, 'fullWidth', this.value === 'true')" class="w-full bg-slate-900 border border-slate-700 px-2.5 py-1.5 rounded-lg text-xs text-white">
-                <option value="true" ${isFullWidth ? 'selected' : ''}>📱 Tela Cheia (100% Borda a Borda)</option>
-                <option value="false" ${!isFullWidth ? 'selected' : ''}>📐 Contido no Cartão (Com margens)</option>
+              <label class="block text-[10px] font-bold text-slate-400 mb-1">Modo de Execução:</label>
+              <select onchange="App.updateBlockProp(${stepIdx}, ${bIdx}, 'htmlMode', this.value); App.renderSteps();" class="w-full bg-slate-900 border border-slate-700 px-2.5 py-1.5 rounded-lg text-xs text-white">
+                <option value="auto" ${htmlMode === 'auto' ? 'selected' : ''}>⚡ Detecção Automática (Recomendado)</option>
+                <option value="iframe" ${htmlMode === 'iframe' ? 'selected' : ''}>🛡️ Iframe Isolado / Sandbox (Apps completas, PWA)</option>
+                <option value="inline" ${htmlMode === 'inline' ? 'selected' : ''}>📝 Snippet Direto (Apenas trechos simples)</option>
               </select>
             </div>
             <div>
-              <label class="block text-[10px] font-bold text-slate-400 mb-1">Moldura do Cartão:</label>
-              <select onchange="App.updateBlockProp(${stepIdx}, ${bIdx}, 'borderless', this.value === 'true')" class="w-full bg-slate-900 border border-slate-700 px-2.5 py-1.5 rounded-lg text-xs text-white">
-                <option value="false" ${!block.borderless ? 'selected' : ''}>Padrão (Dentro do Cartão)</option>
-                <option value="true" ${block.borderless ? 'selected' : ''}>Fundo Transparente (Sem bordas do quiz)</option>
-              </select>
+              <label class="block text-[10px] font-bold text-slate-400 mb-1">Altura do App / Iframe:</label>
+              <input type="text" value="${this.escape(iframeHeight)}" oninput="App.updateBlockProp(${stepIdx}, ${bIdx}, 'iframeHeight', this.value)" placeholder="Ex: 650px ou 700px" class="w-full bg-slate-900 border border-slate-700 px-2.5 py-1.5 rounded-lg text-xs text-white font-mono">
             </div>
           </div>
-          <div class="flex items-center justify-between">
-            <label class="text-[10px] font-bold text-slate-400">Código HTML / Iframe:</label>
-            <button onclick="App.insertSampleIframeToBlock(${stepIdx}, ${bIdx})" class="text-[10px] text-indigo-400 hover:text-indigo-300 font-semibold underline">
-              Inserir Modelo Interativo
-            </button>
+
+          <!-- Opção 1: Link Direto de Arquivo Local ou URL Externa -->
+          <div class="bg-slate-900/60 p-2.5 rounded-lg border border-slate-800 space-y-1.5">
+            <label class="block text-[10px] font-bold text-slate-300 flex items-center justify-between">
+              <span class="flex items-center gap-1"><span>🔗</span> Link do Arquivo ou URL (Opcional):</span>
+              <span class="text-[10px] text-slate-400 font-normal">Evita colar 1.800 linhas</span>
+            </label>
+            <input type="text" value="${this.escape(iframeUrl)}" oninput="App.updateBlockProp(${stepIdx}, ${bIdx}, 'iframeUrl', this.value)" placeholder="Ex: orça-obra/index.html ou https://..." class="w-full bg-slate-900 border border-slate-700 px-2.5 py-1.5 rounded-lg text-xs text-white font-mono">
+            <span class="text-[10px] text-slate-500 block">Se preencher este campo, o quiz carrega o arquivo direto pelo sandbox sem precisar colar o código.</span>
           </div>
-          <textarea oninput="App.updateBlockProp(${stepIdx}, ${bIdx}, 'customHtml', this.value)" placeholder="Cole código HTML ou <iframe src='...'></iframe>" rows="4" class="w-full bg-slate-900 border border-slate-700 px-2.5 py-2 rounded-lg text-xs font-mono text-slate-200">${this.escape(block.customHtml || '')}</textarea>
-          <span class="text-[10px] text-slate-500 block">💡 Dica: No modo Tela Cheia, iframes e elementos HTML preenchem 100% da largura do celular sem compressão ou distorção.</span>
+
+          <!-- Opção 2: Código HTML colado -->
+          <div>
+            <div class="flex items-center justify-between mb-1">
+              <label class="text-[10px] font-bold text-slate-400 flex items-center gap-1.5">
+                <span>Código HTML / Aplicação:</span>
+                ${isDetectedFullDoc ? '<span class="text-[10px] bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded-full font-semibold border border-emerald-500/30">Página Completa Detectada ➔ Iframe Ativo</span>' : ''}
+              </label>
+              <button onclick="App.insertSampleIframeToBlock(${stepIdx}, ${bIdx})" class="text-[10px] text-indigo-400 hover:text-indigo-300 font-semibold underline">
+                Inserir Modelo
+              </button>
+            </div>
+            <textarea oninput="App.updateBlockProp(${stepIdx}, ${bIdx}, 'customHtml', this.value)" placeholder="Cole código HTML, página completa com <!DOCTYPE> ou trechos interativos..." rows="4" class="w-full bg-slate-900 border border-slate-700 px-2.5 py-2 rounded-lg text-xs font-mono text-slate-200">${this.escape(block.customHtml || '')}</textarea>
+          </div>
+
+          <!-- Largura e Moldura -->
+          <div class="grid grid-cols-2 gap-2 text-xs">
+            <label class="flex items-center gap-2 p-2 rounded bg-slate-900/40 border border-slate-800 cursor-pointer hover:bg-slate-800/40 transition">
+              <input type="checkbox" ${isFullWidth ? 'checked' : ''} onchange="App.updateBlockProp(${stepIdx}, ${bIdx}, 'fullWidth', this.checked)" class="rounded text-indigo-600 focus:ring-0">
+              <span class="text-[11px] text-slate-300">📱 Borda a Borda (100% Celular)</span>
+            </label>
+
+            <label class="flex items-center gap-2 p-2 rounded bg-slate-900/40 border border-slate-800 cursor-pointer hover:bg-slate-800/40 transition">
+              <input type="checkbox" ${block.borderless ? 'checked' : ''} onchange="App.updateBlockProp(${stepIdx}, ${bIdx}, 'borderless', this.checked)" class="rounded text-indigo-600 focus:ring-0">
+              <span class="text-[11px] text-slate-300">Fundo Transparente (Sem moldura)</span>
+            </label>
+          </div>
         </div>
       `;
     }
@@ -1676,6 +1709,16 @@ const App = {
         if (hasBorderless) cardEl.classList.add('card-borderless');
         else cardEl.classList.remove('card-borderless');
       }
+
+      // Garante que iframes de blocos HTML recebam o conteúdo completo no preview
+      const htmlFrames = contentEl.querySelectorAll('iframe[data-block-idx]');
+      htmlFrames.forEach(frame => {
+        const bIdx = parseInt(frame.getAttribute('data-block-idx'), 10);
+        const b = (blocks || [])[bIdx];
+        if (b && b.customHtml) {
+          frame.srcdoc = b.customHtml;
+        }
+      });
 
       // Demanda 4: Universal Delay em todos os blocos no preview
       blocks.forEach((b, bIdx) => {

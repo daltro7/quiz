@@ -1159,12 +1159,26 @@ const QuizTemplateEngine = {
         }
       }
 
-      // 3. Bloco HTML Livre / Navegador de Produto (Iframe)
+      // 3. Bloco HTML Livre / Aplicação Interativa (Iframe Sandbox ou Snippet)
       else if (block.type === 'html') {
-        if (block.customHtml && block.customHtml.trim() !== '') {
-          const isFullWidth = block.fullWidth !== false;
-          const fullClass = isFullWidth ? 'full-bleed' : '';
-          blockHtml += '<div class="custom-html-container ' + fullClass + '">' + block.customHtml + '</div>';
+        const isFullWidth = block.fullWidth !== false;
+        const fullClass = isFullWidth ? 'full-bleed' : '';
+        const height = block.iframeHeight || '650px';
+        const isIframe = block.iframeUrl || block.htmlMode === 'iframe' || (block.htmlMode !== 'inline' && this.isFullHtmlDoc(block.customHtml));
+
+        if (block.iframeUrl && block.iframeUrl.trim() !== '') {
+          blockHtml += `<div class="custom-html-container ${fullClass}">`;
+          blockHtml += `<iframe src="${this.escapeHtml(block.iframeUrl)}" style="width:100%; height:${height}; border:none; border-radius:12px; display:block; background:#fff;" sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-modals" loading="lazy"></iframe>`;
+          blockHtml += '</div>';
+        } else if (block.customHtml && block.customHtml.trim() !== '') {
+          if (isIframe) {
+            const frameId = (isPreview ? 'preview-html-frame-' : 'quiz-html-frame-') + bIdx;
+            blockHtml += `<div class="custom-html-container ${fullClass}">`;
+            blockHtml += `<iframe id="${frameId}" data-block-idx="${bIdx}" srcdoc="${this.escapeSrcdoc(block.customHtml)}" style="width:100%; height:${height}; border:none; border-radius:12px; display:block; background:#fff;" sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-modals" loading="lazy"></iframe>`;
+            blockHtml += '</div>';
+          } else {
+            blockHtml += `<div class="custom-html-container ${fullClass}">${block.customHtml}</div>`;
+          }
         }
       }
 
@@ -1645,6 +1659,16 @@ const QuizTemplateEngine = {
         // Renderiza conteúdo
         container.innerHTML = this.renderStepHtml(step);
 
+        // Garante que iframes de blocos HTML carreguem seu documento isolado
+        const htmlFrames = container.querySelectorAll('iframe[data-block-idx]');
+        htmlFrames.forEach(frame => {
+          const bIdx = parseInt(frame.getAttribute('data-block-idx'), 10);
+          const b = (step.blocks || [])[bIdx];
+          if (b && b.customHtml) {
+            frame.srcdoc = b.customHtml;
+          }
+        });
+
         // Preserva e repassa UTMs para links gerados
         this.applyUtmsToLinks();
 
@@ -1807,10 +1831,23 @@ const QuizTemplateEngine = {
             }
           }
           else if (block.type === 'html') {
-            if (block.customHtml && block.customHtml.trim() !== '') {
-              const isFullWidth = block.fullWidth !== false;
-              const fullClass = isFullWidth ? 'full-bleed' : '';
-              bHtml += '<div class=\"custom-html-container ' + fullClass + '\">' + block.customHtml + '</div>';
+            const isFullWidth = block.fullWidth !== false;
+            const fullClass = isFullWidth ? 'full-bleed' : '';
+            const height = block.iframeHeight || '650px';
+            const isIframe = block.iframeUrl || block.htmlMode === 'iframe' || (block.htmlMode !== 'inline' && this.isFullHtmlDoc(block.customHtml));
+
+            if (block.iframeUrl && block.iframeUrl.trim() !== '') {
+              bHtml += '<div class=\"custom-html-container ' + fullClass + '\">';
+              bHtml += '<iframe src=\"' + this.escapeHtml(block.iframeUrl) + '\" style=\"width:100%; height:' + height + '; border:none; border-radius:12px; display:block; background:#fff;\" sandbox=\"allow-scripts allow-same-origin allow-forms allow-popups allow-modals\" loading=\"lazy\"></iframe>';
+              bHtml += '</div>';
+            } else if (block.customHtml && block.customHtml.trim() !== '') {
+              if (isIframe) {
+                bHtml += '<div class=\"custom-html-container ' + fullClass + '\">';
+                bHtml += '<iframe id=\"quiz-html-frame-' + bIdx + '\" data-block-idx=\"' + bIdx + '\" srcdoc=\"' + this.escapeSrcdoc(block.customHtml) + '\" style=\"width:100%; height:' + height + '; border:none; border-radius:12px; display:block; background:#fff;\" sandbox=\"allow-scripts allow-same-origin allow-forms allow-popups allow-modals\" loading=\"lazy\"></iframe>';
+                bHtml += '</div>';
+              } else {
+                bHtml += '<div class=\"custom-html-container ' + fullClass + '\">' + block.customHtml + '</div>';
+              }
             }
           }
           else if (block.type === 'question') {
@@ -2065,6 +2102,23 @@ const QuizTemplateEngine = {
           overlay.style.pointerEvents = 'none';
           setTimeout(() => { overlay.style.display = 'none'; }, 300);
         }
+      },
+
+      isFullHtmlDoc(html) {
+        if (!html || typeof html !== 'string') return false;
+        const trimmed = html.trim().toLowerCase();
+        return trimmed.startsWith('<!doctype') ||
+               trimmed.startsWith('<html') ||
+               trimmed.includes('<head') ||
+               trimmed.includes('<body') ||
+               (trimmed.includes('<script') && (trimmed.includes('tailwind') || trimmed.includes('<style')));
+      },
+
+      escapeSrcdoc(str) {
+        if (!str) return '';
+        return str
+          .replace(/&/g, '&amp;')
+          .replace(/"/g, '&quot;');
       },
 
       preloadVideos(steps) {
@@ -2359,6 +2413,23 @@ const QuizTemplateEngine = {
     }
 
     return 'https://www.youtube-nocookie.com/embed/' + videoId + '?' + params.toString();
+  },
+
+  isFullHtmlDoc(html) {
+    if (!html || typeof html !== 'string') return false;
+    const trimmed = html.trim().toLowerCase();
+    return trimmed.startsWith('<!doctype') ||
+           trimmed.startsWith('<html') ||
+           trimmed.includes('<head') ||
+           trimmed.includes('<body') ||
+           (trimmed.includes('<script') && (trimmed.includes('tailwind') || trimmed.includes('<style')));
+  },
+
+  escapeSrcdoc(str) {
+    if (!str) return '';
+    return str
+      .replace(/&/g, '&amp;')
+      .replace(/"/g, '&quot;');
   },
 
   generateTrackingHead(tracking) {
