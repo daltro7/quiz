@@ -271,6 +271,7 @@ const App = {
     this.renderTracking();
 
     this.restartPreview();
+    this.preloadVideos(quiz.steps);
   },
 
   backToDashboard() {
@@ -599,11 +600,19 @@ const App = {
       `;
     }
 
-    // 2. BLOCO DE VÍDEO DO YOUTUBE
+    // 2. BLOCO DE VÍDEO DO YOUTUBE (Autoplay, Comandos, Máscara e Preload)
     else if (block.type === 'video') {
       blockBadge = '<span class="text-red-400 font-bold text-xs flex items-center gap-1.5"><span>🎬</span> Vídeo do YouTube</span>';
+      const autoplayMode = block.autoplayMode || 'none';
+      const hideControls = block.hideControls !== false;
+      const hideRecommendations = block.hideRecommendations !== false;
+      const cleanTopMask = block.cleanTopMask !== false;
+      const preload = block.preload !== false;
+      const unmuteText = block.unmuteButtonText || '🔊 Toque para Ativar o Áudio';
+
       blockBody = `
-        <div class="space-y-2.5 pt-1">
+        <div class="space-y-3 pt-1">
+          <!-- Linha 1: URL e Formato -->
           <div class="flex items-center justify-between gap-3">
             <div class="flex-1">
               <label class="block text-[10px] font-bold text-slate-400 mb-1">Link do Vídeo no YouTube</label>
@@ -616,6 +625,49 @@ const App = {
                 <option value="vertical" ${block.orientation === 'vertical' ? 'selected' : ''}>Vertical (Shorts)</option>
               </select>
             </div>
+          </div>
+
+          <!-- Linha 2: Modo de Reprodução (Autoplay) -->
+          <div class="bg-slate-900/60 p-2.5 rounded-lg border border-slate-800 space-y-2">
+            <div>
+              <label class="block text-[10px] font-bold text-slate-300 mb-1 flex items-center gap-1">
+                <span>⚡</span> Modo de Reprodução (Autoplay)
+              </label>
+              <select onchange="App.updateBlockProp(${stepIdx}, ${bIdx}, 'autoplayMode', this.value); const b = document.getElementById('unmute-box-${stepIdx}-${bIdx}'); if(b) b.style.display = this.value === 'muted_button' ? 'block' : 'none';" class="w-full bg-slate-900 border border-slate-700 px-2.5 py-1.5 rounded-lg text-xs text-white">
+                <option value="none" ${autoplayMode === 'none' ? 'selected' : ''}>🛑 Desativado (Aguardar clique do usuário)</option>
+                <option value="muted_button" ${autoplayMode === 'muted_button' ? 'selected' : ''}>🔊 Autoplay Mudo + Botão Flutuante de Ativar Som (Recomendado - Alta Conversão)</option>
+                <option value="direct" ${autoplayMode === 'direct' ? 'selected' : ''}>⚡ Autoplay Direto com Som (Inicia após clique no quiz)</option>
+              </select>
+            </div>
+
+            <!-- Campo de Texto do Botão de Desmutar -->
+            <div id="unmute-box-${stepIdx}-${bIdx}" style="display: ${autoplayMode === 'muted_button' ? 'block' : 'none'};">
+              <label class="block text-[10px] font-bold text-slate-400 mb-1">Texto do Botão Flutuante de Áudio</label>
+              <input type="text" value="${this.escape(unmuteText)}" oninput="App.updateBlockProp(${stepIdx}, ${bIdx}, 'unmuteButtonText', this.value)" placeholder="🔊 Toque para Ativar o Áudio" class="w-full bg-slate-900 border border-slate-700 px-2.5 py-1.5 rounded-lg text-xs text-white">
+            </div>
+          </div>
+
+          <!-- Linha 3: Otimizações de Player Limpo e Pré-carregamento -->
+          <div class="grid grid-cols-2 gap-2 text-xs">
+            <label class="flex items-center gap-2 p-2 rounded bg-slate-900/40 border border-slate-800 cursor-pointer hover:bg-slate-800/40 transition">
+              <input type="checkbox" ${hideControls ? 'checked' : ''} onchange="App.updateBlockProp(${stepIdx}, ${bIdx}, 'hideControls', this.checked)" class="rounded text-indigo-600 focus:ring-0">
+              <span class="text-[11px] text-slate-300">Ocultar Controles Inferiores</span>
+            </label>
+
+            <label class="flex items-center gap-2 p-2 rounded bg-slate-900/40 border border-slate-800 cursor-pointer hover:bg-slate-800/40 transition">
+              <input type="checkbox" ${hideRecommendations ? 'checked' : ''} onchange="App.updateBlockProp(${stepIdx}, ${bIdx}, 'hideRecommendations', this.checked)" class="rounded text-indigo-600 focus:ring-0">
+              <span class="text-[11px] text-slate-300">Sem Vídeos Recomendados</span>
+            </label>
+
+            <label class="flex items-center gap-2 p-2 rounded bg-slate-900/40 border border-slate-800 cursor-pointer hover:bg-slate-800/40 transition" title="Corta a barra superior com título do vídeo e canal para visual limpo de player proprietário">
+              <input type="checkbox" ${cleanTopMask ? 'checked' : ''} onchange="App.updateBlockProp(${stepIdx}, ${bIdx}, 'cleanTopMask', this.checked)" class="rounded text-indigo-600 focus:ring-0">
+              <span class="text-[11px] text-slate-300">Máscara Anti-Distração (Sem Título)</span>
+            </label>
+
+            <label class="flex items-center gap-2 p-2 rounded bg-slate-900/40 border border-slate-800 cursor-pointer hover:bg-slate-800/40 transition" title="Baixa o vídeo em segundo plano para abrir instantaneamente quando o usuário chegar nesta etapa">
+              <input type="checkbox" ${preload ? 'checked' : ''} onchange="App.updateBlockProp(${stepIdx}, ${bIdx}, 'preload', this.checked)" class="rounded text-indigo-600 focus:ring-0">
+              <span class="text-[11px] font-semibold text-emerald-400">⚡ Pré-carregar em 2º Plano</span>
+            </label>
           </div>
         </div>
       `;
@@ -1112,6 +1164,12 @@ const App = {
     } else if (blockType === 'video') {
       newBlock.youtubeUrl = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ';
       newBlock.orientation = 'horizontal';
+      newBlock.autoplayMode = 'muted_button';
+      newBlock.hideControls = true;
+      newBlock.hideRecommendations = true;
+      newBlock.cleanTopMask = true;
+      newBlock.unmuteButtonText = '🔊 Toque para Ativar o Áudio';
+      newBlock.preload = true;
     } else if (blockType === 'question') {
       newBlock.align = 'left';
       newBlock.options = [
@@ -1515,6 +1573,10 @@ const App = {
     this.preview.currentStepIndex = stepIndex;
     this.renderSteps(); // Atualiza destaque visual na lista de etapas
     this.refreshPreview(stepIndex);
+    const card = document.getElementById(`step-card-${stepIndex}`);
+    if (card) {
+      card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
   },
 
   clearPreviewTimers() {
@@ -1710,6 +1772,7 @@ const App = {
     const opt = qBlock.options[optIdx];
     this.preview.userAnswers[step.id] = optIdx;
     this.preview.hasAnswered = true; // Interação registrada: revela a barra de progresso
+    this.preloadVideos(steps); // Pré-carrega vídeos de etapas subsequentes em segundo plano
 
     // Se a opção permite digitação pelo lead, abre o campo de texto sem avançar de imediato
     if (opt.allowCustomText) {
@@ -1835,6 +1898,63 @@ const App = {
     this.preview.totalScore = 0;
     this.preview.leadData = {};
     this.refreshPreview(0);
+  },
+
+  unmuteVideo(frameId, overlayId) {
+    const frame = document.getElementById(frameId);
+    if (frame && frame.contentWindow) {
+      frame.contentWindow.postMessage(JSON.stringify({
+        event: 'command',
+        func: 'unMute',
+        args: ''
+      }), '*');
+      frame.contentWindow.postMessage(JSON.stringify({
+        event: 'command',
+        func: 'setVolume',
+        args: [100]
+      }), '*');
+      frame.contentWindow.postMessage(JSON.stringify({
+        event: 'command',
+        func: 'playVideo',
+        args: ''
+      }), '*');
+    }
+    const overlay = document.getElementById(overlayId);
+    if (overlay) {
+      overlay.style.opacity = '0';
+      overlay.style.pointerEvents = 'none';
+      setTimeout(() => { overlay.style.display = 'none'; }, 300);
+    }
+  },
+
+  preloadVideos(steps) {
+    if (!steps || !Array.isArray(steps)) return;
+    let cacheContainer = document.getElementById('qf-editor-preload-cache');
+    if (!cacheContainer) {
+      cacheContainer = document.createElement('div');
+      cacheContainer.id = 'qf-editor-preload-cache';
+      cacheContainer.style.cssText = 'position:absolute;width:1px;height:1px;overflow:hidden;opacity:0.01;pointer-events:none;left:-9999px;top:-9999px;';
+      document.body.appendChild(cacheContainer);
+    }
+    const preloaded = new Set();
+    steps.forEach(step => {
+      (step.blocks || []).forEach(b => {
+        if (b.type === 'video' && b.youtubeUrl && b.preload !== false) {
+          const vid = (typeof QuizTemplateEngine !== 'undefined') ? QuizTemplateEngine.extractYouTubeId(b.youtubeUrl) : null;
+          if (vid && !preloaded.has(vid)) {
+            preloaded.add(vid);
+            const img = new Image();
+            img.src = 'https://img.youtube.com/vi/' + vid + '/hqdefault.jpg';
+            const frame = document.createElement('iframe');
+            frame.src = 'https://www.youtube-nocookie.com/embed/' + vid + '?preload=auto&controls=0&mute=1';
+            frame.setAttribute('loading', 'eager');
+            frame.setAttribute('tabindex', '-1');
+            frame.setAttribute('aria-hidden', 'true');
+            cacheContainer.appendChild(frame);
+          }
+        }
+      });
+    });
   },
 
   setPreviewDevice(device) {
@@ -2748,6 +2868,12 @@ const App = {
               type: 'video',
               youtubeUrl: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
               orientation: 'horizontal',
+              autoplayMode: 'muted_button',
+              hideControls: true,
+              hideRecommendations: true,
+              cleanTopMask: true,
+              unmuteButtonText: '🔊 Toque para Ativar o Áudio',
+              preload: true,
               delaySeconds: 0
             },
             {

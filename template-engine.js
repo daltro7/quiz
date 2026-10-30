@@ -360,6 +360,7 @@ const QuizTemplateEngine = {
 
     /* Vídeos Responsivos */
     ${scope} .video-wrapper {
+      position: relative;
       width: 100%;
       margin: 16px 0;
       border-radius: calc(var(--radius) - 4px);
@@ -383,17 +384,81 @@ const QuizTemplateEngine = {
       border: 0;
     }
 
+    /* Máscara Superior Anti-Distração: esconde cabeçalho de título e canal do YouTube */
+    ${scope} .video-wrapper.clean-mask.horizontal iframe {
+      top: -48px;
+      height: calc(100% + 48px);
+    }
+
     ${scope} .video-wrapper.vertical {
+      position: relative;
       max-width: 280px;
       margin: 16px auto;
       aspect-ratio: 9 / 16;
       height: 480px;
+      overflow: hidden;
     }
 
     ${scope} .video-wrapper.vertical iframe {
       width: 100%;
       height: 100%;
       border: 0;
+    }
+
+    ${scope} .video-wrapper.clean-mask.vertical iframe {
+      margin-top: -46px;
+      height: calc(100% + 46px);
+    }
+
+    /* Botão Flutuante de Ativar Som (Estilo VSL / TikTok) */
+    ${scope} .video-unmute-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 20;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(0, 0, 0, 0.28);
+      backdrop-filter: blur(1.5px);
+      cursor: pointer;
+      transition: opacity 0.3s ease, visibility 0.3s ease;
+      padding: 16px;
+      box-sizing: border-box;
+    }
+
+    ${scope} .video-unmute-btn {
+      background: linear-gradient(135deg, #ef4444, #dc2626);
+      color: #ffffff;
+      border: 2px solid rgba(255, 255, 255, 0.4);
+      box-shadow: 0 10px 25px rgba(220, 38, 38, 0.65);
+      border-radius: 9999px;
+      padding: 12px 20px;
+      font-size: 13px;
+      font-weight: 700;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      cursor: pointer;
+      animation: qfPulseUnmute 1.8s infinite;
+      text-align: center;
+      max-width: 92%;
+      pointer-events: auto;
+      transition: transform 0.2s ease, background 0.2s ease;
+    }
+
+    ${scope} .video-unmute-btn:hover {
+      transform: scale(1.05);
+      background: linear-gradient(135deg, #f87171, #ef4444);
+    }
+
+    @keyframes qfPulseUnmute {
+      0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
+      70% { transform: scale(1.04); box-shadow: 0 0 0 14px rgba(239, 68, 68, 0); }
+      100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
     }
 
     /* Bloco HTML Customizado / Full Mobile Width */
@@ -1059,14 +1124,36 @@ const QuizTemplateEngine = {
         blockHtml += '</div>';
       }
 
-      // 2. Bloco de Vídeo do YouTube
+      // 2. Bloco de Vídeo do YouTube (Autoplay, Máscara e Botão Flutuante)
       else if (block.type === 'video') {
         if (block.youtubeUrl) {
           const videoId = this.extractYouTubeId(block.youtubeUrl);
           const isVertical = block.orientation === 'vertical' || block.videoOrientation === 'vertical';
+          const cleanMask = block.cleanTopMask !== false;
+          const autoplayMode = block.autoplayMode || 'none';
+          const embedUrl = this.buildYouTubeEmbedUrl(block);
+
           if (videoId) {
-            blockHtml += '<div class="video-wrapper ' + (isVertical ? 'vertical' : 'horizontal') + '">';
-            blockHtml += '<iframe src="https://www.youtube-nocookie.com/embed/' + videoId + '?rel=0&modestbranding=1" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>';
+            const frameId = (isPreview ? 'preview-video-frame-' : 'quiz-video-frame-') + bIdx;
+            const overlayId = (isPreview ? 'preview-unmute-overlay-' : 'quiz-unmute-overlay-') + bIdx;
+            const unmuteCall = isPreview
+              ? `App.unmuteVideo('${frameId}', '${overlayId}')`
+              : `QuizApp.unmuteVideo('${frameId}', '${overlayId}')`;
+
+            blockHtml += `<div class="video-wrapper ${isVertical ? 'vertical' : 'horizontal'} ${cleanMask ? 'clean-mask' : ''}">`;
+            blockHtml += `<iframe id="${frameId}" src="${embedUrl}" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>`;
+
+            if (autoplayMode === 'muted_button') {
+              const buttonText = block.unmuteButtonText || '🔊 Toque para Ativar o Áudio';
+              blockHtml += `
+                <div class="video-unmute-overlay" id="${overlayId}" onclick="${unmuteCall}">
+                  <button type="button" class="video-unmute-btn">
+                    <span>${this.escapeHtml(buttonText)}</span>
+                  </button>
+                </div>
+              `;
+            }
+
             blockHtml += '</div>';
           }
         }
@@ -1332,6 +1419,13 @@ const QuizTemplateEngine = {
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
+  <!-- Otimização de Performance e Pré-carregamento do YouTube -->
+  <link rel="preconnect" href="https://www.youtube-nocookie.com">
+  <link rel="preconnect" href="https://www.youtube.com">
+  <link rel="preconnect" href="https://googlevideo.com">
+  <link rel="dns-prefetch" href="https://googlevideo.com">
+  <link rel="dns-prefetch" href="https://www.youtube-nocookie.com">
+
   ${this.generateTrackingHead(tracking)}
   ${tracking.customHeadScripts || ''}
 
@@ -1387,6 +1481,7 @@ const QuizTemplateEngine = {
       init() {
         this.sessionId = this.getOrCreateSessionId();
         this.utmParams = this.captureUtms();
+        this.preloadVideos(this.config.steps);
         const startStep = (typeof window.QUIZ_INITIAL_STEP === 'number' && window.QUIZ_INITIAL_STEP < this.config.steps.length) ? window.QUIZ_INITIAL_STEP : 0;
         this.renderStep(startStep);
       },
@@ -1689,9 +1784,24 @@ const QuizTemplateEngine = {
             if (block.youtubeUrl) {
               const videoId = this.extractYouTubeId(block.youtubeUrl);
               const isVertical = block.orientation === 'vertical' || block.videoOrientation === 'vertical';
+              const cleanMask = block.cleanTopMask !== false;
+              const autoplayMode = block.autoplayMode || 'none';
+              const embedUrl = this.buildYouTubeEmbedUrl(block);
+
               if (videoId) {
-                bHtml += '<div class=\"video-wrapper ' + (isVertical ? 'vertical' : 'horizontal') + '\">';
-                bHtml += '<iframe src=\"https://www.youtube-nocookie.com/embed/' + videoId + '?rel=0&modestbranding=1\" allow=\"accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture\" allowfullscreen></iframe>';
+                const frameId = 'quiz-video-frame-' + bIdx;
+                const overlayId = 'quiz-unmute-overlay-' + bIdx;
+
+                bHtml += '<div class=\"video-wrapper ' + (isVertical ? 'vertical' : 'horizontal') + ' ' + (cleanMask ? 'clean-mask' : '') + '\">';
+                bHtml += '<iframe id=\"' + frameId + '\" src=\"' + embedUrl + '\" allow=\"accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture\" allowfullscreen></iframe>';
+
+                if (autoplayMode === 'muted_button') {
+                  const buttonText = block.unmuteButtonText || '🔊 Toque para Ativar o Áudio';
+                  bHtml += '<div class=\"video-unmute-overlay\" id=\"' + overlayId + '\" onclick=\"QuizApp.unmuteVideo(\\\'' + frameId + '\\\', \\\'' + overlayId + '\\\')\">';
+                  bHtml += '<button type=\"button\" class=\"video-unmute-btn\"><span>' + this.escapeHtml(buttonText) + '</span></button>';
+                  bHtml += '</div>';
+                }
+
                 bHtml += '</div>';
               }
             }
@@ -1894,6 +2004,99 @@ const QuizTemplateEngine = {
         return (match && match[2].length === 11) ? match[2] : null;
       },
 
+      buildYouTubeEmbedUrl(block) {
+        if (!block || !block.youtubeUrl) return '';
+        const videoId = this.extractYouTubeId(block.youtubeUrl);
+        if (!videoId) return '';
+
+        const autoplayMode = block.autoplayMode || 'none';
+        const hideControls = block.hideControls !== false;
+        const hideRecs = block.hideRecommendations !== false;
+
+        const params = new URLSearchParams();
+        params.set('rel', hideRecs ? '0' : '1');
+        params.set('modestbranding', '1');
+        params.set('playsinline', '1');
+        params.set('iv_load_policy', '3');
+        params.set('enablejsapi', '1');
+
+        if (hideControls) {
+          params.set('controls', '0');
+          params.set('disablekb', '1');
+        } else {
+          params.set('controls', '1');
+        }
+
+        if (autoplayMode === 'direct') {
+          params.set('autoplay', '1');
+          params.set('mute', '0');
+        } else if (autoplayMode === 'muted_button') {
+          params.set('autoplay', '1');
+          params.set('mute', '1');
+        } else {
+          params.set('autoplay', '0');
+        }
+
+        return 'https://www.youtube-nocookie.com/embed/' + videoId + '?' + params.toString();
+      },
+
+      unmuteVideo(frameId, overlayId) {
+        const frame = document.getElementById(frameId);
+        if (frame && frame.contentWindow) {
+          frame.contentWindow.postMessage(JSON.stringify({
+            event: 'command',
+            func: 'unMute',
+            args: ''
+          }), '*');
+          frame.contentWindow.postMessage(JSON.stringify({
+            event: 'command',
+            func: 'setVolume',
+            args: [100]
+          }), '*');
+          frame.contentWindow.postMessage(JSON.stringify({
+            event: 'command',
+            func: 'playVideo',
+            args: ''
+          }), '*');
+        }
+        const overlay = document.getElementById(overlayId);
+        if (overlay) {
+          overlay.style.opacity = '0';
+          overlay.style.pointerEvents = 'none';
+          setTimeout(() => { overlay.style.display = 'none'; }, 300);
+        }
+      },
+
+      preloadVideos(steps) {
+        if (!steps || !Array.isArray(steps)) return;
+        let cacheContainer = document.getElementById('qf-video-preload-cache');
+        if (!cacheContainer) {
+          cacheContainer = document.createElement('div');
+          cacheContainer.id = 'qf-video-preload-cache';
+          cacheContainer.style.cssText = 'position:absolute;width:1px;height:1px;overflow:hidden;opacity:0.01;pointer-events:none;left:-9999px;top:-9999px;';
+          document.body.appendChild(cacheContainer);
+        }
+        const preloaded = new Set();
+        steps.forEach(step => {
+          (step.blocks || []).forEach(b => {
+            if (b.type === 'video' && b.youtubeUrl && b.preload !== false) {
+              const vid = this.extractYouTubeId(b.youtubeUrl);
+              if (vid && !preloaded.has(vid)) {
+                preloaded.add(vid);
+                const img = new Image();
+                img.src = 'https://img.youtube.com/vi/' + vid + '/hqdefault.jpg';
+                const frame = document.createElement('iframe');
+                frame.src = 'https://www.youtube-nocookie.com/embed/' + vid + '?preload=auto&controls=0&mute=1';
+                frame.setAttribute('loading', 'eager');
+                frame.setAttribute('tabindex', '-1');
+                frame.setAttribute('aria-hidden', 'true');
+                cacheContainer.appendChild(frame);
+              }
+            }
+          });
+        });
+      },
+
       escapeHtml(str) {
         if (!str) return '';
         return String(str)
@@ -1912,6 +2115,7 @@ const QuizTemplateEngine = {
         const selectedOpt = qBlock.options[optIdx];
         this.userAnswers[step.id] = optIdx;
         this.hasAnswered = true;
+        this.preloadVideos(this.config.steps);
 
         const progressSec = document.getElementById('progress-section');
         if (progressSec && this.config.theme && this.config.theme.showProgressBar !== false) {
@@ -2119,6 +2323,42 @@ const QuizTemplateEngine = {
     const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|shorts\/)([^#&?]*).*/;
     const match = url.match(regExp);
     return (match && match[2].length === 11) ? match[2] : null;
+  },
+
+  buildYouTubeEmbedUrl(block) {
+    if (!block || !block.youtubeUrl) return '';
+    const videoId = this.extractYouTubeId(block.youtubeUrl);
+    if (!videoId) return '';
+
+    const autoplayMode = block.autoplayMode || 'none';
+    const hideControls = block.hideControls !== false;
+    const hideRecs = block.hideRecommendations !== false;
+
+    const params = new URLSearchParams();
+    params.set('rel', hideRecs ? '0' : '1');
+    params.set('modestbranding', '1');
+    params.set('playsinline', '1');
+    params.set('iv_load_policy', '3');
+    params.set('enablejsapi', '1');
+
+    if (hideControls) {
+      params.set('controls', '0');
+      params.set('disablekb', '1');
+    } else {
+      params.set('controls', '1');
+    }
+
+    if (autoplayMode === 'direct') {
+      params.set('autoplay', '1');
+      params.set('mute', '0');
+    } else if (autoplayMode === 'muted_button') {
+      params.set('autoplay', '1');
+      params.set('mute', '1');
+    } else {
+      params.set('autoplay', '0');
+    }
+
+    return 'https://www.youtube-nocookie.com/embed/' + videoId + '?' + params.toString();
   },
 
   generateTrackingHead(tracking) {
