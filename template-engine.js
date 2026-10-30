@@ -110,13 +110,27 @@ const QuizTemplateEngine = {
   // Cálculo psicológico de progresso da barra
   calculateProgressPercent(stepIndex, totalSteps, theme = {}) {
     if (totalSteps <= 0) return 0;
-    const startPercent = Math.max(0, Math.min(95, parseInt(theme.startPercent, 10) || 0));
+    const rawStart = theme.startPercent !== undefined ? theme.startPercent : 60;
+    const startPercent = Math.max(0, Math.min(95, parseInt(rawStart, 10) || 0));
     if (startPercent <= 0) {
       return Math.min(100, Math.round(((stepIndex + 1) / totalSteps) * 100));
     }
-    // Aceleração psicológica: começa em startPercent na primeira pergunta e vai até 100%
-    const progressFactor = totalSteps > 1 ? (stepIndex / (totalSteps - 1)) : 1;
-    const pct = Math.round(startPercent + ((100 - startPercent) * progressFactor));
+    // Se a barra de progresso fica oculta até o primeiro clique (hideUntilFirstClick !== false):
+    // Na 1ª etapa após o primeiro clique (stepIndex 1), a barra surge exatamente no startPercent (ex: 60%).
+    // Se a barra for exibida desde o início (hideUntilFirstClick === false), começa no startPercent na etapa 0.
+    const hideUntilClick = theme.hideUntilFirstClick !== false;
+    const firstVisibleStep = hideUntilClick ? 1 : 0;
+
+    if (totalSteps <= 1 || stepIndex >= totalSteps - 1) return 100;
+    if (stepIndex <= firstVisibleStep) {
+      return startPercent;
+    }
+
+    const remainingSteps = (totalSteps - 1) - firstVisibleStep;
+    if (remainingSteps <= 0) return 100;
+
+    const factor = (stepIndex - firstVisibleStep) / remainingSteps;
+    const pct = Math.round(startPercent + ((100 - startPercent) * factor));
     return Math.min(100, Math.max(startPercent, pct));
   },
 
@@ -499,6 +513,56 @@ const QuizTemplateEngine = {
       height: 6px;
       background: #fff;
       border-radius: 50%;
+    }
+
+    ${scope} .option-item-wrap {
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+    }
+
+    ${scope} .custom-answer-box {
+      margin-top: 8px;
+      display: flex;
+      gap: 8px;
+      width: 100%;
+    }
+
+    ${scope} .custom-answer-input {
+      flex: 1;
+      min-width: 0;
+      padding: 12px 14px;
+      border-radius: calc(var(--radius) - 4px);
+      border: 1.5px solid var(--primary);
+      background: var(--bg);
+      color: var(--text);
+      font-size: 13px;
+      outline: none;
+      font-family: inherit;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+    ${scope} .custom-answer-input:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.25);
+    }
+
+    ${scope} .custom-answer-submit-btn {
+      padding: 0 16px;
+      border-radius: calc(var(--radius) - 4px);
+      background: var(--primary);
+      color: #fff;
+      font-size: 13px;
+      font-weight: 700;
+      border: none;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: opacity 0.2s, transform 0.1s;
+    }
+
+    ${scope} .custom-answer-submit-btn:hover {
+      opacity: 0.92;
+      transform: translateY(-1px);
     }
 
     /* Botão CTA com Delay / Botão Principal */
@@ -1024,13 +1088,35 @@ const QuizTemplateEngine = {
           blockHtml += `<div class="options-grid text-${align}">`;
           block.options.forEach((opt, optIdx) => {
             const isSelected = state.userAnswers && state.userAnswers[step.id] === optIdx;
+            const isCustom = !!opt.allowCustomText;
+            const customVal = (state.customAnswers && state.customAnswers[step.id]) || '';
+            const inputId = isPreview ? `preview-custom-answer-${optIdx}` : `custom-answer-input-${optIdx}`;
+            const submitCall = isPreview ? `App.previewSubmitCustomOption(${optIdx})` : `QuizApp.submitCustomOption(${optIdx})`;
+
+            blockHtml += '<div class="option-item-wrap">';
             blockHtml += '<button type="button" class="option-btn ' + (isSelected ? 'selected' : '') + '" onclick="' + clickPrefix + '(' + optIdx + ')">';
             if (opt.icon) {
               blockHtml += '<span class="option-icon">' + opt.icon + '</span>';
             }
             blockHtml += '<span style="flex:1; text-align: ' + align + ';">' + this.escapeHtml(opt.text || '') + '</span>';
-            blockHtml += '<span class="option-indicator"></span>';
+            if (isCustom) {
+              blockHtml += '<span class="option-indicator" style="display:flex;align-items:center;justify-content:center;font-size:11px;" title="Permite digitar">✏️</span>';
+            } else {
+              blockHtml += '<span class="option-indicator"></span>';
+            }
             blockHtml += '</button>';
+
+            if (isCustom && isSelected) {
+              blockHtml += `
+                <div class="custom-answer-box animate-appear">
+                  <input type="text" id="${inputId}" class="custom-answer-input" placeholder="${this.escapeHtml(opt.customPlaceholder || 'Digite sua resposta aqui...')}" value="${this.escapeHtml(customVal)}" onkeydown="if(event.key==='Enter'){event.preventDefault(); ${submitCall};}">
+                  <button type="button" onclick="${submitCall}" class="custom-answer-submit-btn">
+                    Continuar →
+                  </button>
+                </div>
+              `;
+            }
+            blockHtml += '</div>';
           });
           blockHtml += '</div>';
         }
@@ -1257,7 +1343,7 @@ const QuizTemplateEngine = {
   ${tracking.customBodyTopScripts || ''}
 
   <div class="quiz-container">
-    <div id="progress-section" style="${theme.showProgressBar === false ? 'display: none;' : ''}">
+    <div id="progress-section" style="${(theme.showProgressBar === false || (theme.hideUntilFirstClick !== false && (!initialStep || initialStep === 0))) ? 'display: none;' : ''}">
       <div class="progress-text">
         <span id="step-indicator"></span>
         <span id="progress-percent">0%</span>
@@ -1290,6 +1376,8 @@ const QuizTemplateEngine = {
       config: QUIZ_CONFIG,
       currentStepIndex: 0,
       userAnswers: {},
+      customAnswers: {},
+      hasAnswered: false,
       totalScore: 0,
       leadData: {},
       stepTimers: [],
@@ -1361,11 +1449,23 @@ const QuizTemplateEngine = {
       calculateProgress(index, totalSteps) {
         if (totalSteps <= 0) return 0;
         const theme = this.config.theme || {};
-        const startPercent = Math.max(0, Math.min(95, parseInt(theme.startPercent, 10) || 0));
+        const rawStart = theme.startPercent !== undefined ? theme.startPercent : 60;
+        const startPercent = Math.max(0, Math.min(95, parseInt(rawStart, 10) || 0));
         if (startPercent <= 0) {
           return Math.min(100, Math.round(((index + 1) / totalSteps) * 100));
         }
-        const factor = totalSteps > 1 ? (index / (totalSteps - 1)) : 1;
+        const hideUntilClick = theme.hideUntilFirstClick !== false;
+        const firstVisibleStep = hideUntilClick ? 1 : 0;
+
+        if (totalSteps <= 1 || index >= totalSteps - 1) return 100;
+        if (index <= firstVisibleStep) {
+          return startPercent;
+        }
+
+        const remainingSteps = (totalSteps - 1) - firstVisibleStep;
+        if (remainingSteps <= 0) return 100;
+
+        const factor = (index - firstVisibleStep) / remainingSteps;
         const pct = Math.round(startPercent + ((100 - startPercent) * factor));
         return Math.min(100, Math.max(startPercent, pct));
       },
@@ -1397,10 +1497,36 @@ const QuizTemplateEngine = {
         const progressBar = document.getElementById('progress-bar');
         const progressPercent = document.getElementById('progress-percent');
         const stepIndicator = document.getElementById('step-indicator');
+        const progressSection = document.getElementById('progress-section');
+
+        const theme = this.config.theme || {};
+        const showProgress = (theme.showProgressBar !== false);
+        const hideUntilClick = (theme.hideUntilFirstClick !== false);
+        const hasInteracted = this.hasAnswered || (index > 0) || (Object.keys(this.userAnswers || {}).length > 0);
+
+        if (progressSection) {
+          progressSection.style.display = (showProgress && (!hideUntilClick || hasInteracted)) ? 'block' : 'none';
+        }
+
+        const format = theme.progressTextFormat || 'full';
+        const progressTextWrapper = progressSection ? progressSection.querySelector('.progress-text') : null;
+        if (progressTextWrapper) {
+          progressTextWrapper.style.display = format === 'none' ? 'none' : 'flex';
+        }
 
         if (progressBar) progressBar.style.width = percent + '%';
-        if (progressPercent) progressPercent.innerText = percent + '%';
-        if (stepIndicator) stepIndicator.innerText = this.getProgressText(index, totalSteps, percent);
+        if (progressPercent) {
+          if (format === 'none' || format === 'simple') {
+            progressPercent.style.display = 'none';
+          } else {
+            progressPercent.style.display = 'inline';
+            progressPercent.innerText = percent + '%';
+          }
+        }
+        if (stepIndicator) {
+          stepIndicator.innerText = this.getProgressText(index, totalSteps, percent);
+          stepIndicator.style.display = (format === 'none' || format === 'percent_only') ? 'none' : 'inline';
+        }
 
         // Botão voltar visível se não for o primeiro
         const backBtn = document.getElementById('btn-back');
@@ -1583,11 +1709,27 @@ const QuizTemplateEngine = {
               bHtml += '<div class=\"options-grid text-' + align + '\">';
               block.options.forEach((opt, optIdx) => {
                 const isSelected = this.userAnswers && this.userAnswers[step.id] === optIdx;
+                const isCustom = !!opt.allowCustomText;
+                const customVal = (this.customAnswers && this.customAnswers[step.id]) || '';
+
+                bHtml += '<div class=\"option-item-wrap\">';
                 bHtml += '<button type=\"button\" class=\"option-btn ' + (isSelected ? 'selected' : '') + '\" onclick=\"QuizApp.handleOptionSelect(' + optIdx + ')\">';
                 if (opt.icon) bHtml += '<span class=\"option-icon\">' + opt.icon + '</span>';
                 bHtml += '<span style=\"flex:1; text-align: ' + align + ';\">' + this.escapeHtml(opt.text || '') + '</span>';
-                bHtml += '<span class=\"option-indicator\"></span>';
+                if (isCustom) {
+                  bHtml += '<span class=\"option-indicator\" style=\"display:flex;align-items:center;justify-content:center;font-size:11px;\" title=\"Permite digitar\">✏️</span>';
+                } else {
+                  bHtml += '<span class=\"option-indicator\"></span>';
+                }
                 bHtml += '</button>';
+
+                if (isCustom && isSelected) {
+                  bHtml += '<div class=\"custom-answer-box animate-appear\">';
+                  bHtml += '<input type=\"text\" id=\"custom-answer-input-' + optIdx + '\" class=\"custom-answer-input\" placeholder=\"' + this.escapeHtml(opt.customPlaceholder || 'Digite sua resposta aqui...') + '\" value=\"' + this.escapeHtml(customVal) + '\" onkeydown=\"if(event.key===\\\'Enter\\\'){event.preventDefault(); QuizApp.submitCustomOption(' + optIdx + ');}\">';
+                  bHtml += '<button type=\"button\" onclick=\"QuizApp.submitCustomOption(' + optIdx + ')\" class=\"custom-answer-submit-btn\">Continuar →</button>';
+                  bHtml += '</div>';
+                }
+                bHtml += '</div>';
               });
               bHtml += '</div>';
             }
@@ -1769,6 +1911,27 @@ const QuizTemplateEngine = {
 
         const selectedOpt = qBlock.options[optIdx];
         this.userAnswers[step.id] = optIdx;
+        this.hasAnswered = true;
+
+        const progressSec = document.getElementById('progress-section');
+        if (progressSec && this.config.theme && this.config.theme.showProgressBar !== false) {
+          progressSec.style.display = 'block';
+        }
+
+        // Se a opção permite digitação pelo lead, abre o campo de resposta sem avançar de imediato
+        if (selectedOpt.allowCustomText) {
+          const container = document.getElementById('step-content');
+          if (container) container.innerHTML = this.renderStepHtml(step);
+          this.applyUtmsToLinks();
+          setTimeout(() => {
+            const input = document.getElementById('custom-answer-input-' + optIdx);
+            if (input) {
+              input.focus();
+              input.select();
+            }
+          }, 50);
+          return;
+        }
 
         const useScoring = qBlock.useScoring === true && selectedOpt.points !== undefined && selectedOpt.points !== null && selectedOpt.points !== '' && parseInt(selectedOpt.points, 10) > 0;
 
@@ -1783,6 +1946,53 @@ const QuizTemplateEngine = {
           stepIndex: this.currentStepIndex + 1,
           question: questionTitle,
           answer: selectedOpt.text || '',
+          points: useScoring ? (parseInt(selectedOpt.points, 10) || 0) : ''
+        });
+
+        const container = document.getElementById('step-content');
+        if (container) container.innerHTML = this.renderStepHtml(step);
+        this.applyUtmsToLinks();
+
+        if (selectedOpt.targetStepIndex !== undefined && selectedOpt.targetStepIndex !== '') {
+          const targetIndex = parseInt(selectedOpt.targetStepIndex, 10);
+          setTimeout(() => this.renderStep(targetIndex), 250);
+          return;
+        }
+
+        const hasDelay = (step.blocks || []).some(b => (parseInt(b.delaySeconds, 10) || 0) > 0);
+        if (!hasDelay) {
+          setTimeout(() => this.nextStep(), 250);
+        }
+      },
+
+      submitCustomOption(optIdx) {
+        const step = this.config.steps[this.currentStepIndex];
+        const qBlock = (step.blocks || []).find(b => b.type === 'question');
+        if (!qBlock || !qBlock.options || !qBlock.options[optIdx]) return;
+
+        const selectedOpt = qBlock.options[optIdx];
+        const input = document.getElementById('custom-answer-input-' + optIdx);
+        const typedText = input ? input.value.trim() : '';
+
+        if (!this.customAnswers) this.customAnswers = {};
+        this.customAnswers[step.id] = typedText;
+        this.hasAnswered = true;
+
+        const useScoring = qBlock.useScoring === true && selectedOpt.points !== undefined && selectedOpt.points !== null && selectedOpt.points !== '' && parseInt(selectedOpt.points, 10) > 0;
+
+        if (useScoring) {
+          this.totalScore += parseInt(selectedOpt.points, 10) || 0;
+        }
+
+        const headingBlock = (step.blocks || []).find(b => b.type === 'heading');
+        const questionTitle = (headingBlock && (headingBlock.title || headingBlock.tag)) || step.title || ('Etapa ' + (this.currentStepIndex + 1));
+        const finalAnswer = typedText ? (selectedOpt.text ? (selectedOpt.text + ': ' + typedText) : typedText) : (selectedOpt.text || '');
+
+        this.trackFunnelEvent('Quiz_Resposta', {
+          stepIndex: this.currentStepIndex + 1,
+          question: questionTitle,
+          answer: finalAnswer,
+          customText: typedText,
           points: useScoring ? (parseInt(selectedOpt.points, 10) || 0) : ''
         });
 

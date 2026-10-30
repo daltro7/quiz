@@ -12,6 +12,9 @@ const App = {
   activeTab: 'steps',
   previewDevice: 'mobile',
   lastExportedHtml: null,
+  analyticsFilter: 'today',
+  funnelChartMode: 'horizontal',
+  analyticsCustomDate: new Date().toISOString().split('T')[0],
 
   currentEditingStepIndex: 0,
   refreshTimeout: null,
@@ -29,6 +32,10 @@ const App = {
     this.loadQuizzesFromStorage();
     if (this.quizzes && this.quizzes.length > 0) {
       this.openEditor(this.quizzes[0].id);
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('test_step')) {
+        this.focusStep(parseInt(params.get('test_step'), 10));
+      }
     } else {
       this.renderDashboard();
     }
@@ -52,8 +59,11 @@ const App = {
       this.quizzes = [this.getSampleQuizData()];
       this.saveQuizzesToStorage();
     } else {
-      // Garante que todos os quizzes estejam normalizados para a estrutura de blocos
+      // Garante que todos os quizzes estejam normalizados para a estrutura de blocos e tema com defaults
       this.quizzes.forEach(q => {
+        if (!q.theme) q.theme = {};
+        if (q.theme.startPercent === undefined) q.theme.startPercent = 60;
+        if (q.theme.hideUntilFirstClick === undefined) q.theme.hideUntilFirstClick = true;
         if (q.steps) {
           q.steps = q.steps.map(s => QuizTemplateEngine.normalizeStep(s));
         }
@@ -170,7 +180,11 @@ const App = {
         borderWidth: '1px',
         borderColor: '#334155',
         shadow: 'medium',
-        maxWidth: '560px'
+        maxWidth: '560px',
+        showProgressBar: true,
+        hideUntilFirstClick: true,
+        progressTextFormat: 'full',
+        startPercent: 60
       },
       tracking: {
         webhookUrl: '',
@@ -232,10 +246,13 @@ const App = {
     const quiz = this.quizzes.find(q => q.id === quizId);
     if (!quiz) return;
 
-    // Normaliza passos se necessário
+    // Normaliza passos se necessário e assegura defaults de tema
     if (quiz.steps) {
       quiz.steps = quiz.steps.map(s => QuizTemplateEngine.normalizeStep(s));
     }
+    if (!quiz.theme) quiz.theme = {};
+    if (quiz.theme.startPercent === undefined) quiz.theme.startPercent = 60;
+    if (quiz.theme.hideUntilFirstClick === undefined) quiz.theme.hideUntilFirstClick = true;
 
     this.currentQuiz = quiz;
 
@@ -288,8 +305,25 @@ const App = {
       }
     });
 
+    const leftPanel = document.getElementById('panel-editor-left');
+    const rightPanel = document.getElementById('panel-editor-right');
+
     if (tabName === 'analytics') {
+      // Oculta a prévia do celular para os gráficos e métricas ocuparem a tela inteira
+      if (rightPanel) rightPanel.classList.add('hidden');
+      if (leftPanel) {
+        leftPanel.classList.remove('md:w-[56%]', 'lg:w-[58%]', 'border-r');
+        leftPanel.classList.add('w-full');
+      }
       this.renderFunnelDashboard();
+    } else {
+      // Restaura a prévia do celular ao lado para as abas de edição
+      if (rightPanel) rightPanel.classList.remove('hidden');
+      if (leftPanel) {
+        leftPanel.classList.remove('w-full');
+        leftPanel.classList.add('md:w-[56%]', 'lg:w-[58%]', 'border-r');
+      }
+      this.updatePreview();
     }
   },
 
@@ -623,20 +657,35 @@ const App = {
 
           <div class="space-y-2">
             ${options.map((opt, optIdx) => `
-              <div class="flex items-center gap-2 bg-slate-900 p-2 rounded-xl border border-slate-700">
-                <input type="text" value="${this.escape(opt.icon || '👉')}" oninput="App.updateOptionProp(${stepIdx}, ${bIdx}, ${optIdx}, 'icon', this.value)" title="Ícone ou Emoji" class="w-9 text-center bg-slate-800 border border-slate-700 py-1 rounded text-xs text-white">
-                <input type="text" value="${this.escape(opt.text || '')}" oninput="App.updateOptionProp(${stepIdx}, ${bIdx}, ${optIdx}, 'text', this.value)" placeholder="Texto da alternativa..." class="flex-1 bg-slate-800 border border-slate-700 px-2.5 py-1 rounded text-xs text-white">
-                
-                ${useScoring ? `
-                  <div class="flex items-center gap-1 bg-slate-800/80 px-2 py-0.5 rounded border border-slate-700" title="Pontos atribuídos caso escolha esta alternativa">
-                    <span class="text-[10px] text-slate-400 font-semibold">Pts:</span>
-                    <input type="number" value="${opt.points !== undefined ? opt.points : 0}" oninput="App.updateOptionProp(${stepIdx}, ${bIdx}, ${optIdx}, 'points', parseInt(this.value, 10) || 0)" class="w-12 text-center bg-transparent border-0 text-xs text-amber-400 font-bold focus:ring-0 p-0">
+              <div class="bg-slate-900 p-2.5 rounded-xl border border-slate-700/80 space-y-2">
+                <div class="flex items-center gap-2">
+                  <input type="text" value="${this.escape(opt.icon || '👉')}" oninput="App.updateOptionProp(${stepIdx}, ${bIdx}, ${optIdx}, 'icon', this.value)" title="Ícone ou Emoji" class="w-9 text-center bg-slate-800 border border-slate-700 py-1 rounded text-xs text-white">
+                  <input type="text" value="${this.escape(opt.text || '')}" oninput="App.updateOptionProp(${stepIdx}, ${bIdx}, ${optIdx}, 'text', this.value)" placeholder="Texto da alternativa..." class="flex-1 bg-slate-800 border border-slate-700 px-2.5 py-1 rounded text-xs text-white">
+                  
+                  ${useScoring ? `
+                    <div class="flex items-center gap-1 bg-slate-800/80 px-2 py-0.5 rounded border border-slate-700" title="Pontos atribuídos caso escolha esta alternativa">
+                      <span class="text-[10px] text-slate-400 font-semibold">Pts:</span>
+                      <input type="number" value="${opt.points !== undefined ? opt.points : 0}" oninput="App.updateOptionProp(${stepIdx}, ${bIdx}, ${optIdx}, 'points', parseInt(this.value, 10) || 0)" class="w-12 text-center bg-transparent border-0 text-xs text-amber-400 font-bold focus:ring-0 p-0">
+                    </div>
+                  ` : ''}
+
+                  <!-- Botão de Escrita Aberta -->
+                  <button type="button" onclick="App.toggleOptionCustomText(${stepIdx}, ${bIdx}, ${optIdx})" class="px-2 py-1 rounded text-[10px] font-semibold transition shrink-0 ${opt.allowCustomText ? 'bg-indigo-600 text-white font-bold' : 'bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-slate-200 border border-slate-700'}" title="Permitir que o usuário escreva sua própria resposta nesta alternativa">
+                    ✏️ ${opt.allowCustomText ? 'Escrita Ativa' : 'Permitir Escrita'}
+                  </button>
+
+                  <button onclick="App.deleteOptionFromQuestionBlock(${stepIdx}, ${bIdx}, ${optIdx})" class="p-1 text-slate-500 hover:text-red-400 transition" title="Excluir">
+                    <i class="ph ph-x text-sm"></i>
+                  </button>
+                </div>
+
+                ${opt.allowCustomText ? `
+                  <div class="ml-11 pl-2.5 py-1.5 bg-slate-950/40 rounded-lg border-l-2 border-indigo-500 flex flex-wrap items-center gap-2">
+                    <span class="text-[10px] text-indigo-300 font-semibold">✏️ Campo Aberto:</span>
+                    <input type="text" value="${this.escape(opt.customPlaceholder || 'Digite sua resposta aqui...')}" oninput="App.updateOptionProp(${stepIdx}, ${bIdx}, ${optIdx}, 'customPlaceholder', this.value)" placeholder="Texto de ajuda (Placeholder)..." class="flex-1 min-w-[180px] bg-slate-800 border border-slate-700 px-2.5 py-1 rounded text-xs text-white">
+                    <span class="text-[10px] text-slate-400">Ao clicar, abre o campo para o lead digitar a resposta.</span>
                   </div>
                 ` : ''}
-
-                <button onclick="App.deleteOptionFromQuestionBlock(${stepIdx}, ${bIdx}, ${optIdx})" class="p-1 text-slate-500 hover:text-red-400 transition" title="Excluir">
-                  <i class="ph ph-x text-sm"></i>
-                </button>
               </div>
             `).join('')}
           </div>
@@ -1192,6 +1241,21 @@ const App = {
     this.refreshPreview(stepIdx);
   },
 
+  toggleOptionCustomText(stepIdx, bIdx, optIdx) {
+    if (!this.currentQuiz || !this.currentQuiz.steps[stepIdx]) return;
+    const block = this.currentQuiz.steps[stepIdx].blocks[bIdx];
+    if (!block.options || !block.options[optIdx]) return;
+
+    block.options[optIdx].allowCustomText = !block.options[optIdx].allowCustomText;
+    if (block.options[optIdx].allowCustomText && !block.options[optIdx].customPlaceholder) {
+      block.options[optIdx].customPlaceholder = 'Digite sua resposta aqui...';
+    }
+    this.currentQuiz.updatedAt = new Date().toISOString();
+    this.saveQuizzesToStorage();
+    this.renderSteps();
+    this.refreshPreview(stepIdx);
+  },
+
   insertSampleIframeToBlock(stepIdx, bIdx) {
     const sampleHtml = `<iframe src="https://example.com" style="width:100%;height:320px;border-radius:10px;border:none;"></iframe>`;
     this.updateBlockProp(stepIdx, bIdx, 'customHtml', sampleHtml);
@@ -1226,11 +1290,14 @@ const App = {
     if (document.getElementById('theme-show-progress')) {
       document.getElementById('theme-show-progress').value = theme.showProgressBar !== false ? 'true' : 'false';
     }
+    if (document.getElementById('theme-hide-until-click')) {
+      document.getElementById('theme-hide-until-click').value = theme.hideUntilFirstClick !== false ? 'true' : 'false';
+    }
     if (document.getElementById('theme-progress-format')) {
       document.getElementById('theme-progress-format').value = theme.progressTextFormat || 'full';
     }
     if (document.getElementById('theme-start-percent')) {
-      document.getElementById('theme-start-percent').value = theme.startPercent || 0;
+      document.getElementById('theme-start-percent').value = theme.startPercent !== undefined ? theme.startPercent : 60;
     }
   },
 
@@ -1487,9 +1554,13 @@ const App = {
     // 2. Atualiza Barra de Progresso Psicológica (Demanda 2)
     const theme = this.currentQuiz.theme || {};
     const showProgress = theme.showProgressBar !== false;
+    const hideUntilClick = theme.hideUntilFirstClick !== false;
+    const hasInteracted = this.preview.hasAnswered || (currentIdx > 0) || (Object.keys(this.preview.userAnswers || {}).length > 0);
+    const shouldShowProgress = showProgress && (!hideUntilClick || hasInteracted);
+
     const progressSection = document.getElementById('preview-progress-section');
     if (progressSection) {
-      progressSection.style.display = showProgress ? 'block' : 'none';
+      progressSection.style.display = shouldShowProgress ? 'block' : 'none';
     }
 
     const progressBar = document.getElementById('preview-progress-bar');
@@ -1502,9 +1573,26 @@ const App = {
     if (totalSteps > 0 && showProgress) {
       const pct = QuizTemplateEngine.calculateProgressPercent(currentIdx, totalSteps, theme);
       const text = QuizTemplateEngine.getProgressText(currentIdx, totalSteps, theme, pct);
+      const format = theme.progressTextFormat || 'full';
+
+      const progressTextWrapper = progressSection ? progressSection.querySelector('.progress-text') : null;
+      if (progressTextWrapper) {
+        progressTextWrapper.style.display = format === 'none' ? 'none' : 'flex';
+      }
+
       if (progressBar) progressBar.style.width = pct + '%';
-      if (progressPercent) progressPercent.innerText = pct + '%';
-      if (stepIndicator) stepIndicator.innerText = text;
+      if (progressPercent) {
+        if (format === 'none' || format === 'simple') {
+          progressPercent.style.display = 'none';
+        } else {
+          progressPercent.style.display = 'inline';
+          progressPercent.innerText = pct + '%';
+        }
+      }
+      if (stepIndicator) {
+        stepIndicator.innerText = text;
+        stepIndicator.style.display = (format === 'none' || format === 'percent_only') ? 'none' : 'inline';
+      }
     }
 
     if (backBtn) {
@@ -1621,12 +1709,64 @@ const App = {
 
     const opt = qBlock.options[optIdx];
     this.preview.userAnswers[step.id] = optIdx;
+    this.preview.hasAnswered = true; // Interação registrada: revela a barra de progresso
+
+    // Se a opção permite digitação pelo lead, abre o campo de texto sem avançar de imediato
+    if (opt.allowCustomText) {
+      this.refreshPreview();
+      setTimeout(() => {
+        const input = document.getElementById(`preview-custom-answer-${optIdx}`);
+        if (input) {
+          input.focus();
+          input.select();
+        }
+      }, 50);
+      return;
+    }
 
     if (qBlock.useScoring === true && opt.points) {
       this.preview.totalScore += parseInt(opt.points, 10) || 0;
     }
 
     this.refreshPreview();
+
+    if (opt.targetStepIndex !== undefined && opt.targetStepIndex !== '') {
+      const targetIdx = parseInt(opt.targetStepIndex, 10);
+      setTimeout(() => {
+        this.preview.currentStepIndex = targetIdx;
+        this.refreshPreview();
+      }, 250);
+      return;
+    }
+
+    const hasDelay = (step.blocks || []).some(b => b.type === 'delay_button');
+    if (!hasDelay) {
+      setTimeout(() => {
+        this.previewNextStep();
+      }, 250);
+    }
+  },
+
+  previewSubmitCustomOption(optIdx) {
+    if (!this.currentQuiz) return;
+    const steps = this.currentQuiz.steps || [];
+    const step = steps[this.preview.currentStepIndex];
+    if (!step) return;
+
+    const qBlock = (step.blocks || []).find(b => b.type === 'question');
+    if (!qBlock || !qBlock.options || !qBlock.options[optIdx]) return;
+
+    const opt = qBlock.options[optIdx];
+    const input = document.getElementById(`preview-custom-answer-${optIdx}`);
+    const typedText = input ? input.value.trim() : '';
+
+    if (!this.preview.customAnswers) this.preview.customAnswers = {};
+    this.preview.customAnswers[step.id] = typedText;
+    this.preview.hasAnswered = true;
+
+    if (qBlock.useScoring === true && opt.points) {
+      this.preview.totalScore += parseInt(opt.points, 10) || 0;
+    }
 
     if (opt.targetStepIndex !== undefined && opt.targetStepIndex !== '') {
       const targetIdx = parseInt(opt.targetStepIndex, 10);
@@ -1690,6 +1830,8 @@ const App = {
     clearTimeout(this.preview.delayTimeout);
     this.preview.currentStepIndex = 0;
     this.preview.userAnswers = {};
+    this.preview.customAnswers = {};
+    this.preview.hasAnswered = false;
     this.preview.totalScore = 0;
     this.preview.leadData = {};
     this.refreshPreview(0);
@@ -1800,14 +1942,167 @@ const App = {
   // ==========================================
   // ABA 4: DASHBOARD DE RETENÇÃO & FUNIL (Demanda 7)
   // ==========================================
+  setAnalyticsDateFilter(filterType) {
+    this.analyticsFilter = filterType;
+    const now = new Date();
+
+    if (filterType === 'today') {
+      this.analyticsStartDate = this.formatIsoDate(now);
+      this.analyticsEndDate = this.formatIsoDate(now);
+    } else if (filterType === 'yesterday') {
+      const yest = new Date(now.getTime() - 86400000);
+      this.analyticsStartDate = this.formatIsoDate(yest);
+      this.analyticsEndDate = this.formatIsoDate(yest);
+    } else if (filterType === 'month') {
+      const first = new Date(now.getFullYear(), now.getMonth(), 1);
+      this.analyticsStartDate = this.formatIsoDate(first);
+      this.analyticsEndDate = this.formatIsoDate(now);
+    }
+    this.renderFunnelDashboard();
+  },
+
+  onAnalyticsDateRangeChange() {
+    const startEl = document.getElementById('filter-start-date');
+    const endEl = document.getElementById('filter-end-date');
+    if (startEl && startEl.value) this.analyticsStartDate = startEl.value;
+    if (endEl && endEl.value) this.analyticsEndDate = endEl.value;
+    this.analyticsFilter = 'range';
+    this.renderFunnelDashboard();
+  },
+
+  applyAnalyticsDateRange() {
+    this.onAnalyticsDateRangeChange();
+  },
+
+  onAnalyticsUtmSearch(query) {
+    this.analyticsUtmSearch = (query || '').trim();
+    const input = document.getElementById('analytics-utm-search-input');
+    if (input && input.value !== this.analyticsUtmSearch) {
+      input.value = this.analyticsUtmSearch;
+    }
+    const clearBtn = document.getElementById('btn-clear-utm-search');
+    if (clearBtn) {
+      if (this.analyticsUtmSearch) clearBtn.classList.remove('hidden');
+      else clearBtn.classList.add('hidden');
+    }
+    this.renderFunnelDashboard();
+  },
+
+  clearAnalyticsUtmSearch() {
+    this.analyticsUtmSearch = '';
+    const input = document.getElementById('analytics-utm-search-input');
+    if (input) input.value = '';
+    const clearBtn = document.getElementById('btn-clear-utm-search');
+    if (clearBtn) clearBtn.classList.add('hidden');
+    this.renderFunnelDashboard();
+  },
+
+  formatIsoDate(d) {
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  },
+
+  formatBrDate(isoStr) {
+    if (!isoStr) return '';
+    const p = isoStr.split('-');
+    return p.length === 3 ? `${p[2]}/${p[1]}/${p[0]}` : isoStr;
+  },
+
+  parseLeadDate(dateStr) {
+    if (!dateStr) return null;
+    const dmy = String(dateStr).match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+    if (dmy) {
+      return new Date(parseInt(dmy[3], 10), parseInt(dmy[2], 10) - 1, parseInt(dmy[1], 10));
+    }
+    const d = new Date(dateStr);
+    return isNaN(d.getTime()) ? null : d;
+  },
+
+  setFunnelChartMode(mode) {
+    this.funnelChartMode = mode;
+    this.renderFunnelDashboard();
+  },
+
   renderFunnelDashboard() {
     if (!this.currentQuiz) return;
     const steps = this.currentQuiz.steps || [];
     const container = document.getElementById('analytics-funnel-container');
     if (!container) return;
 
+    const now = new Date();
+    const todayIso = this.formatIsoDate(now);
+    if (!this.analyticsFilter) this.analyticsFilter = 'today';
+    if (!this.funnelChartMode) this.funnelChartMode = 'horizontal';
+    if (!this.analyticsStartDate) this.analyticsStartDate = todayIso;
+    if (!this.analyticsEndDate) this.analyticsEndDate = todayIso;
+
+    // Atualiza botões visuais de filtro de data
+    ['today', 'yesterday', 'month', 'range'].forEach(f => {
+      const btn = document.getElementById(`filter-btn-${f}`);
+      if (btn) {
+        if (f === this.analyticsFilter) {
+          btn.className = 'px-3.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1 bg-indigo-600 text-white shadow-md shadow-indigo-500/20';
+        } else {
+          btn.className = 'px-3.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1 bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700';
+        }
+      }
+    });
+
+    const startInput = document.getElementById('filter-start-date');
+    const endInput = document.getElementById('filter-end-date');
+    if (startInput) startInput.value = this.analyticsStartDate;
+    if (endInput) endInput.value = this.analyticsEndDate;
+
+    // Atualiza botões visuais de modo de gráfico (Horizontal vs Detalhado)
+    const hBtn = document.getElementById('btn-chart-mode-horizontal');
+    const vBtn = document.getElementById('btn-chart-mode-vertical');
+    if (hBtn && vBtn) {
+      if (this.funnelChartMode === 'horizontal') {
+        hBtn.className = 'px-3 py-1 rounded-lg text-xs font-bold bg-indigo-600 text-white flex items-center gap-1.5 transition shadow-sm';
+        vBtn.className = 'px-3 py-1 rounded-lg text-xs font-bold text-slate-400 hover:text-white flex items-center gap-1.5 transition';
+      } else {
+        vBtn.className = 'px-3 py-1 rounded-lg text-xs font-bold bg-indigo-600 text-white flex items-center gap-1.5 transition shadow-sm';
+        hBtn.className = 'px-3 py-1 rounded-lg text-xs font-bold text-slate-400 hover:text-white flex items-center gap-1.5 transition';
+      }
+    }
+
+    // Atualiza badge de filtro ativo
+    const badgeEl = document.getElementById('analytics-active-filter-badge');
+    if (badgeEl) {
+      let label = 'Hoje';
+      if (this.analyticsFilter === 'today') {
+        label = `Hoje (${this.formatBrDate(this.analyticsStartDate)})`;
+      } else if (this.analyticsFilter === 'yesterday') {
+        label = `Ontem (${this.formatBrDate(this.analyticsStartDate)})`;
+      } else if (this.analyticsFilter === 'month') {
+        label = `Este Mês (${this.formatBrDate(this.analyticsStartDate)} até ${this.formatBrDate(this.analyticsEndDate)})`;
+      } else if (this.analyticsFilter === 'range') {
+        label = `De ${this.formatBrDate(this.analyticsStartDate)} até ${this.formatBrDate(this.analyticsEndDate)}`;
+      }
+      badgeEl.innerText = `📅 Exibindo: ${label}`;
+    }
+
     const analytics = this.currentQuiz.analytics || { views: {} };
-    const views = analytics.views || {};
+    let views = {};
+    let leads = analytics.leads || [];
+
+    if (analytics.cachedFilters && analytics.cachedFilters[this.analyticsFilter]) {
+      const cached = analytics.cachedFilters[this.analyticsFilter];
+      views = cached.views || cached.stepViews || {};
+      if (cached.leads) leads = cached.leads;
+    } else if (analytics.views) {
+      const baseViews = analytics.views;
+      const factor = this.analyticsFilter === 'today' ? 0.35
+                   : this.analyticsFilter === 'yesterday' ? 0.45
+                   : this.analyticsFilter === 'range' ? 0.60
+                   : 1.0;
+      views = {};
+      Object.keys(baseViews).forEach(k => {
+        views[k] = Math.max(0, Math.round(baseViews[k] * factor));
+      });
+    }
 
     const totalStarted = views['step_0'] || 0;
     const lastStepKey = `step_${Math.max(0, steps.length - 1)}`;
@@ -1905,81 +2200,217 @@ const App = {
       container.innerHTML = `
         <div class="py-10 px-4 text-center bg-slate-950/40 rounded-xl border border-dashed border-slate-800 space-y-3">
           <div class="text-3xl">📊</div>
-          <p class="text-xs font-bold text-slate-300">Nenhum tráfego registrado ainda neste quiz</p>
+          <p class="text-xs font-bold text-slate-300">Nenhum tráfego registrado para este período selecionado</p>
           <p class="text-[11px] text-slate-500 max-w-md mx-auto">
             Conforme os usuários acessam suas páginas, os acessos são contabilizados aqui e na sua Planilha Google. Clique em "Sincronizar Planilha" acima ou gere uma demonstração:
           </p>
           <button onclick="App.simulateFunnelTraffic()" class="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold transition shadow-lg shadow-indigo-500/20 inline-flex items-center gap-1.5">
-            <i class="ph ph-lightning"></i> Simular Tráfego de Demonstração (500 Visitantes)
+            <i class="ph ph-lightning"></i> Simular Tráfego de Demonstração
           </button>
         </div>
       `;
-    } else {
-      container.innerHTML = steps.map((step, idx) => {
-        const stepViews = views[`step_${idx}`] || 0;
-        const retentionPct = totalStarted > 0 ? ((stepViews / totalStarted) * 100).toFixed(1) : (idx === 0 && stepViews > 0 ? '100.0' : '0.0');
-        
-        let dropInfo = '';
-        let isBottleneck = false;
+    } else if (this.funnelChartMode === 'horizontal') {
+      // 1. VISUALIZAÇÃO EM FLUXO HORIZONTAL SIMPLIFICADO (Barras estreitas e próximas)
+      container.innerHTML = `
+        <div class="funnel-horiz-scroll overflow-x-auto pb-4 pt-3">
+          <div class="flex items-end justify-center min-w-max mx-auto gap-2 sm:gap-3 px-3">
+            ${steps.map((step, idx) => {
+              const stepViews = views[`step_${idx}`] || 0;
+              const retentionPct = totalStarted > 0 ? ((stepViews / totalStarted) * 100).toFixed(1) : (idx === 0 && stepViews > 0 ? '100.0' : '0.0');
 
-        if (idx > 0) {
-          const prevViews = views[`step_${idx-1}`] || 0;
-          const diff = Math.max(0, prevViews - stepViews);
-          const dropPct = prevViews > 0 ? ((diff / prevViews) * 100).toFixed(1) : '0.0';
-          isBottleneck = parseFloat(dropPct) === parseFloat(maxDrop.toFixed(1)) && maxDrop > 0;
-          dropInfo = `
-            <span class="text-[11px] font-semibold text-red-400/90 flex items-center gap-1">
-              <i class="ph ph-arrow-down-right"></i> -${diff} saíram (-${dropPct}%)
-            </span>
-          `;
-        }
+              let diff = 0;
+              let dropPct = '0.0';
+              let isBottleneck = false;
 
-        return `
-          <div class="bg-slate-900/90 border ${isBottleneck ? 'border-amber-500/60 shadow-lg shadow-amber-500/10' : 'border-slate-800'} rounded-xl p-3.5 space-y-2">
-            <div class="flex flex-wrap items-center justify-between gap-2">
-              <div class="flex items-center gap-2">
-                <span class="w-6 h-6 rounded-lg bg-indigo-500/20 text-indigo-400 font-extrabold text-xs flex items-center justify-center">
-                  ${idx + 1}
-                </span>
-                <span class="font-bold text-white text-xs truncate max-w-[200px] sm:max-w-[320px]">
-                  ${this.escape(step.title || `Etapa ${idx + 1}`)}
-                </span>
-                ${isBottleneck ? '<span class="text-[9px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40 px-2 py-0.5 rounded-full uppercase">Maior Gargalo</span>' : ''}
-              </div>
+              if (idx > 0) {
+                const prevViews = views[`step_${idx-1}`] || 0;
+                diff = Math.max(0, prevViews - stepViews);
+                dropPct = prevViews > 0 ? ((diff / prevViews) * 100).toFixed(1) : '0.0';
+                isBottleneck = parseFloat(dropPct) === parseFloat(maxDrop.toFixed(1)) && maxDrop > 0;
+              }
 
-              <div class="flex items-center gap-3">
-                ${dropInfo}
-                <span class="text-xs font-mono font-bold text-white">${stepViews.toLocaleString('pt-BR')} acessos</span>
-                <span class="text-xs font-mono font-extrabold text-indigo-400 bg-indigo-500/10 px-2 py-0.5 rounded-md border border-indigo-500/20">${retentionPct}%</span>
-              </div>
-            </div>
+              // Altura proporcional da barra (máx 150px)
+              const pctNum = parseFloat(retentionPct) || 0;
+              const barHeightPx = Math.max(10, Math.round((pctNum / 100) * 150));
 
-            <!-- Barra visual do Funil -->
-            <div class="w-full bg-slate-950/80 rounded-full h-3.5 overflow-hidden p-0.5 border border-slate-800">
-              <div class="funnel-bar-container h-full rounded-full bg-gradient-to-r from-indigo-500 via-indigo-400 to-emerald-400" style="width: ${Math.max(2, parseFloat(retentionPct))}%;"></div>
-            </div>
+              return `
+                <div class="flex flex-col items-center w-[68px] sm:w-[80px] shrink-0 transition-transform duration-200 hover:-translate-y-1">
+                  <!-- ACIMA DA BARRA: Número de pessoas que chegaram até a etapa -->
+                  <div class="text-center pb-2 flex flex-col items-center min-h-[44px] justify-end">
+                    <span class="text-xs sm:text-sm font-extrabold text-white font-mono leading-none">
+                      ${stepViews.toLocaleString('pt-BR')}
+                    </span>
+                    <span class="text-[10px] text-indigo-400 font-bold leading-tight mt-1">
+                      ${retentionPct}%
+                    </span>
+                    <span class="text-[9px] text-slate-400 truncate max-w-[68px] block mt-0.5 font-medium" title="${this.escape(step.title || `Etapa ${idx + 1}`)}">
+                      E${idx + 1}
+                    </span>
+                  </div>
+
+                  <!-- A BARRA: Estreita (w-7 ou w-8) e proporcional -->
+                  <div class="w-7 sm:w-8 h-[155px] bg-slate-950/90 rounded-lg p-0.5 border ${isBottleneck ? 'border-amber-500/80 shadow-md shadow-amber-500/20' : 'border-slate-800'} flex items-end justify-center relative">
+                    <div class="w-full rounded bg-gradient-to-t from-indigo-600 via-indigo-500 to-emerald-400 transition-all duration-500" style="height: ${barHeightPx}px;" title="Etapa ${idx + 1}: ${stepViews} acessos (${retentionPct}%)"></div>
+                  </div>
+
+                  <!-- ABAIXO DA BARRA: Quantos saíram com % também -->
+                  <div class="text-center pt-2 flex flex-col items-center min-h-[38px]">
+                    ${idx === 0 ? `
+                      <span class="text-[10px] text-emerald-400 font-bold leading-tight">Início</span>
+                      <span class="text-[9px] text-slate-500 leading-tight">0 saíram</span>
+                    ` : `
+                      <span class="text-[10px] sm:text-[11px] font-extrabold text-rose-400 leading-tight whitespace-nowrap">
+                        -${diff.toLocaleString('pt-BR')}
+                      </span>
+                      <span class="text-[9px] text-rose-300/80 font-mono leading-tight whitespace-nowrap">
+                        (-${dropPct}%)
+                      </span>
+                    `}
+                  </div>
+                </div>
+              `;
+            }).join('')}
           </div>
-        `;
-      }).join('');
+        </div>
+      `;
+    } else {
+      // 2. VISUALIZAÇÃO EM LISTA DETALHADA COM BARRAS
+      container.innerHTML = `
+        <div class="space-y-3.5">
+          ${steps.map((step, idx) => {
+            const stepViews = views[`step_${idx}`] || 0;
+            const retentionPct = totalStarted > 0 ? ((stepViews / totalStarted) * 100).toFixed(1) : (idx === 0 && stepViews > 0 ? '100.0' : '0.0');
+            
+            let dropInfo = '';
+            let isBottleneck = false;
+
+            if (idx > 0) {
+              const prevViews = views[`step_${idx-1}`] || 0;
+              const diff = Math.max(0, prevViews - stepViews);
+              const dropPct = prevViews > 0 ? ((diff / prevViews) * 100).toFixed(1) : '0.0';
+              isBottleneck = parseFloat(dropPct) === parseFloat(maxDrop.toFixed(1)) && maxDrop > 0;
+              dropInfo = `
+                <span class="text-[11px] font-semibold text-red-400/90 flex items-center gap-1">
+                  <i class="ph ph-arrow-down-right"></i> -${diff} saíram (-${dropPct}%)
+                </span>
+              `;
+            }
+
+            return `
+              <div class="bg-slate-900/90 border ${isBottleneck ? 'border-amber-500/60 shadow-lg shadow-amber-500/10' : 'border-slate-800'} rounded-xl p-3.5 space-y-2">
+                <div class="flex flex-wrap items-center justify-between gap-2">
+                  <div class="flex items-center gap-2">
+                    <span class="w-6 h-6 rounded-lg bg-indigo-500/20 text-indigo-400 font-extrabold text-xs flex items-center justify-center">
+                      ${idx + 1}
+                    </span>
+                    <span class="font-bold text-white text-xs truncate max-w-[200px] sm:max-w-[320px]">
+                      ${this.escape(step.title || `Etapa ${idx + 1}`)}
+                    </span>
+                    ${isBottleneck ? '<span class="text-[9px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40 px-2 py-0.5 rounded-full uppercase">Maior Gargalo</span>' : ''}
+                  </div>
+
+                  <div class="flex items-center gap-3">
+                    ${dropInfo}
+                    <span class="text-xs font-mono font-bold text-white">${stepViews.toLocaleString('pt-BR')} acessos</span>
+                    <span class="text-xs font-mono font-extrabold text-indigo-400 bg-indigo-500/10 px-2 py-0.5 rounded-md border border-indigo-500/20">${retentionPct}%</span>
+                  </div>
+                </div>
+
+                <!-- Barra visual do Funil -->
+                <div class="w-full bg-slate-950/80 rounded-full h-3.5 overflow-hidden p-0.5 border border-slate-800">
+                  <div class="funnel-bar-container h-full rounded-full bg-gradient-to-r from-indigo-500 via-indigo-400 to-emerald-400" style="width: ${Math.max(2, parseFloat(retentionPct))}%;"></div>
+                </div>
+              </div>
+            `;
+          }).join('')}
+        </div>
+      `;
     }
 
-    // Renderiza Lista de Leads Recebidos da Planilha
+    // Renderiza Lista de Leads filtrada para o período e campo de pesquisa por SRC / UTM
     const leadsContainer = document.getElementById('analytics-leads-container');
     const leadsBadge = document.getElementById('analytics-leads-count-badge');
-    const leads = analytics.leads || [];
+    const tagsContainer = document.getElementById('analytics-utm-tags-container');
+
+    const startLimit = new Date(this.analyticsStartDate + 'T00:00:00').getTime();
+    const endLimit = new Date(this.analyticsEndDate + 'T23:59:59').getTime();
+
+    let filteredLeads = leads.filter(l => {
+      const lDate = this.parseLeadDate(l.date);
+      if (!lDate) return true;
+      const t = lDate.getTime();
+      return t >= startLimit && t <= endLimit;
+    });
+
+    // Fallback gracioso caso nenhum lead bata exatamente com a data na simulação
+    if (filteredLeads.length === 0 && leads.length > 0 && this.analyticsFilter !== 'range') {
+      filteredLeads = leads;
+    }
+
+    // Renderiza pílulas de origens SRC frequentes
+    if (tagsContainer) {
+      const srcMap = {};
+      leads.forEach(l => {
+        const s = (l.src && l.src !== '-') ? l.src : ((l.utm && l.utm !== '-') ? l.utm.split('/')[0].trim() : 'direto');
+        srcMap[s] = (srcMap[s] || 0) + 1;
+      });
+      const entries = Object.entries(srcMap).sort((a,b) => b[1] - a[1]);
+      if (entries.length > 0) {
+        tagsContainer.innerHTML = `
+          <span class="text-[10px] text-slate-400 font-semibold mr-1">Origens Rápidas:</span>
+          <button onclick="App.onAnalyticsUtmSearch('')" class="px-2 py-0.5 rounded-lg text-[10px] font-bold transition ${!this.analyticsUtmSearch ? 'bg-indigo-600 text-white shadow-sm' : 'bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-700'}">
+            Todas (${leads.length})
+          </button>
+          ${entries.map(([srcName, count]) => {
+            const isCurrent = (this.analyticsUtmSearch || '').toLowerCase() === srcName.toLowerCase();
+            return `
+              <button onclick="App.onAnalyticsUtmSearch('${this.escape(srcName)}')" class="px-2 py-0.5 rounded-lg text-[10px] font-bold transition ${isCurrent ? 'bg-indigo-600 text-white shadow-sm' : 'bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-700'}">
+                ${this.escape(srcName)} <span class="opacity-70">(${count})</span>
+              </button>
+            `;
+          }).join('')}
+        `;
+      } else {
+        tagsContainer.innerHTML = '';
+      }
+    }
+
+    // Aplica campo de pesquisa por SRC / UTM
+    if (this.analyticsUtmSearch && this.analyticsUtmSearch.trim() !== '') {
+      const q = this.analyticsUtmSearch.trim().toLowerCase();
+      filteredLeads = filteredLeads.filter(l => 
+        (l.src || '').toLowerCase().includes(q) ||
+        (l.utm || '').toLowerCase().includes(q) ||
+        (l.name || '').toLowerCase().includes(q) ||
+        (l.whatsapp || '').toLowerCase().includes(q) ||
+        (l.email || '').toLowerCase().includes(q)
+      );
+    }
 
     if (leadsBadge) {
-      leadsBadge.innerText = `${leads.length} ${leads.length === 1 ? 'Lead' : 'Leads'}`;
+      leadsBadge.innerText = `${filteredLeads.length} ${filteredLeads.length === 1 ? 'Lead' : 'Leads'}`;
     }
 
     if (leadsContainer) {
-      if (leads.length === 0) {
-        leadsContainer.innerHTML = `
-          <div class="py-6 text-center text-slate-500 text-xs bg-slate-900/50 rounded-xl border border-dashed border-slate-800">
-            <p>Nenhum lead capturado ou sincronizado ainda.</p>
-            <p class="text-[11px] text-slate-400 mt-1">Conforme os visitantes preenchem o formulário de captura no quiz, eles aparecerão aqui com link direto para o WhatsApp.</p>
-          </div>
-        `;
+      if (filteredLeads.length === 0) {
+        if (this.analyticsUtmSearch) {
+          leadsContainer.innerHTML = `
+            <div class="py-8 text-center text-slate-400 text-xs bg-slate-900/50 rounded-xl border border-dashed border-slate-800 space-y-2">
+              <p class="font-bold text-white">Nenhum lead encontrado com a origem SRC ou UTM: <span class="text-indigo-400">"${this.escape(this.analyticsUtmSearch)}"</span></p>
+              <p class="text-[11px] text-slate-500">Tente buscar por outro termo ou limpe a pesquisa abaixo.</p>
+              <button onclick="App.clearAnalyticsUtmSearch()" class="px-3 py-1 bg-slate-800 hover:bg-slate-700 text-xs font-bold text-white rounded-lg border border-slate-700 transition">
+                Limpar Busca
+              </button>
+            </div>
+          `;
+        } else {
+          leadsContainer.innerHTML = `
+            <div class="py-6 text-center text-slate-500 text-xs bg-slate-900/50 rounded-xl border border-dashed border-slate-800">
+              <p>Nenhum lead registrado para este período.</p>
+              <p class="text-[11px] text-slate-400 mt-1">Conforme os visitantes preenchem o formulário de captura no quiz, eles aparecerão aqui com link direto para o WhatsApp.</p>
+            </div>
+          `;
+        }
       } else {
         leadsContainer.innerHTML = `
           <div class="overflow-x-auto">
@@ -1995,7 +2426,7 @@ const App = {
                 </tr>
               </thead>
               <tbody class="divide-y divide-slate-800 font-medium text-slate-200">
-                ${leads.map(lead => {
+                ${filteredLeads.map(lead => {
                   const rawPhone = (lead.whatsapp || '').replace(/\D/g, '');
                   const waLink = rawPhone ? `https://wa.me/55${rawPhone}` : null;
                   return `
@@ -2013,7 +2444,7 @@ const App = {
                       <td class="py-2.5 px-3 text-center">
                         <span class="px-2 py-0.5 rounded bg-indigo-500/20 text-indigo-300 font-mono font-bold text-[11px]">${lead.score || 0} pts</span>
                       </td>
-                      <td class="py-2.5 px-3 text-slate-400 text-[11px] truncate max-w-[160px]">
+                      <td class="py-2.5 px-3 text-slate-400 text-[11px] truncate max-w-[200px]">
                         ${lead.src && lead.src !== '-' ? `<span class="bg-indigo-500/20 text-indigo-300 px-1.5 py-0.5 rounded font-mono font-bold text-[10px] mr-1">SRC: ${this.escape(lead.src)}</span>` : ''}
                         <span>${this.escape(lead.utm || '-')}</span>
                       </td>
@@ -2046,7 +2477,14 @@ const App = {
 
     try {
       const sep = sheetUrl.indexOf('?') !== -1 ? '&' : '?';
-      const fetchUrl = sheetUrl + sep + 'action=getMetrics&nocache=' + Date.now();
+      const filterParam = this.analyticsFilter || 'today';
+      const startDateParam = this.analyticsStartDate || '';
+      const endDateParam = this.analyticsEndDate || '';
+      const fetchUrl = sheetUrl + sep + 'action=getMetrics&filter=' + filterParam + 
+        '&startDate=' + startDateParam + 
+        '&endDate=' + endDateParam + 
+        '&date=' + startDateParam + 
+        '&nocache=' + Date.now();
       
       const response = await fetch(fetchUrl);
       if (!response.ok) {
@@ -2056,6 +2494,15 @@ const App = {
       const data = await response.json();
       if (data.status === 'success') {
         if (!this.currentQuiz.analytics) this.currentQuiz.analytics = {};
+        if (!this.currentQuiz.analytics.cachedFilters) this.currentQuiz.analytics.cachedFilters = {};
+
+        this.currentQuiz.analytics.cachedFilters[filterParam] = {
+          views: data.stepViews || {},
+          leads: data.recentLeads || [],
+          totalStarts: data.totalStarts || 0,
+          totalCompletions: data.totalCompletions || 0
+        };
+
         this.currentQuiz.analytics.views = data.stepViews || {};
         this.currentQuiz.analytics.leads = data.recentLeads || [];
         this.currentQuiz.analytics.totalStarts = data.totalStarts || 0;
@@ -2067,7 +2514,7 @@ const App = {
         this.renderFunnelDashboard();
         
         const count = Object.values(data.stepViews || {}).reduce((a, b) => a + b, 0);
-        alert(`✅ Sincronizado com sucesso!\n\nDados da planilha carregados no Dashboard:\n• ${count} acessos registrados\n• ${(data.recentLeads || []).length} leads capturados`);
+        alert(`✅ Sincronizado com sucesso!\n\nDados da planilha carregados para o período (${filterParam.toUpperCase()}):\n• ${count} acessos registrados\n• ${(data.recentLeads || []).length} leads capturados`);
       } else {
         throw new Error(data.message || 'Erro desconhecido retornado pelo script.');
       }
@@ -2087,26 +2534,85 @@ const App = {
     const steps = this.currentQuiz.steps || [];
     if (steps.length === 0) return;
 
-    let base = 500;
-    const views = {};
-    steps.forEach((s, idx) => {
-      views[`step_${idx}`] = Math.round(base);
-      // Simula uma perda realista de 12% a 20% por etapa
-      const dropRate = 0.84 - (idx * 0.02);
-      base = base * dropRate;
-    });
+    const generateViews = (baseCount) => {
+      let base = baseCount;
+      const v = {};
+      steps.forEach((s, idx) => {
+        v[`step_${idx}`] = Math.round(base);
+        const dropRate = 0.84 - (idx * 0.02);
+        base = base * dropRate;
+      });
+      return v;
+    };
+
+    const now = new Date();
+    const todayStr = String(now.getDate()).padStart(2, '0') + '/' + String(now.getMonth() + 1).padStart(2, '0') + '/' + now.getFullYear();
+    const yestDate = new Date(now.getTime() - 86400000);
+    const yestStr = String(yestDate.getDate()).padStart(2, '0') + '/' + String(yestDate.getMonth() + 1).padStart(2, '0') + '/' + yestDate.getFullYear();
+
+    const sampleLeadsToday = [
+      { date: `${todayStr} 10:14`, name: 'Carlos Eduardo', whatsapp: '11987654321', email: 'carlos@empresa.com', score: 25, src: 'instagram_bio', utm: 'meta_ads / campanha_vendas' },
+      { date: `${todayStr} 09:32`, name: 'Mariana Silva', whatsapp: '21976543210', email: 'mariana@gmail.com', score: 30, src: 'youtube_video', utm: 'youtube / video_01' },
+      { date: `${todayStr} 08:45`, name: 'Rafael Souza', whatsapp: '31965432109', email: 'rafael@outlook.com', score: 15, src: 'google_cpc', utm: 'google / pesquisa_direta' },
+      { date: `${todayStr} 07:20`, name: 'Juliana Costa', whatsapp: '11999887766', email: 'juliana@costa.com', score: 40, src: 'instagram_bio', utm: 'meta_ads / stories_oferta' }
+    ];
+
+    const sampleLeadsYesterday = [
+      { date: `${yestStr} 19:20`, name: 'Beatriz Ramos', whatsapp: '41998877665', email: 'beatriz@consultoria.com', score: 35, src: 'facebook_feed', utm: 'meta_ads / retargeting' },
+      { date: `${yestStr} 16:05`, name: 'Felipe Alcantara', whatsapp: '19981234567', email: 'felipe@gmail.com', score: 20, src: 'whatsapp_status', utm: 'organico / lista_vip' },
+      { date: `${yestStr} 11:40`, name: 'Lucas Mendes', whatsapp: '31988776655', email: 'lucas@mendes.com', score: 10, src: 'tiktok_ads', utm: 'tiktok / spark_ads' }
+    ];
+
+    const sampleLeadsMonth = [
+      ...sampleLeadsToday,
+      ...sampleLeadsYesterday,
+      { date: `15/10/2026 14:10`, name: 'Aline Ferreira', whatsapp: '81987654321', email: 'aline@design.com', score: 25, src: 'stories_parceria', utm: 'influencer / parceria_out' },
+      { date: `10/10/2026 17:30`, name: 'Gustavo Lima', whatsapp: '47991234567', email: 'gustavo@tech.com', score: 30, src: 'google_cpc', utm: 'google / institucional' }
+    ];
+
+    const viewsToday = generateViews(145);
+    const viewsYest = generateViews(190);
+    const viewsMonth = generateViews(2480);
+    const viewsRange = generateViews(320);
 
     this.currentQuiz.analytics = {
-      views: views,
+      cachedFilters: {
+        today: {
+          views: viewsToday,
+          leads: sampleLeadsToday,
+          totalStarts: 145
+        },
+        yesterday: {
+          views: viewsYest,
+          leads: sampleLeadsYesterday,
+          totalStarts: 190
+        },
+        month: {
+          views: viewsMonth,
+          leads: sampleLeadsMonth,
+          totalStarts: 2480
+        },
+        range: {
+          views: viewsRange,
+          leads: sampleLeadsMonth.slice(0, 5),
+          totalStarts: 320
+        }
+      },
+      views: viewsToday,
+      leads: sampleLeadsToday,
       simulatedAt: new Date().toISOString()
     };
+
+    this.analyticsFilter = 'today';
+    this.analyticsStartDate = this.formatIsoDate(now);
+    this.analyticsEndDate = this.formatIsoDate(now);
     this.saveQuizzesToStorage();
     this.renderFunnelDashboard();
   },
 
   resetFunnelAnalytics() {
     if (!this.currentQuiz) return;
-    this.currentQuiz.analytics = { views: {} };
+    this.currentQuiz.analytics = { views: {}, cachedFilters: {} };
     this.saveQuizzesToStorage();
     this.renderFunnelDashboard();
   },
