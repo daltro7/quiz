@@ -1556,7 +1556,8 @@ const QuizTemplateEngine = {
               link.dataset.checkoutBound = 'true';
               link.addEventListener('click', () => {
                 try {
-                  this.trackEvent('Checkout_Iniciado', {
+                  // Registra métrica interna de checkout iniciado (não envia ao Pixel Meta para evitar duplicidade com Kirvano/PerfectPay)
+                  this.trackFunnelEvent('Checkout_Iniciado', {
                     checkoutUrl: link.getAttribute('href') || href,
                     stepIndex: this.currentStepIndex
                   });
@@ -2338,14 +2339,17 @@ const QuizTemplateEngine = {
           data: eventData
         };
 
-        if (window.fbq) {
+        // Envia eventos para o Pixel Meta, exceto Checkout (deixando a Kirvano / PerfectPay como fonte única para evitar duplicidade de InitiateCheckout)
+        const isCheckoutEvent = (eventName === 'Checkout_Iniciado' || eventName === 'InitiateCheckout');
+
+        if (window.fbq && !isCheckoutEvent) {
           try {
             if (eventName === 'Lead') fbq('track', 'Lead');
             else fbq('trackCustom', eventName, eventData);
           } catch(err) {}
         }
 
-        if (window.gtag) {
+        if (window.gtag && !isCheckoutEvent) {
           try { gtag('event', eventName, eventData); } catch(err) {}
         }
 
