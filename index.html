@@ -631,27 +631,45 @@
               <!-- Renderizado via app.js -->
             </div>
 
-            <!-- Cards de KPI Resumo -->
-            <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              <div class="bg-slate-800/80 p-4 rounded-2xl border border-slate-700">
-                <span class="text-[11px] text-slate-400 font-semibold block mb-1">Iniciaram o Quiz</span>
-                <span id="kpi-total-started" class="text-2xl font-black text-white">0</span>
+            <!-- Cards de KPI Resumo (Funil + Financeiro) -->
+            <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5">
+              <div class="bg-slate-800/80 p-3.5 rounded-2xl border border-slate-700">
+                <span class="text-[10px] text-slate-400 font-semibold block mb-0.5">Iniciaram o Quiz</span>
+                <span id="kpi-total-started" class="text-xl sm:text-2xl font-black text-white">0</span>
                 <span class="text-[10px] text-indigo-400 block mt-0.5">100% dos acessos</span>
               </div>
-              <div class="bg-slate-800/80 p-4 rounded-2xl border border-slate-700">
-                <span class="text-[11px] text-slate-400 font-semibold block mb-1">Chegaram à Oferta</span>
-                <span id="kpi-total-completed" class="text-2xl font-black text-emerald-400">0</span>
+              <div class="bg-slate-800/80 p-3.5 rounded-2xl border border-slate-700">
+                <span class="text-[10px] text-slate-400 font-semibold block mb-0.5">Chegaram à Oferta</span>
+                <span id="kpi-total-completed" class="text-xl sm:text-2xl font-black text-emerald-400">0</span>
                 <span id="kpi-completion-sub" class="text-[10px] text-emerald-500 block mt-0.5">0% concluídos</span>
               </div>
-              <div class="bg-slate-800/80 p-4 rounded-2xl border border-slate-700">
-                <span class="text-[11px] text-slate-400 font-semibold block mb-1">Taxa de Conversão</span>
-                <span id="kpi-conversion-rate" class="text-2xl font-black text-violet-400">0.0%</span>
-                <span class="text-[10px] text-violet-300 block mt-0.5">Funil Completo</span>
+              <div class="bg-slate-800/80 p-3.5 rounded-2xl border border-slate-700">
+                <span class="text-[10px] text-slate-400 font-semibold block mb-0.5 flex items-center gap-1">
+                  <i class="ph ph-shopping-cart text-sky-400"></i> Checkout Aberto
+                </span>
+                <span id="kpi-total-checkouts" class="text-xl sm:text-2xl font-black text-sky-400">0</span>
+                <span id="kpi-checkouts-sub" class="text-[10px] text-sky-300 block mt-0.5">0% da oferta</span>
               </div>
-              <div class="bg-slate-800/80 p-4 rounded-2xl border border-slate-700">
-                <span class="text-[11px] text-slate-400 font-semibold block mb-1">Maior Abandono</span>
-                <span id="kpi-biggest-drop" class="text-base font-extrabold text-amber-400 truncate block">Nenhum</span>
-                <span id="kpi-drop-pct" class="text-[10px] text-amber-300 block mt-0.5">Ponto de melhoria</span>
+              <div class="bg-slate-800/80 p-3.5 rounded-2xl border border-emerald-500/30 bg-emerald-950/20 shadow-sm">
+                <span class="text-[10px] text-emerald-300 font-bold block mb-0.5 flex items-center gap-1">
+                  <i class="ph ph-check-circle text-emerald-400"></i> Vendas Aprovadas
+                </span>
+                <span id="kpi-revenue-approved" class="text-xl sm:text-2xl font-black text-emerald-400">R$ 0,00</span>
+                <span id="kpi-sales-approved-count" class="text-[10px] text-emerald-300 font-semibold block mt-0.5">0 vendas confirmadas</span>
+              </div>
+              <div class="bg-slate-800/80 p-3.5 rounded-2xl border border-amber-500/30 bg-amber-950/20 shadow-sm">
+                <span class="text-[10px] text-amber-300 font-bold block mb-0.5 flex items-center gap-1">
+                  <i class="ph ph-clock-countdown text-amber-400"></i> Aguardando Pix
+                </span>
+                <span id="kpi-revenue-pending" class="text-xl sm:text-2xl font-black text-amber-400">R$ 0,00</span>
+                <span id="kpi-sales-pending-count" class="text-[10px] text-amber-300 font-semibold block mt-0.5">0 pedidos pendentes</span>
+              </div>
+              <div class="bg-slate-800/80 p-3.5 rounded-2xl border border-slate-700">
+                <span class="text-[10px] text-slate-400 font-semibold block mb-0.5 flex items-center gap-1">
+                  <i class="ph ph-trend-up text-violet-400"></i> Conversão Vendas
+                </span>
+                <span id="kpi-conversion-rate" class="text-xl sm:text-2xl font-black text-violet-400">0.0%</span>
+                <span id="kpi-biggest-drop-sub" class="text-[10px] text-slate-400 truncate block mt-0.5">Início ➔ Venda</span>
               </div>
             </div>
 
@@ -659,7 +677,7 @@
             <div class="bg-slate-800/80 p-5 rounded-2xl border border-slate-700 space-y-4">
               <div class="flex flex-wrap items-center justify-between gap-2">
                 <h4 class="font-bold text-white text-sm flex items-center gap-2">
-                  <i class="ph ph-chart-bar text-indigo-400"></i> Visualização Gráfica do Funil por Etapa
+                  <i class="ph ph-chart-bar text-indigo-400"></i> Visualização Gráfica do Funil Completo (Quiz ➔ Checkout ➔ Venda)
                 </h4>
                 <div class="flex items-center gap-2">
                   <span id="analytics-active-filter-badge" class="text-[11px] font-bold text-indigo-400 bg-indigo-500/10 px-2.5 py-0.5 rounded-full border border-indigo-500/20">
@@ -675,27 +693,40 @@
               </div>
             </div>
 
-            <!-- Lista de Leads Recebidos da Planilha com Pesquisa por SRC / UTM -->
+            <!-- Central Unificada de Vendas, Pedidos & Leads com Abas e Pesquisa SRC / UTM -->
             <div id="analytics-leads-section" class="bg-slate-800/80 p-5 rounded-2xl border border-slate-700 space-y-4">
-              <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <div class="flex items-center gap-2">
-                  <h4 class="font-bold text-white text-sm flex items-center gap-2">
-                    <i class="ph ph-address-book text-emerald-400"></i> Origens & Leads Capturados
-                  </h4>
-                  <span id="analytics-leads-count-badge" class="text-[11px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">0 Leads</span>
+              <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-3 border-b border-slate-700/80 pb-3">
+                <!-- Abas Interativas -->
+                <div class="flex items-center gap-1.5 overflow-x-auto pb-1 max-w-full">
+                  <button type="button" id="btn-tab-approved" onclick="App.setAnalyticsOrdersTab('approved')" class="px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shrink-0 bg-emerald-600 text-white shadow-md shadow-emerald-600/20">
+                    <i class="ph ph-check-circle text-sm"></i> Vendas Aprovadas
+                    <span id="badge-tab-approved" class="px-1.5 py-0.2 rounded-full text-[10px] bg-black/30 text-white ml-0.5">0</span>
+                  </button>
+                  <button type="button" id="btn-tab-pending" onclick="App.setAnalyticsOrdersTab('pending')" class="px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shrink-0 bg-slate-900 hover:bg-slate-700 text-amber-400 border border-slate-700">
+                    <i class="ph ph-clock-countdown text-sm"></i> Aguardando Pagamento
+                    <span id="badge-tab-pending" class="px-1.5 py-0.2 rounded-full text-[10px] bg-amber-500/20 text-amber-300 ml-0.5">0</span>
+                  </button>
+                  <button type="button" id="btn-tab-leads" onclick="App.setAnalyticsOrdersTab('leads')" class="px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shrink-0 bg-slate-900 hover:bg-slate-700 text-slate-300 border border-slate-700">
+                    <i class="ph ph-address-book text-sm"></i> Leads do Quiz
+                    <span id="badge-tab-leads" class="px-1.5 py-0.2 rounded-full text-[10px] bg-slate-800 text-slate-300 ml-0.5">0</span>
+                  </button>
+                  <button type="button" id="btn-tab-all" onclick="App.setAnalyticsOrdersTab('all')" class="px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shrink-0 bg-slate-900 hover:bg-slate-700 text-slate-400 border border-slate-700">
+                    <i class="ph ph-list-bullets text-sm"></i> Todos os Pedidos
+                    <span id="badge-tab-all" class="px-1.5 py-0.2 rounded-full text-[10px] bg-slate-800 text-slate-400 ml-0.5">0</span>
+                  </button>
                 </div>
 
                 <!-- Campo de Pesquisa por SRC / UTM -->
-                <div class="flex items-center gap-2">
+                <div class="flex items-center gap-2 shrink-0">
                   <div class="relative flex items-center">
                     <i class="ph ph-magnifying-glass text-slate-400 text-xs absolute left-3"></i>
-                    <input type="text" id="analytics-utm-search-input" oninput="App.onAnalyticsUtmSearch(this.value)" placeholder="Pesquisar por SRC ou UTM (ex: instagram, meta, stories)..." class="bg-slate-900 border border-slate-700 pl-8 pr-7 py-1.5 rounded-xl text-xs text-white placeholder-slate-500 outline-none w-64 sm:w-80 focus:border-indigo-500 transition">
+                    <input type="text" id="analytics-utm-search-input" oninput="App.onAnalyticsUtmSearch(this.value)" placeholder="Filtrar por SRC, UTM, Nome, WhatsApp, Produto..." class="bg-slate-900 border border-slate-700 pl-8 pr-7 py-1.5 rounded-xl text-xs text-white placeholder-slate-500 outline-none w-64 sm:w-80 focus:border-indigo-500 transition">
                     <button type="button" id="btn-clear-utm-search" onclick="App.clearAnalyticsUtmSearch()" class="hidden absolute right-2.5 text-slate-400 hover:text-white text-xs" title="Limpar pesquisa">✕</button>
                   </div>
                 </div>
               </div>
 
-              <!-- Tags / Pills de Origens SRC mais frequentes -->
+              <!-- Tags / Pills de Origens SRC mais frequentes da aba ativa -->
               <div id="analytics-utm-tags-container" class="flex flex-wrap items-center gap-1.5 pt-0.5">
                 <!-- Renderizado via app.js -->
               </div>
@@ -811,14 +842,20 @@
           <button onclick="App.copySheetsScript()" class="sticky top-0 float-right bg-indigo-600 hover:bg-indigo-500 text-white px-2.5 py-1 rounded text-[10px] font-bold flex items-center gap-1 transition shadow-md z-10">
             <i class="ph ph-copy"></i> Copiar Código Completo
           </button>
-          <pre id="sheets-script-code">// 1. LEITURA DOS DADOS (QuizForge ➔ Planilha com Visitante Único)
+          <pre id="sheets-script-code">// =====================================================================
+// SCRIPT INTEGRADO: QUIZFORGE + KIRVANO + PERFECTPAY (Métricas & Vendas)
+// =====================================================================
+
+// 1. LEITURA DOS DADOS (QuizForge ➔ Planilha: Funil, Leads e Vendas)
 function doGet(e) {
   try {
     var sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
     var lastRow = sheet.getLastRow();
     if (lastRow &lt;= 1) {
       return ContentService.createTextOutput(JSON.stringify({
-        status: 'success', totalStarts: 0, totalCompletions: 0, totalLeads: 0, stepViews: {}, recentLeads: []
+        status: 'success', totalStarts: 0, totalCompletions: 0, totalCheckouts: 0,
+        totalSalesApproved: 0, revenueApproved: 0, totalSalesPending: 0, revenuePending: 0,
+        stepViews: {}, recentLeads: [], orders: []
       })).setMimeType(ContentService.MimeType.JSON);
     }
     var lastCol = sheet.getLastColumn();
@@ -832,11 +869,17 @@ function doGet(e) {
       }
       return '';
     }
-    var stepVisitors = {}, uniqueStarts = {}, uniqueCompletions = {}, leadsMap = {}, recentLeads = [];
-    var filter = String((e && e.parameter && e.parameter.filter) || 'today').toLowerCase();
-    var targetDate = (e && e.parameter && e.parameter.date) || '';
-    var startDateParam = (e && e.parameter && e.parameter.startDate) || '';
-    var endDateParam = (e && e.parameter && e.parameter.endDate) || '';
+
+    var stepVisitors = {}, uniqueStarts = {}, uniqueCompletions = {}, uniqueCheckouts = {};
+    var leadsMap = {}, recentLeads = [];
+    var orders = [], ordersMap = {};
+    var totalSalesApproved = 0, revenueApproved = 0;
+    var totalSalesPending = 0, revenuePending = 0;
+
+    var filter = String((e &amp;&amp; e.parameter &amp;&amp; e.parameter.filter) || 'today').toLowerCase();
+    var targetDate = (e &amp;&amp; e.parameter &amp;&amp; e.parameter.date) || '';
+    var startDateParam = (e &amp;&amp; e.parameter &amp;&amp; e.parameter.startDate) || '';
+    var endDateParam = (e &amp;&amp; e.parameter &amp;&amp; e.parameter.endDate) || '';
 
     function matchesFilter(dVal, filt, tDate, sDate, eDate) {
       if (!dVal || filt === 'all') return true;
@@ -848,22 +891,15 @@ function doGet(e) {
       var yestStart = todayStart - 86400000;
       var monthStart = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
       var tTime = d.getTime();
-      if (filt === 'today') return tTime >= todayStart && tTime < tomorrowStart;
-      if (filt === 'yesterday') return tTime >= yestStart && tTime < todayStart;
-      if (filt === 'month') return tTime >= monthStart;
-      if ((filt === 'range' || filt === 'custom') && sDate) {
+      if (filt === 'today') return tTime &gt;= todayStart &amp;&amp; tTime &lt; tomorrowStart;
+      if (filt === 'yesterday') return tTime &gt;= yestStart &amp;&amp; tTime &lt; todayStart;
+      if (filt === 'month') return tTime &gt;= monthStart;
+      if ((filt === 'range' || filt === 'custom') &amp;&amp; sDate) {
         var sp = sDate.split('-');
         var sStart = new Date(parseInt(sp[0],10), parseInt(sp[1],10)-1, parseInt(sp[2],10), 0, 0, 0).getTime();
         var ep = (eDate || sDate).split('-');
         var eEnd = new Date(parseInt(ep[0],10), parseInt(ep[1],10)-1, parseInt(ep[2],10), 23, 59, 59, 999).getTime();
-        return tTime >= sStart && tTime <= eEnd;
-      }
-      if (filt === 'custom' && tDate) {
-        var p = tDate.split('-');
-        if (p.length === 3) {
-          var cStart = new Date(parseInt(p[0],10), parseInt(p[1],10)-1, parseInt(p[2],10)).getTime();
-          return tTime >= cStart && tTime < (cStart + 86400000);
-        }
+        return tTime &gt;= sStart &amp;&amp; tTime &lt;= eEnd;
       }
       return true;
     }
@@ -872,16 +908,29 @@ function doGet(e) {
       var row = rows[i];
       var rowDate = getCol(row, ['data/hora', 'data', 'timestamp']);
       if (!matchesFilter(rowDate, filter, targetDate, startDateParam, endDateParam)) continue;
+
       var rawSession = String(getCol(row, ['sessão (id)', 'sessão', 'sessao', 'session', 'sessao (id)']) || '').trim();
       var event = String(getCol(row, ['evento', 'event']) || '').trim();
       var stepIdx = String(getCol(row, ['etapa', 'step']) || '').trim();
-      var leadName = String(getCol(row, ['nome']) || '').trim();
-      var leadPhone = String(getCol(row, ['whatsapp', 'telefone']) || '').trim();
+      var leadName = String(getCol(row, ['nome', 'cliente']) || '').trim();
+      var leadPhone = String(getCol(row, ['whatsapp', 'telefone', 'phone']) || '').trim();
       var leadEmail = String(getCol(row, ['email', 'e-mail']) || '').trim();
       var points = getCol(row, ['pontos / score', 'pontos', 'score']);
-      var src = String(getCol(row, ['src', 'src (rastreamento)']) || '').trim();
+      var src = String(getCol(row, ['src', 'src (rastreamento)', 'sck']) || '').trim();
       var utmSrc = String(getCol(row, ['utm_source', 'source']) || '').trim();
       var utmCmp = String(getCol(row, ['utm_campaign', 'campaign']) || '').trim();
+      var saleStatus = String(getCol(row, ['status venda', 'status', 'status_venda']) || '').toLowerCase().trim();
+      var saleValRaw = getCol(row, ['valor (r$)', 'valor', 'sale_amount', 'total_price']);
+      var payMethod = String(getCol(row, ['método', 'metodo', 'payment_method', 'forma pagamento']) || 'PIX').trim();
+      var platform = String(getCol(row, ['plataforma', 'platform', 'gateway']) || '').trim();
+      var product = String(getCol(row, ['quiz / produto', 'produto', 'product']) || '').trim();
+
+      var saleVal = 0;
+      if (typeof saleValRaw === 'number') saleVal = saleValRaw;
+      else if (saleValRaw) {
+        var cleanV = String(saleValRaw).replace(/[^\d,\.]/g, '').replace(',', '.');
+        saleVal = parseFloat(cleanV) || 0;
+      }
 
       var sessionKey = rawSession;
       if (!sessionKey) {
@@ -889,6 +938,7 @@ function doGet(e) {
         sessionKey = (leadPhone || leadEmail || 'visitante') + '_' + timeCluster;
       }
 
+      // Funil: Etapas do Quiz
       if (event.indexOf('Quiz_Etapa_') === 0) {
         var numStep = parseInt(event.replace('Quiz_Etapa_', ''), 10);
         if (!isNaN(numStep) &amp;&amp; numStep &gt;= 1) {
@@ -911,53 +961,127 @@ function doGet(e) {
         }
       }
       if (event === 'Quiz_Concluido' || event === 'Oferta_Visualizada') uniqueCompletions[sessionKey] = true;
+
+      // Funil: Checkout Iniciado
+      if (event === 'Checkout_Iniciado' || event === 'InitiateCheckout') {
+        if (!stepVisitors['step_checkout']) stepVisitors['step_checkout'] = {};
+        stepVisitors['step_checkout'][sessionKey] = true;
+        uniqueCheckouts[sessionKey] = true;
+      }
+
+      // Funil e Métricas: Vendas Kirvano & PerfectPay
+      var isSaleApproved = (event === 'Venda_Aprovada' || saleStatus === 'approved' || saleStatus === 'aprovado' || saleStatus === 'paid');
+      var isSalePending = (event === 'Aguardando_Pagamento' || saleStatus === 'waiting_payment' || saleStatus === 'pending' || saleStatus === 'billet_printed' || saleStatus === 'pix_generated');
+
+      if (isSaleApproved || isSalePending) {
+        var ordKey = (leadPhone || leadEmail || '') + '_' + Math.round(saleVal) + '_' + (platform || 'gw');
+        if (!ordersMap[ordKey]) {
+          ordersMap[ordKey] = true;
+          var originTag = src ? ('SRC: ' + src) : [utmSrc, utmCmp].filter(Boolean).join(' / ');
+          var formattedVal = 'R$ ' + saleVal.toFixed(2).replace('.', ',');
+
+          if (isSaleApproved) {
+            totalSalesApproved++;
+            revenueApproved += saleVal;
+            if (!stepVisitors['step_sales']) stepVisitors['step_sales'] = {};
+            stepVisitors['step_sales'][sessionKey] = true;
+          } else {
+            totalSalesPending++;
+            revenuePending += saleVal;
+          }
+
+          orders.unshift({
+            id: sessionKey || ('ord_' + i),
+            date: rowDate ? Utilities.formatDate(new Date(rowDate), Session.getScriptTimeZone() || "GMT-3", "dd/MM/yyyy HH:mm") : '',
+            name: leadName || 'Cliente',
+            whatsapp: leadPhone || '',
+            email: leadEmail || '',
+            amount: saleVal,
+            amountFormatted: formattedVal,
+            method: payMethod || 'PIX',
+            status: isSaleApproved ? 'approved' : 'waiting_payment',
+            platform: platform || (event.indexOf('Kirvano') !== -1 ? 'Kirvano' : 'PerfectPay'),
+            product: product || 'Oferta',
+            src: src || '-',
+            utm: originTag || '-'
+          });
+        }
+      }
+
+      // Leads capturados no formulário do quiz
       if (leadName || leadPhone || leadEmail) {
         var lKey = leadPhone || leadEmail || (leadName + '_' + sessionKey);
-        if (!leadsMap[lKey]) {
+        if (!leadsMap[lKey] &amp;&amp; !isSaleApproved &amp;&amp; !isSalePending) {
           leadsMap[lKey] = true;
-          var originTag = src ? ('SRC: ' + src) : [utmSrc, utmCmp].filter(Boolean).join(' / ');
+          var originTag2 = src ? ('SRC: ' + src) : [utmSrc, utmCmp].filter(Boolean).join(' / ');
           recentLeads.unshift({
             date: rowDate ? Utilities.formatDate(new Date(rowDate), Session.getScriptTimeZone() || "GMT-3", "dd/MM/yyyy HH:mm") : '',
-            name: leadName || 'Anônimo', whatsapp: leadPhone || '', email: leadEmail || '', score: points || 0, src: src || '-', utm: originTag || '-'
+            name: leadName || 'Anônimo', whatsapp: leadPhone || '', email: leadEmail || '', score: points || 0, src: src || '-', utm: originTag2 || '-'
           });
         }
       }
     }
+
     var stepViews = {};
     for (var sKey in stepVisitors) stepViews[sKey] = Object.keys(stepVisitors[sKey]).length;
-    if (recentLeads.length &gt; 50) recentLeads = recentLeads.slice(0, 50);
+    if (recentLeads.length &gt; 100) recentLeads = recentLeads.slice(0, 100);
+    if (orders.length &gt; 100) orders = orders.slice(0, 100);
+
     return ContentService.createTextOutput(JSON.stringify({
-      status: 'success', totalStarts: Object.keys(uniqueStarts).length, totalCompletions: Object.keys(uniqueCompletions).length,
-      totalLeads: Object.keys(leadsMap).length, stepViews: stepViews, recentLeads: recentLeads, lastUpdated: new Date().toISOString()
+      status: 'success',
+      totalStarts: Object.keys(uniqueStarts).length,
+      totalCompletions: Object.keys(uniqueCompletions).length,
+      totalCheckouts: Object.keys(uniqueCheckouts).length,
+      totalSalesApproved: totalSalesApproved,
+      revenueApproved: revenueApproved,
+      totalSalesPending: totalSalesPending,
+      revenuePending: revenuePending,
+      totalLeads: Object.keys(leadsMap).length,
+      stepViews: stepViews,
+      recentLeads: recentLeads,
+      orders: orders,
+      lastUpdated: new Date().toISOString()
     })).setMimeType(ContentService.MimeType.JSON);
   } catch(err) {
     return ContentService.createTextOutput(JSON.stringify({ status: 'error', message: err.toString() })).setMimeType(ContentService.MimeType.JSON);
   }
 }
 
-// 2. GRAVAÇÃO DOS DADOS (Quiz do Visitante ➔ Planilha com Mapeamento Dinâmico)
+// 2. GRAVAÇÃO DOS DADOS (Receptor Universal: QuizForge + Webhook Kirvano + Webhook PerfectPay)
 function doPost(e) {
   try {
     var sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
     var lastCol = sheet.getLastColumn();
+    var expectedHeaders = ['Data/Hora', 'Sessão (ID)', 'Evento', 'Quiz / Produto', 'Etapa', 'Status Venda', 'Valor (R$)', 'Método', 'Plataforma', 'Nome', 'WhatsApp', 'Email', 'SRC', 'UTM_Source', 'UTM_Campaign', 'UTM_Medium', 'UTM_Content'];
+
     if (lastCol === 0) {
-      sheet.appendRow(['Data/Hora', 'Sessão (ID)', 'Evento', 'Quiz', 'Etapa', 'Pergunta / Título', 'Resposta', 'Pontos / Score', 'Nome', 'WhatsApp', 'Email', 'SRC', 'UTM_Source', 'UTM_Campaign', 'UTM_Medium', 'UTM_Content']);
-      sheet.getRange(1, 1, 1, 16).setFontWeight('bold').setBackground('#e2e8f0');
+      sheet.appendRow(expectedHeaders);
+      sheet.getRange(1, 1, 1, expectedHeaders.length).setFontWeight('bold').setBackground('#e2e8f0');
       sheet.setFrozenRows(1);
-      lastCol = 16;
+      lastCol = expectedHeaders.length;
     } else {
       var curHeaders = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
-      var hasSrc = curHeaders.some(function(h) { return String(h).toUpperCase().indexOf('SRC') !== -1; });
-      var hasSess = curHeaders.some(function(h) { return String(h).toLowerCase().indexOf('sess') !== -1; });
-      if (!hasSrc) { lastCol++; sheet.getRange(1, lastCol).setValue('SRC').setFontWeight('bold').setBackground('#e2e8f0'); }
-      if (!hasSess) { lastCol++; sheet.getRange(1, lastCol).setValue('Sessão (ID)').setFontWeight('bold').setBackground('#e2e8f0'); }
+      for (var h = 0; h &lt; expectedHeaders.length; h++) {
+        var hName = expectedHeaders[h];
+        var found = curHeaders.some(function(cur) { return String(cur).trim().toLowerCase() === hName.toLowerCase(); });
+        if (!found) {
+          lastCol++;
+          sheet.getRange(1, lastCol).setValue(hName).setFontWeight('bold').setBackground('#e2e8f0');
+        }
+      }
     }
+
+    var raw = (e.postData &amp;&amp; e.postData.contents) ? e.postData.contents : '';
     var data = {};
-    if (e.postData &amp;&amp; e.postData.contents) {
-      try { data = JSON.parse(e.postData.contents); } catch(p) { data = e.parameter || {}; }
-    } else { data = e.parameter || {}; }
-    var utms = data.utms || {};
-    var src = data.src || utms.src || utms.sck || utms.SRC || utms.SCK || '';
+    try {
+      data = JSON.parse(raw);
+      if (data.request &amp;&amp; typeof data.request.body === 'string') {
+        try { data = JSON.parse(data.request.body); } catch(p) {}
+      }
+    } catch(errJson) {
+      data = e.parameter || {};
+    }
+
     var headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
     var colMap = {};
     for (var c = 0; c &lt; headers.length; c++) colMap[String(headers[c] || '').trim().toLowerCase()] = c;
@@ -969,30 +1093,88 @@ function doPost(e) {
         if (idx !== undefined) { newRow[idx] = val; return; }
       }
     }
+
     setVal(['data/hora', 'data', 'timestamp'], new Date());
-    setVal(['sessão (id)', 'sessão', 'sessao', 'session', 'sessao (id)'], data.sessionId || '');
-    setVal(['evento', 'event'], data.event || '');
-    setVal(['quiz', 'quiztitle', 'título do quiz'], data.quizTitle || '');
-    setVal(['etapa', 'step'], (data.data &amp;&amp; data.data.stepIndex) || '');
-    setVal(['pergunta / título', 'pergunta / titulo', 'pergunta', 'título'], (data.data &amp;&amp; (data.data.question || data.data.stepTitle || data.data.title)) || '');
-    setVal(['resposta', 'answer'], (data.data &amp;&amp; data.data.answer) || '');
-    var rowPts = '';
-    if (data.data &amp;&amp; data.data.points !== undefined &amp;&amp; data.data.points !== null &amp;&amp; data.data.points !== '') {
-      rowPts = data.data.points;
-    } else if (data.event === 'Quiz_Concluido' || data.event === 'Lead') {
-      rowPts = (data.totalScore !== undefined &amp;&amp; data.totalScore &gt; 0) ? data.totalScore : '';
+
+    // CASO A: WEBHOOK DA KIRVANO
+    if (data.sale_id || data.checkout_id || data.event === 'SALE_APPROVED' || (data.fiscal &amp;&amp; data.fiscal.total_value !== undefined)) {
+      var isApproved = (data.status === 'APPROVED' || data.event === 'SALE_APPROVED' || data.event === 'ORDER_PAID');
+      var isWaiting = (data.status === 'WAITING_PAYMENT' || data.event === 'WAITING_PAYMENT' || data.event === 'PIX_GENERATED' || data.event === 'ORDER_WAITING_PAYMENT');
+      var statusStr = isApproved ? 'approved' : (isWaiting ? 'waiting_payment' : (data.status || ''));
+      var eventStr = isApproved ? 'Venda_Aprovada' : 'Aguardando_Pagamento';
+      var cust = data.customer || {};
+      var utmsK = data.utm || {};
+      var amountVal = (data.fiscal &amp;&amp; data.fiscal.total_value) || (data.total_price ? parseFloat(String(data.total_price).replace(/[^\d,\.]/g, '').replace(',', '.')) : 0);
+      var prodName = (data.products &amp;&amp; data.products[0] &amp;&amp; data.products[0].name) || 'Kirvano Oferta';
+
+      setVal(['sessão (id)', 'sessão', 'sessao'], data.sale_id || ('kirv_' + Date.now()));
+      setVal(['evento', 'event'], eventStr);
+      setVal(['quiz / produto', 'produto'], prodName);
+      setVal(['status venda', 'status_venda', 'status'], statusStr);
+      setVal(['valor (r$)', 'valor'], amountVal);
+      setVal(['método', 'metodo'], data.payment_method || (data.payment &amp;&amp; data.payment.method) || 'PIX');
+      setVal(['plataforma', 'platform'], 'Kirvano');
+      setVal(['nome', 'cliente'], cust.name || '');
+      setVal(['whatsapp', 'telefone'], cust.phone_number || '');
+      setVal(['email', 'e-mail'], cust.email || '');
+      setVal(['src', 'sck'], utmsK.src || utmsK.sck || '');
+      setVal(['utm_source', 'source'], utmsK.utm_source || '');
+      setVal(['utm_campaign', 'campaign'], utmsK.utm_campaign || '');
+      setVal(['utm_medium', 'medium'], utmsK.utm_medium || '');
+      setVal(['utm_content', 'content'], utmsK.utm_content || '');
+      sheet.appendRow(newRow);
+      return ContentService.createTextOutput(JSON.stringify({ status: 'success', platform: 'Kirvano' })).setMimeType(ContentService.MimeType.JSON);
     }
-    setVal(['pontos / score', 'pontos', 'score'], rowPts);
+
+    // CASO B: WEBHOOK DA PERFECTPAY
+    if (data.sale_status_enum_key !== undefined || data.sale_amount !== undefined || (data.code &amp;&amp; String(data.code).indexOf('PP') === 0) || data.webhook_owner) {
+      var isAppP = (data.sale_status_enum === 2 || data.sale_status_enum_key === 'approved' || data.sale_status_detail === 'approved');
+      var isWaitP = (data.sale_status_enum === 1 || data.sale_status_enum_key === 'waiting_payment' || data.sale_status_enum_key === 'billet_printed' || data.sale_status_detail === 'waiting_payment');
+      var statusStrP = isAppP ? 'approved' : (isWaitP ? 'waiting_payment' : (data.sale_status_enum_key || ''));
+      var eventStrP = isAppP ? 'Venda_Aprovada' : 'Aguardando_Pagamento';
+      var custP = data.customer || {};
+      var metaP = data.metadata || {};
+      var amountValP = data.sale_amount || (data.plan &amp;&amp; data.plan.sale_amount) || 0;
+      var prodNameP = (data.product &amp;&amp; data.product.name) || (data.plan &amp;&amp; data.plan.name) || 'PerfectPay Oferta';
+      var phoneP = custP.phone_formated_ddi || custP.phone_formated || custP.phone_number || '';
+
+      setVal(['sessão (id)', 'sessão', 'sessao'], data.code || ('pp_' + Date.now()));
+      setVal(['evento', 'event'], eventStrP);
+      setVal(['quiz / produto', 'produto'], prodNameP);
+      setVal(['status venda', 'status_venda', 'status'], statusStrP);
+      setVal(['valor (r$)', 'valor'], amountValP);
+      setVal(['método', 'metodo'], data.payment_type_enum_key || 'pix');
+      setVal(['plataforma', 'platform'], 'PerfectPay');
+      setVal(['nome', 'cliente'], custP.full_name || custP.name || '');
+      setVal(['whatsapp', 'telefone'], phoneP);
+      setVal(['email', 'e-mail'], custP.email || '');
+      setVal(['src', 'sck'], metaP.src || metaP.sck || '');
+      setVal(['utm_source', 'source'], metaP.utm_source || '');
+      setVal(['utm_campaign', 'campaign'], metaP.utm_campaign || '');
+      setVal(['utm_medium', 'medium'], metaP.utm_medium || '');
+      setVal(['utm_content', 'content'], metaP.utm_content || '');
+      sheet.appendRow(newRow);
+      return ContentService.createTextOutput(JSON.stringify({ status: 'success', platform: 'PerfectPay' })).setMimeType(ContentService.MimeType.JSON);
+    }
+
+    // CASO C: DISPARO PADRÃO DO QUIZFORGE
+    var utms = data.utms || {};
+    var src = data.src || utms.src || utms.sck || utms.SRC || utms.SCK || '';
+    setVal(['sessão (id)', 'sessão', 'sessao'], data.sessionId || '');
+    setVal(['evento', 'event'], data.event || '');
+    setVal(['quiz / produto', 'quiz'], data.quizTitle || '');
+    setVal(['etapa', 'step'], (data.data &amp;&amp; data.data.stepIndex) || '');
     setVal(['nome', 'leadname'], (data.lead &amp;&amp; data.lead.name) || '');
     setVal(['whatsapp', 'telefone', 'phone'], (data.lead &amp;&amp; data.lead.whatsapp) || '');
     setVal(['email', 'e-mail'], (data.lead &amp;&amp; data.lead.email) || '');
-    setVal(['src', 'src (rastreamento)'], src);
+    setVal(['src', 'sck'], src);
     setVal(['utm_source', 'source'], data.utm_source || utms.utm_source || '');
     setVal(['utm_campaign', 'campaign'], data.utm_campaign || utms.utm_campaign || '');
     setVal(['utm_medium', 'medium'], data.utm_medium || utms.utm_medium || '');
     setVal(['utm_content', 'content'], data.utm_content || utms.utm_content || '');
     sheet.appendRow(newRow);
-    return ContentService.createTextOutput(JSON.stringify({ status: 'success' })).setMimeType(ContentService.MimeType.JSON);
+    return ContentService.createTextOutput(JSON.stringify({ status: 'success', platform: 'QuizForge' })).setMimeType(ContentService.MimeType.JSON);
+
   } catch (err) {
     return ContentService.createTextOutput(JSON.stringify({ status: 'error', message: err.toString() })).setMimeType(ContentService.MimeType.JSON);
   }
@@ -1137,8 +1319,8 @@ function doPost(e) {
     </div>
   </div>
 
-  <!-- Scripts do Construtor -->
-  <script src="template-engine.js"></script>
-  <script src="app.js"></script>
+  <!-- Scripts do Construtor (Com cache-buster para atualização imediata na hospedagem) -->
+  <script src="template-engine.js?v=2.5"></script>
+  <script src="app.js?v=2.5"></script>
 </body>
 </html>

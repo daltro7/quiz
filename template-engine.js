@@ -1545,12 +1545,24 @@ const QuizTemplateEngine = {
       },
 
       applyUtmsToLinks() {
-        if (!this.utmParams || Object.keys(this.utmParams).length === 0) return;
         const links = document.querySelectorAll('.link-trackable, .cta-btn[href], .offer-container a[href]');
         links.forEach(link => {
           const href = link.getAttribute('href');
           if (href && href !== '#' && !href.startsWith('javascript:')) {
-            link.setAttribute('href', this.appendUtmsToUrl(href));
+            if (this.utmParams && Object.keys(this.utmParams).length > 0) {
+              link.setAttribute('href', this.appendUtmsToUrl(href));
+            }
+            if (!link.dataset.checkoutBound) {
+              link.dataset.checkoutBound = 'true';
+              link.addEventListener('click', () => {
+                try {
+                  this.trackEvent('Checkout_Iniciado', {
+                    checkoutUrl: link.getAttribute('href') || href,
+                    stepIndex: this.currentStepIndex
+                  });
+                } catch(e) {}
+              });
+            }
           }
         });
       },

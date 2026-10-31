@@ -2105,7 +2105,7 @@ const App = {
   // ==========================================
   // ABA 4: DASHBOARD DE RETENÇÃO & FUNIL (Demanda 7)
   // ==========================================
-  setAnalyticsDateFilter(filterType) {
+  async setAnalyticsDateFilter(filterType) {
     this.analyticsFilter = filterType;
     const now = new Date();
 
@@ -2122,33 +2122,40 @@ const App = {
       this.analyticsEndDate = this.formatIsoDate(now);
     }
 
-    // Se o funil possui planilha Google conectada, sincroniza em segundo plano silenciosamente
+    // Renderiza imediatamente na UI para resposta instantânea ao clique
+    this.renderFunnelDashboard();
+
+    // Se o funil possui planilha Google conectada, sincroniza e atualiza novamente quando a resposta chegar
     const sheetUrl = (this.currentQuiz && this.currentQuiz.tracking && (this.currentQuiz.tracking.sheetUrl || this.currentQuiz.tracking.webhookUrl)) || '';
     if (sheetUrl && sheetUrl.trim() !== '') {
-      this.syncMetricsFromGoogleSheet(true);
+      await this.syncMetricsFromGoogleSheet(true);
     }
-
-    this.renderFunnelDashboard();
   },
 
-  onAnalyticsDateRangeChange() {
+  async onAnalyticsDateRangeChange() {
     const startEl = document.getElementById('filter-start-date');
     const endEl = document.getElementById('filter-end-date');
     if (startEl && startEl.value) this.analyticsStartDate = startEl.value;
     if (endEl && endEl.value) this.analyticsEndDate = endEl.value;
     this.analyticsFilter = 'range';
 
-    // Se o funil possui planilha Google conectada, sincroniza o período personalizado silenciosamente
+    // Renderiza imediatamente na UI
+    this.renderFunnelDashboard();
+
+    // Se o funil possui planilha Google conectada, sincroniza o período personalizado
     const sheetUrl = (this.currentQuiz && this.currentQuiz.tracking && (this.currentQuiz.tracking.sheetUrl || this.currentQuiz.tracking.webhookUrl)) || '';
     if (sheetUrl && sheetUrl.trim() !== '') {
-      this.syncMetricsFromGoogleSheet(true);
+      await this.syncMetricsFromGoogleSheet(true);
     }
-
-    this.renderFunnelDashboard();
   },
 
   applyAnalyticsDateRange() {
     this.onAnalyticsDateRangeChange();
+  },
+
+  setAnalyticsOrdersTab(tab) {
+    this.analyticsOrdersTab = tab;
+    this.renderFunnelDashboard();
   },
 
   onAnalyticsUtmSearch(query) {
@@ -2264,6 +2271,7 @@ const App = {
     const analytics = this.currentQuiz.analytics || { views: {} };
     let views = {};
     let leads = analytics.leads || [];
+    let orders = analytics.orders || [];
 
     // Calcula diferença de dias selecionada no filtro de data
     const sDate = new Date(this.analyticsStartDate + 'T00:00:00');
@@ -2274,7 +2282,6 @@ const App = {
     if (analytics.cachedFilters && analytics.cachedFilters[this.analyticsFilter]) {
       const cached = analytics.cachedFilters[this.analyticsFilter];
       if (this.analyticsFilter === 'range') {
-        // Se for range personalizado, recalcula proporcionalmente aos dias caso as datas divirjam do cache
         if (cached.startDate === this.analyticsStartDate && cached.endDate === this.analyticsEndDate && cached.views) {
           views = cached.views;
         } else {
@@ -2292,6 +2299,7 @@ const App = {
         views = cached.views || cached.stepViews || {};
       }
       if (cached.leads) leads = cached.leads;
+      if (cached.orders) orders = cached.orders;
     } else if (analytics.views && Object.keys(analytics.views).length > 0) {
       const baseViews = analytics.views;
       let factor = 1.0;
@@ -2305,7 +2313,6 @@ const App = {
         views[k] = Math.max(0, Math.round(baseViews[k] * factor));
       });
     } else {
-      // Se não há dados cadastrados, calcula escala dinâmica conforme o período selecionado
       const dailyBenchmark = 145;
       let periodStarts = 145;
       if (this.analyticsFilter === 'today') periodStarts = 145;
@@ -2327,7 +2334,36 @@ const App = {
     const totalCompleted = views[lastStepKey] || 0;
     const conversionRate = totalStarted > 0 ? ((totalCompleted / totalStarted) * 100).toFixed(1) : '0.0';
 
-    // Calcula maior drop-off entre etapas
+    // Filtra Leads e Pedidos / Vendas pelo período selecionado
+    const startLimit = new Date(this.analyticsStartDate + 'T00:00:00').getTime();
+    const endLimit = new Date(this.analyticsEndDate + 'T23:59:59').getTime();
+
+    let filteredLeads = leads.filter(l => {
+      const lDate = this.parseLeadDate(l.date);
+      if (!lDate) return false;
+      const t = lDate.getTime();
+      return t >= startLimit && t <= endLimit;
+    });
+
+    let filteredOrders = orders.filter(o => {
+      const oDate = this.parseLeadDate(o.date);
+      if (!oDate) return true;
+      const t = oDate.getTime();
+      return t >= startLimit && t <= endLimit;
+    });
+
+    const approvedOrders = filteredOrders.filter(o => o.status === 'approved');
+    const pendingOrders = filteredOrders.filter(o => o.status === 'waiting_payment');
+    const totalSalesApproved = approvedOrders.length;
+    const revenueApproved = approvedOrders.reduce((sum, o) => sum + (parseFloat(o.amount) || 0), 0);
+    const totalSalesPending = pendingOrders.length;
+    const revenuePending = pendingOrders.reduce((sum, o) => sum + (parseFloat(o.amount) || 0), 0);
+
+    const totalCheckouts = views['step_checkout'] || (analytics.cachedFilters && analytics.cachedFilters[this.analyticsFilter] && analytics.cachedFilters[this.analyticsFilter].totalCheckouts) || Math.max(totalSalesApproved + totalSalesPending, Math.round(totalCompleted * 0.45));
+    const rateCheckout = totalCompleted > 0 ? ((totalCheckouts / totalCompleted) * 100).toFixed(1) : '0.0';
+    const conversionRateSales = totalStarted > 0 ? ((totalSalesApproved / totalStarted) * 100).toFixed(1) : '0.0';
+
+    // Calcula maior drop-off entre etapas do quiz
     let maxDrop = 0;
     let maxDropStepTitle = 'Nenhum';
     let maxDropPct = '0.0%';
@@ -2346,20 +2382,30 @@ const App = {
       }
     }
 
-    // Atualiza KPIs no topo
+    // Atualiza KPIs no topo (Funil + Financeiro)
     const elStarted = document.getElementById('kpi-total-started');
     const elCompleted = document.getElementById('kpi-total-completed');
     const elCompSub = document.getElementById('kpi-completion-sub');
+    const elCheckouts = document.getElementById('kpi-total-checkouts');
+    const elCheckoutsSub = document.getElementById('kpi-checkouts-sub');
+    const elRevApproved = document.getElementById('kpi-revenue-approved');
+    const elSalesApprovedCount = document.getElementById('kpi-sales-approved-count');
+    const elRevPending = document.getElementById('kpi-revenue-pending');
+    const elSalesPendingCount = document.getElementById('kpi-sales-pending-count');
     const elRate = document.getElementById('kpi-conversion-rate');
-    const elDrop = document.getElementById('kpi-biggest-drop');
-    const elDropPct = document.getElementById('kpi-drop-pct');
+    const elBiggestDropSub = document.getElementById('kpi-biggest-drop-sub');
 
     if (elStarted) elStarted.innerText = totalStarted.toLocaleString('pt-BR');
     if (elCompleted) elCompleted.innerText = totalCompleted.toLocaleString('pt-BR');
     if (elCompSub) elCompSub.innerText = `${conversionRate}% concluídos`;
-    if (elRate) elRate.innerText = `${conversionRate}%`;
-    if (elDrop) elDrop.innerText = maxDrop > 0 ? maxDropStepTitle : 'Nenhum gargalo';
-    if (elDropPct) elDropPct.innerText = maxDrop > 0 ? `Abandono de ${maxDropPct}` : 'Sem perdas registradas';
+    if (elCheckouts) elCheckouts.innerText = totalCheckouts.toLocaleString('pt-BR');
+    if (elCheckoutsSub) elCheckoutsSub.innerText = `${rateCheckout}% da oferta`;
+    if (elRevApproved) elRevApproved.innerText = 'R$ ' + revenueApproved.toFixed(2).replace('.', ',');
+    if (elSalesApprovedCount) elSalesApprovedCount.innerText = `${totalSalesApproved} ${totalSalesApproved === 1 ? 'venda confirmada' : 'vendas confirmadas'}`;
+    if (elRevPending) elRevPending.innerText = 'R$ ' + revenuePending.toFixed(2).replace('.', ',');
+    if (elSalesPendingCount) elSalesPendingCount.innerText = `${totalSalesPending} ${totalSalesPending === 1 ? 'pedido pendente' : 'pedidos pendentes'}`;
+    if (elRate) elRate.innerText = `${conversionRateSales}%`;
+    if (elBiggestDropSub) elBiggestDropSub.innerText = maxDrop > 0 ? `Maior perda: ${maxDropStepTitle} (-${maxDropPct})` : 'Início ➔ Venda';
 
     // Renderiza Banner de Status da Planilha Google
     const banner = document.getElementById('analytics-sheet-status-banner');
@@ -2374,12 +2420,12 @@ const App = {
             <div>
               <div class="flex items-center gap-2">
                 <span class="font-extrabold text-white text-xs">Planilha Google Conectada</span>
-                <span class="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 font-bold text-[10px] border border-emerald-500/30">Pronta para Sincronizar</span>
+                <span class="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 font-bold text-[10px] border border-emerald-500/30">Kirvano & PerfectPay Ativas</span>
               </div>
               <p class="text-[11px] text-slate-400 mt-0.5 font-mono truncate max-w-sm sm:max-w-md">
                 ${sheetUrl}
               </p>
-              ${lastSync ? `<p class="text-[10px] text-slate-400 mt-0.5">Última sincronização: <b class="text-emerald-400">${lastSync}</b></p>` : '<p class="text-[10px] text-amber-400 mt-0.5">Nenhum dado sincronizado ainda. Clique em "Sincronizar Planilha" acima.</p>'}
+              ${lastSync ? `<p class="text-[10px] text-slate-400 mt-0.5">Última sincronização: <b class="text-emerald-400">${lastSync}</b></p>` : '<p class="text-[10px] text-amber-400 mt-0.5">Nenhum dado sincronizado ainda. Clique em "Sincronizar Agora" acima.</p>'}
             </div>
           </div>
           <div class="flex items-center gap-2 shrink-0">
@@ -2387,7 +2433,7 @@ const App = {
               <i class="ph ph-arrows-clockwise text-sm"></i> Sincronizar Agora
             </button>
             <button onclick="App.openSheetsGuideModal()" class="px-2.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold border border-slate-700 transition" title="Instruções de Configuração">
-              <i class="ph ph-question text-sm"></i> Ajuda
+              <i class="ph ph-question text-sm"></i> Como Conectar Webhook
             </button>
           </div>
         `;
@@ -2397,7 +2443,7 @@ const App = {
             <i class="ph ph-warning-circle text-xl shrink-0"></i>
             <div>
               <p class="font-bold text-xs">Nenhuma Planilha Google Conectada a Este Funil</p>
-              <p class="text-[11px] text-slate-400">Para receber acessos e visualizar o funil com dados reais dos seus clientes, conecte uma planilha.</p>
+              <p class="text-[11px] text-slate-400">Conecte uma planilha para receber acessos do quiz e webhooks da Kirvano e PerfectPay em tempo real.</p>
             </div>
           </div>
           <div class="flex items-center gap-2 shrink-0">
@@ -2420,15 +2466,25 @@ const App = {
           <div class="text-3xl">📊</div>
           <p class="text-xs font-bold text-slate-300">Nenhum tráfego registrado para este período selecionado</p>
           <p class="text-[11px] text-slate-500 max-w-md mx-auto">
-            Conforme os usuários acessam suas páginas, os acessos são contabilizados aqui e na sua Planilha Google. Clique em "Sincronizar Planilha" acima ou gere uma demonstração:
+            Conforme os usuários acessam suas páginas e compram na Kirvano/PerfectPay, tudo é contabilizado aqui. Clique em "Sincronizar Agora" ou gere uma demonstração completa:
           </p>
           <button onclick="App.simulateFunnelTraffic()" class="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold transition shadow-lg shadow-indigo-500/20 inline-flex items-center gap-1.5">
-            <i class="ph ph-lightning"></i> Simular Tráfego de Demonstração
+            <i class="ph ph-lightning"></i> Simular Tráfego & Vendas de Demonstração
           </button>
         </div>
       `;
     } else if (this.funnelChartMode === 'horizontal') {
-      // 1. VISUALIZAÇÃO EM FLUXO HORIZONTAL SIMPLIFICADO (Barras estreitas e próximas)
+      // 1. VISUALIZAÇÃO EM FLUXO HORIZONTAL (Etapas do Quiz + Coluna Checkout + Coluna Vendas)
+      const checkoutPct = totalStarted > 0 ? ((totalCheckouts / totalStarted) * 100).toFixed(1) : '0.0';
+      const checkoutDiff = Math.max(0, totalCompleted - totalCheckouts);
+      const checkoutDropPct = totalCompleted > 0 ? ((checkoutDiff / totalCompleted) * 100).toFixed(1) : '0.0';
+      const checkoutBarHeight = Math.max(10, Math.round((parseFloat(checkoutPct) / 100) * 150));
+
+      const salesPct = totalStarted > 0 ? ((totalSalesApproved / totalStarted) * 100).toFixed(1) : '0.0';
+      const salesDiff = Math.max(0, totalCheckouts - totalSalesApproved);
+      const salesDropPct = totalCheckouts > 0 ? ((salesDiff / totalCheckouts) * 100).toFixed(1) : '0.0';
+      const salesBarHeight = Math.max(10, Math.round((parseFloat(salesPct) / 100) * 150));
+
       container.innerHTML = `
         <div class="funnel-horiz-scroll overflow-x-auto pb-4 pt-3">
           <div class="flex items-end justify-center min-w-max mx-auto gap-2 sm:gap-3 px-3">
@@ -2447,13 +2503,12 @@ const App = {
                 isBottleneck = parseFloat(dropPct) === parseFloat(maxDrop.toFixed(1)) && maxDrop > 0;
               }
 
-              // Altura proporcional da barra (máx 150px)
               const pctNum = parseFloat(retentionPct) || 0;
               const barHeightPx = Math.max(10, Math.round((pctNum / 100) * 150));
 
               return `
                 <div class="flex flex-col items-center w-[68px] sm:w-[80px] shrink-0 transition-transform duration-200 hover:-translate-y-1">
-                  <!-- ACIMA DA BARRA: Número de pessoas que chegaram até a etapa -->
+                  <!-- ACIMA DA BARRA -->
                   <div class="text-center pb-2 flex flex-col items-center min-h-[44px] justify-end">
                     <span class="text-xs sm:text-sm font-extrabold text-white font-mono leading-none">
                       ${stepViews.toLocaleString('pt-BR')}
@@ -2466,12 +2521,12 @@ const App = {
                     </span>
                   </div>
 
-                  <!-- A BARRA: Estreita (w-7 ou w-8) e proporcional -->
+                  <!-- A BARRA -->
                   <div class="w-7 sm:w-8 h-[155px] bg-slate-950/90 rounded-lg p-0.5 border ${isBottleneck ? 'border-amber-500/80 shadow-md shadow-amber-500/20' : 'border-slate-800'} flex items-end justify-center relative">
                     <div class="w-full rounded bg-gradient-to-t from-indigo-600 via-indigo-500 to-emerald-400 transition-all duration-500" style="height: ${barHeightPx}px;" title="Etapa ${idx + 1}: ${stepViews} acessos (${retentionPct}%)"></div>
                   </div>
 
-                  <!-- ABAIXO DA BARRA: Quantos saíram com % também -->
+                  <!-- ABAIXO DA BARRA -->
                   <div class="text-center pt-2 flex flex-col items-center min-h-[38px]">
                     ${idx === 0 ? `
                       <span class="text-[10px] text-emerald-400 font-bold leading-tight">Início</span>
@@ -2488,6 +2543,66 @@ const App = {
                 </div>
               `;
             }).join('')}
+
+            <!-- SEPARADOR VISUAL: DO QUIZ PARA A VENDA -->
+            <div class="h-[120px] w-px bg-slate-800 self-center mx-1"></div>
+
+            <!-- COLUNA ESPECIAL 1: CHECKOUT INICIADO -->
+            <div class="flex flex-col items-center w-[68px] sm:w-[80px] shrink-0 transition-transform duration-200 hover:-translate-y-1">
+              <div class="text-center pb-2 flex flex-col items-center min-h-[44px] justify-end">
+                <span class="text-xs sm:text-sm font-extrabold text-sky-300 font-mono leading-none">
+                  ${totalCheckouts.toLocaleString('pt-BR')}
+                </span>
+                <span class="text-[10px] text-sky-400 font-bold leading-tight mt-1">
+                  ${checkoutPct}%
+                </span>
+                <span class="text-[9px] text-sky-300 truncate max-w-[68px] block mt-0.5 font-bold flex items-center gap-0.5">
+                  <i class="ph ph-shopping-cart"></i> Checkout
+                </span>
+              </div>
+
+              <div class="w-7 sm:w-8 h-[155px] bg-slate-950/90 rounded-lg p-0.5 border border-sky-500/60 shadow-md shadow-sky-500/10 flex items-end justify-center relative">
+                <div class="w-full rounded bg-gradient-to-t from-sky-600 via-sky-500 to-cyan-300 transition-all duration-500" style="height: ${checkoutBarHeight}px;" title="Checkout Aberto: ${totalCheckouts} acessos (${checkoutPct}%)"></div>
+              </div>
+
+              <div class="text-center pt-2 flex flex-col items-center min-h-[38px]">
+                <span class="text-[10px] sm:text-[11px] font-extrabold text-rose-400 leading-tight whitespace-nowrap">
+                  -${checkoutDiff.toLocaleString('pt-BR')}
+                </span>
+                <span class="text-[9px] text-rose-300/80 font-mono leading-tight whitespace-nowrap">
+                  (-${checkoutDropPct}%)
+                </span>
+              </div>
+            </div>
+
+            <!-- COLUNA ESPECIAL 2: VENDAS APROVADAS (KIRVANO / PERFECTPAY) -->
+            <div class="flex flex-col items-center w-[68px] sm:w-[80px] shrink-0 transition-transform duration-200 hover:-translate-y-1">
+              <div class="text-center pb-2 flex flex-col items-center min-h-[44px] justify-end">
+                <span class="text-xs sm:text-sm font-black text-emerald-400 font-mono leading-none">
+                  ${totalSalesApproved.toLocaleString('pt-BR')}
+                </span>
+                <span class="text-[10px] text-emerald-400 font-bold leading-tight mt-1">
+                  ${salesPct}%
+                </span>
+                <span class="text-[9px] text-emerald-300 truncate max-w-[68px] block mt-0.5 font-extrabold flex items-center gap-0.5">
+                  <i class="ph ph-check-circle"></i> Vendas
+                </span>
+              </div>
+
+              <div class="w-7 sm:w-8 h-[155px] bg-slate-950/90 rounded-lg p-0.5 border border-emerald-500/80 shadow-lg shadow-emerald-500/20 flex items-end justify-center relative">
+                <div class="w-full rounded bg-gradient-to-t from-emerald-600 via-emerald-500 to-amber-300 transition-all duration-500" style="height: ${salesBarHeight}px;" title="Vendas Aprovadas: ${totalSalesApproved} vendas (${salesPct}%)"></div>
+              </div>
+
+              <div class="text-center pt-2 flex flex-col items-center min-h-[38px]">
+                <span class="text-[10px] sm:text-[11px] font-extrabold text-rose-400 leading-tight whitespace-nowrap">
+                  -${salesDiff.toLocaleString('pt-BR')}
+                </span>
+                <span class="text-[9px] text-rose-300/80 font-mono leading-tight whitespace-nowrap">
+                  (-${salesDropPct}%)
+                </span>
+              </div>
+            </div>
+
           </div>
         </div>
       `;
@@ -2534,37 +2649,95 @@ const App = {
                   </div>
                 </div>
 
-                <!-- Barra visual do Funil -->
                 <div class="w-full bg-slate-950/80 rounded-full h-3.5 overflow-hidden p-0.5 border border-slate-800">
                   <div class="funnel-bar-container h-full rounded-full bg-gradient-to-r from-indigo-500 via-indigo-400 to-emerald-400" style="width: ${Math.max(2, parseFloat(retentionPct))}%;"></div>
                 </div>
               </div>
             `;
           }).join('')}
+
+          <!-- Checkout Aberto Detalhado -->
+          <div class="bg-slate-900/90 border border-sky-500/50 rounded-xl p-3.5 space-y-2">
+            <div class="flex flex-wrap items-center justify-between gap-2">
+              <div class="flex items-center gap-2">
+                <span class="w-6 h-6 rounded-lg bg-sky-500/20 text-sky-400 font-extrabold text-xs flex items-center justify-center">🛒</span>
+                <span class="font-bold text-white text-xs">Checkout Iniciado (Kirvano / PerfectPay)</span>
+              </div>
+              <div class="flex items-center gap-3">
+                <span class="text-xs font-mono font-bold text-white">${totalCheckouts.toLocaleString('pt-BR')} cliques</span>
+                <span class="text-xs font-mono font-extrabold text-sky-400 bg-sky-500/10 px-2 py-0.5 rounded-md border border-sky-500/20">${rateCheckout}% da oferta</span>
+              </div>
+            </div>
+            <div class="w-full bg-slate-950/80 rounded-full h-3.5 overflow-hidden p-0.5 border border-slate-800">
+              <div class="funnel-bar-container h-full rounded-full bg-gradient-to-r from-sky-500 to-cyan-400" style="width: ${Math.max(2, parseFloat(rateCheckout))}%;"></div>
+            </div>
+          </div>
+
+          <!-- Vendas Aprovadas Detalhado -->
+          <div class="bg-slate-900/90 border border-emerald-500/60 rounded-xl p-3.5 space-y-2">
+            <div class="flex flex-wrap items-center justify-between gap-2">
+              <div class="flex items-center gap-2">
+                <span class="w-6 h-6 rounded-lg bg-emerald-500/20 text-emerald-400 font-extrabold text-xs flex items-center justify-center">💰</span>
+                <span class="font-bold text-white text-xs">Vendas Aprovadas (Confirmadas)</span>
+              </div>
+              <div class="flex items-center gap-3">
+                <span class="text-xs font-mono font-bold text-emerald-400">R$ ${revenueApproved.toFixed(2).replace('.', ',')}</span>
+                <span class="text-xs font-mono font-extrabold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-md border border-emerald-500/20">${totalSalesApproved} vendas (${conversionRateSales}%)</span>
+              </div>
+            </div>
+            <div class="w-full bg-slate-950/80 rounded-full h-3.5 overflow-hidden p-0.5 border border-slate-800">
+              <div class="funnel-bar-container h-full rounded-full bg-gradient-to-r from-emerald-500 via-emerald-400 to-amber-300" style="width: ${Math.max(2, parseFloat(conversionRateSales))}%;"></div>
+            </div>
+          </div>
         </div>
       `;
     }
 
-    // Renderiza Lista de Leads filtrada para o período e campo de pesquisa por SRC / UTM
-    const leadsContainer = document.getElementById('analytics-leads-container');
-    const leadsBadge = document.getElementById('analytics-leads-count-badge');
-    const tagsContainer = document.getElementById('analytics-utm-tags-container');
+    // ==========================================
+    // SEÇÃO INFERIOR: CENTRAL DE VENDAS & LEADS
+    // ==========================================
+    if (!this.analyticsOrdersTab) this.analyticsOrdersTab = 'approved';
 
-    const startLimit = new Date(this.analyticsStartDate + 'T00:00:00').getTime();
-    const endLimit = new Date(this.analyticsEndDate + 'T23:59:59').getTime();
+    // Atualiza contadores nas abas
+    const bApproved = document.getElementById('badge-tab-approved');
+    const bPending = document.getElementById('badge-tab-pending');
+    const bLeads = document.getElementById('badge-tab-leads');
+    const bAll = document.getElementById('badge-tab-all');
+    if (bApproved) bApproved.innerText = approvedOrders.length;
+    if (bPending) bPending.innerText = pendingOrders.length;
+    if (bLeads) bLeads.innerText = filteredLeads.length;
+    if (bAll) bAll.innerText = filteredOrders.length;
 
-    let filteredLeads = leads.filter(l => {
-      const lDate = this.parseLeadDate(l.date);
-      if (!lDate) return false;
-      const t = lDate.getTime();
-      return t >= startLimit && t <= endLimit;
+    // Atualiza classes das abas
+    ['approved', 'pending', 'leads', 'all'].forEach(tab => {
+      const btn = document.getElementById(`btn-tab-${tab}`);
+      if (btn) {
+        if (tab === this.analyticsOrdersTab) {
+          if (tab === 'approved') btn.className = 'px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shrink-0 bg-emerald-600 text-white shadow-md shadow-emerald-600/30 ring-2 ring-emerald-400/50';
+          else if (tab === 'pending') btn.className = 'px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shrink-0 bg-amber-600 text-white shadow-md shadow-amber-600/30 ring-2 ring-amber-400/50';
+          else if (tab === 'leads') btn.className = 'px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shrink-0 bg-indigo-600 text-white shadow-md shadow-indigo-600/30 ring-2 ring-indigo-400/50';
+          else btn.className = 'px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shrink-0 bg-slate-700 text-white shadow-md ring-2 ring-slate-400/50';
+        } else {
+          btn.className = 'px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shrink-0 bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-700';
+        }
+      }
     });
 
-    // Renderiza pílulas de origens SRC frequentes
+    const leadsContainer = document.getElementById('analytics-leads-container');
+    const tagsContainer = document.getElementById('analytics-utm-tags-container');
+
+    // Seleciona a lista de itens ativa
+    let activeItems = [];
+    if (this.analyticsOrdersTab === 'approved') activeItems = approvedOrders;
+    else if (this.analyticsOrdersTab === 'pending') activeItems = pendingOrders;
+    else if (this.analyticsOrdersTab === 'all') activeItems = filteredOrders;
+    else if (this.analyticsOrdersTab === 'leads') activeItems = filteredLeads;
+
+    // Renderiza pílulas de origens SRC frequentes baseadas na lista ativa
     if (tagsContainer) {
       const srcMap = {};
-      leads.forEach(l => {
-        const s = (l.src && l.src !== '-') ? l.src : ((l.utm && l.utm !== '-') ? l.utm.split('/')[0].trim() : 'direto');
+      activeItems.forEach(item => {
+        const s = (item.src && item.src !== '-') ? item.src : ((item.utm && item.utm !== '-') ? item.utm.split('/')[0].trim() : 'direto');
         srcMap[s] = (srcMap[s] || 0) + 1;
       });
       const entries = Object.entries(srcMap).sort((a,b) => b[1] - a[1]);
@@ -2572,7 +2745,7 @@ const App = {
         tagsContainer.innerHTML = `
           <span class="text-[10px] text-slate-400 font-semibold mr-1">Origens Rápidas:</span>
           <button onclick="App.onAnalyticsUtmSearch('')" class="px-2 py-0.5 rounded-lg text-[10px] font-bold transition ${!this.analyticsUtmSearch ? 'bg-indigo-600 text-white shadow-sm' : 'bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-700'}">
-            Todas (${leads.length})
+            Todas (${activeItems.length})
           </button>
           ${entries.map(([srcName, count]) => {
             const isCurrent = (this.analyticsUtmSearch || '').toLowerCase() === srcName.toLowerCase();
@@ -2588,29 +2761,32 @@ const App = {
       }
     }
 
-    // Aplica campo de pesquisa por SRC / UTM
+    // Aplica campo de pesquisa por SRC / UTM / Nome / Tel / Produto
     if (this.analyticsUtmSearch && this.analyticsUtmSearch.trim() !== '') {
       const q = this.analyticsUtmSearch.trim().toLowerCase();
-      filteredLeads = filteredLeads.filter(l => 
-        (l.src || '').toLowerCase().includes(q) ||
-        (l.utm || '').toLowerCase().includes(q) ||
-        (l.name || '').toLowerCase().includes(q) ||
-        (l.whatsapp || '').toLowerCase().includes(q) ||
-        (l.email || '').toLowerCase().includes(q)
+      activeItems = activeItems.filter(item => 
+        (item.src || '').toLowerCase().includes(q) ||
+        (item.utm || '').toLowerCase().includes(q) ||
+        (item.name || '').toLowerCase().includes(q) ||
+        (item.whatsapp || '').toLowerCase().includes(q) ||
+        (item.email || '').toLowerCase().includes(q) ||
+        (item.product || '').toLowerCase().includes(q) ||
+        (item.platform || '').toLowerCase().includes(q)
       );
     }
 
-    if (leadsBadge) {
-      leadsBadge.innerText = `${filteredLeads.length} ${filteredLeads.length === 1 ? 'Lead' : 'Leads'}`;
-    }
-
     if (leadsContainer) {
-      if (filteredLeads.length === 0) {
+      if (activeItems.length === 0) {
+        let emptyLabel = 'Nenhum registro encontrado para este período.';
+        if (this.analyticsOrdersTab === 'approved') emptyLabel = 'Nenhuma venda aprovada registrada para este período.';
+        else if (this.analyticsOrdersTab === 'pending') emptyLabel = 'Nenhum pedido aguardando pagamento no período selecionado.';
+        else if (this.analyticsOrdersTab === 'leads') emptyLabel = 'Nenhum lead capturado no período selecionado.';
+
         if (this.analyticsUtmSearch) {
           leadsContainer.innerHTML = `
             <div class="py-8 text-center text-slate-400 text-xs bg-slate-900/50 rounded-xl border border-dashed border-slate-800 space-y-2">
-              <p class="font-bold text-white">Nenhum lead encontrado com a origem SRC ou UTM: <span class="text-indigo-400">"${this.escape(this.analyticsUtmSearch)}"</span></p>
-              <p class="text-[11px] text-slate-500">Tente buscar por outro termo ou limpe a pesquisa abaixo.</p>
+              <p class="font-bold text-white">Nenhum resultado com o filtro: <span class="text-indigo-400">"${this.escape(this.analyticsUtmSearch)}"</span></p>
+              <p class="text-[11px] text-slate-500">Tente buscar por outro termo ou limpe a pesquisa.</p>
               <button onclick="App.clearAnalyticsUtmSearch()" class="px-3 py-1 bg-slate-800 hover:bg-slate-700 text-xs font-bold text-white rounded-lg border border-slate-700 transition">
                 Limpar Busca
               </button>
@@ -2618,13 +2794,23 @@ const App = {
           `;
         } else {
           leadsContainer.innerHTML = `
-            <div class="py-6 text-center text-slate-500 text-xs bg-slate-900/50 rounded-xl border border-dashed border-slate-800">
-              <p>Nenhum lead registrado para este período.</p>
-              <p class="text-[11px] text-slate-400 mt-1">Conforme os visitantes preenchem o formulário de captura no quiz, eles aparecerão aqui com link direto para o WhatsApp.</p>
+            <div class="py-8 text-center text-slate-500 text-xs bg-slate-900/50 rounded-xl border border-dashed border-slate-800 space-y-2">
+              <p class="text-slate-300 font-semibold">${emptyLabel}</p>
+              <p class="text-[11px] text-slate-400">Conforme clientes comprarem ou responderem ao quiz, os dados aparecerão aqui em tempo real.</p>
+              ${this.currentQuiz.tracking && this.currentQuiz.tracking.sheetUrl ? `
+                <button onclick="App.syncMetricsFromGoogleSheet()" class="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs inline-flex items-center gap-1 transition shadow-sm">
+                  <i class="ph ph-arrows-clockwise"></i> Sincronizar Agora
+                </button>
+              ` : `
+                <button onclick="App.simulateFunnelTraffic()" class="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs inline-flex items-center gap-1 transition shadow-sm">
+                  <i class="ph ph-lightning"></i> Gerar Demonstração com Vendas
+                </button>
+              `}
             </div>
           `;
         }
-      } else {
+      } else if (this.analyticsOrdersTab === 'leads') {
+        // TABELA DE LEADS DO QUIZ
         leadsContainer.innerHTML = `
           <div class="overflow-x-auto">
             <table class="w-full text-left text-xs border-collapse">
@@ -2635,11 +2821,11 @@ const App = {
                   <th class="py-2.5 px-3">WhatsApp</th>
                   <th class="py-2.5 px-3">E-mail</th>
                   <th class="py-2.5 px-3 text-center">Score</th>
-                  <th class="py-2.5 px-3">Origem / UTM</th>
+                  <th class="py-2.5 px-3">Origem / SRC / UTM</th>
                 </tr>
               </thead>
               <tbody class="divide-y divide-slate-800 font-medium text-slate-200">
-                ${filteredLeads.map(lead => {
+                ${activeItems.map(lead => {
                   const rawPhone = (lead.whatsapp || '').replace(/\D/g, '');
                   const waLink = rawPhone ? `https://wa.me/55${rawPhone}` : null;
                   return `
@@ -2657,9 +2843,90 @@ const App = {
                       <td class="py-2.5 px-3 text-center">
                         <span class="px-2 py-0.5 rounded bg-indigo-500/20 text-indigo-300 font-mono font-bold text-[11px]">${lead.score || 0} pts</span>
                       </td>
-                      <td class="py-2.5 px-3 text-slate-400 text-[11px] truncate max-w-[200px]">
-                        ${lead.src && lead.src !== '-' ? `<span class="bg-indigo-500/20 text-indigo-300 px-1.5 py-0.5 rounded font-mono font-bold text-[10px] mr-1">SRC: ${this.escape(lead.src)}</span>` : ''}
-                        <span>${this.escape(lead.utm || '-')}</span>
+                      <td class="py-2.5 px-3 text-slate-300 text-[11px] max-w-[240px]">
+                        ${lead.src && lead.src !== '-' ? `<span class="bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 px-1.5 py-0.5 rounded font-mono font-bold text-[10px] block truncate mb-0.5" title="${this.escape(lead.src)}">SRC: ${this.escape(lead.src)}</span>` : ''}
+                        <span class="truncate block text-slate-400 text-[10px]" title="${this.escape(lead.utm || '-')}">${this.escape(lead.utm || '-')}</span>
+                      </td>
+                    </tr>
+                  `;
+                }).join('')}
+              </tbody>
+            </table>
+          </div>
+        `;
+      } else {
+        // TABELA DE PEDIDOS & VENDAS (Aprovados / Aguardando / Todos)
+        leadsContainer.innerHTML = `
+          <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs border-collapse">
+              <thead>
+                <tr class="border-b border-slate-700 text-slate-400 font-bold text-[11px] uppercase tracking-wider">
+                  <th class="py-2.5 px-3">Data/Hora</th>
+                  <th class="py-2.5 px-3">Cliente</th>
+                  <th class="py-2.5 px-3">WhatsApp / Ação</th>
+                  <th class="py-2.5 px-3">Valor & Forma</th>
+                  <th class="py-2.5 px-3 text-center">Status</th>
+                  <th class="py-2.5 px-3 text-center">Plataforma</th>
+                  <th class="py-2.5 px-3">Origem / SRC / UTM</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-slate-800 font-medium text-slate-200">
+                ${activeItems.map(order => {
+                  const rawPhone = (order.whatsapp || '').replace(/\D/g, '');
+                  const isApproved = order.status === 'approved';
+                  const isPending = order.status === 'waiting_payment';
+
+                  let waBtn = '<span class="text-slate-500">-</span>';
+                  if (rawPhone) {
+                    if (isPending) {
+                      const msg = `Olá ${order.name || ''}, vi que você gerou o Pix para ${order.product || 'o produto'} mas ainda não concluiu. Posso te ajudar com alguma dúvida?`;
+                      waBtn = `
+                        <a href="https://wa.me/55${rawPhone}?text=${encodeURIComponent(msg)}" target="_blank" class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-[11px] transition shadow-md shadow-emerald-600/20" title="Enviar mensagem de recuperação no WhatsApp">
+                          <i class="ph ph-whatsapp-logo text-sm"></i> Recuperar Pix
+                        </a>
+                      `;
+                    } else {
+                      const msgAppr = `Olá ${order.name || ''}, seu pedido de ${order.product || 'o produto'} foi confirmado com sucesso! Seja bem-vindo(a).`;
+                      waBtn = `
+                        <a href="https://wa.me/55${rawPhone}?text=${encodeURIComponent(msgAppr)}" target="_blank" class="inline-flex items-center gap-1 text-emerald-400 hover:text-emerald-300 font-mono font-bold bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20 text-[11px]" title="Chamar no WhatsApp">
+                          <i class="ph ph-whatsapp-logo text-sm"></i> ${this.escape(order.whatsapp)}
+                        </a>
+                      `;
+                    }
+                  }
+
+                  const isKirvano = (order.platform || '').toLowerCase().includes('kirvano');
+                  const platformBadge = isKirvano ?
+                    '<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-purple-500/20 text-purple-300 border border-purple-500/30">Kirvano</span>' :
+                    '<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-500/20 text-blue-300 border border-blue-500/30">PerfectPay</span>';
+
+                  const statusBadge = isApproved ?
+                    '<span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center justify-center gap-1 mx-auto max-w-fit"><i class="ph ph-check-circle"></i> Aprovado</span>' :
+                    '<span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30 flex items-center justify-center gap-1 mx-auto max-w-fit"><i class="ph ph-clock-countdown"></i> Aguardando Pix</span>';
+
+                  return `
+                    <tr class="hover:bg-slate-800/40 transition">
+                      <td class="py-2.5 px-3 text-slate-400 text-[11px] whitespace-nowrap">${order.date || '-'}</td>
+                      <td class="py-2.5 px-3">
+                        <div class="font-bold text-white text-xs">${this.escape(order.name || 'Cliente')}</div>
+                        <div class="text-[10px] text-slate-400 font-mono truncate max-w-[150px]">${this.escape(order.email || '-')}</div>
+                      </td>
+                      <td class="py-2.5 px-3 whitespace-nowrap">
+                        ${waBtn}
+                      </td>
+                      <td class="py-2.5 px-3 whitespace-nowrap">
+                        <div class="font-black ${isApproved ? 'text-emerald-400' : 'text-amber-400'} text-xs">${order.amountFormatted || ('R$ ' + (parseFloat(order.amount) || 0).toFixed(2).replace('.', ','))}</div>
+                        <div class="text-[10px] text-slate-400 uppercase font-mono font-semibold">${this.escape(order.method || 'PIX')}</div>
+                      </td>
+                      <td class="py-2.5 px-3 text-center whitespace-nowrap">
+                        ${statusBadge}
+                      </td>
+                      <td class="py-2.5 px-3 text-center whitespace-nowrap">
+                        ${platformBadge}
+                      </td>
+                      <td class="py-2.5 px-3 text-slate-300 text-[11px] max-w-[240px]">
+                        ${order.src && order.src !== '-' ? `<span class="bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 px-1.5 py-0.5 rounded font-mono font-bold text-[10px] block truncate mb-0.5" title="${this.escape(order.src)}">SRC: ${this.escape(order.src)}</span>` : ''}
+                        <span class="truncate block text-slate-400 text-[10px]" title="${this.escape(order.utm || '-')}">${this.escape(order.utm || '-')}</span>
                       </td>
                     </tr>
                   `;
@@ -2691,11 +2958,12 @@ const App = {
     }
 
     try {
-      const sep = sheetUrl.indexOf('?') !== -1 ? '&' : '?';
+      const cleanUrl = sheetUrl.trim().replace(/^http:\/\//i, 'https://');
+      const sep = cleanUrl.indexOf('?') !== -1 ? '&' : '?';
       const filterParam = this.analyticsFilter || 'today';
       const startDateParam = this.analyticsStartDate || '';
       const endDateParam = this.analyticsEndDate || '';
-      const fetchUrl = sheetUrl + sep + 'action=getMetrics&filter=' + filterParam + 
+      const fetchUrl = cleanUrl + sep + 'action=getMetrics&filter=' + filterParam + 
         '&startDate=' + startDateParam + 
         '&endDate=' + endDateParam + 
         '&date=' + startDateParam + 
@@ -2714,16 +2982,28 @@ const App = {
         this.currentQuiz.analytics.cachedFilters[filterParam] = {
           views: data.stepViews || {},
           leads: data.recentLeads || [],
+          orders: data.orders || [],
           totalStarts: data.totalStarts || 0,
           totalCompletions: data.totalCompletions || 0,
+          totalCheckouts: data.totalCheckouts || 0,
+          totalSalesApproved: data.totalSalesApproved || 0,
+          revenueApproved: data.revenueApproved || 0,
+          totalSalesPending: data.totalSalesPending || 0,
+          revenuePending: data.revenuePending || 0,
           startDate: startDateParam,
           endDate: endDateParam
         };
 
         this.currentQuiz.analytics.views = data.stepViews || {};
         this.currentQuiz.analytics.leads = data.recentLeads || [];
+        this.currentQuiz.analytics.orders = data.orders || [];
         this.currentQuiz.analytics.totalStarts = data.totalStarts || 0;
         this.currentQuiz.analytics.totalCompletions = data.totalCompletions || 0;
+        this.currentQuiz.analytics.totalCheckouts = data.totalCheckouts || 0;
+        this.currentQuiz.analytics.totalSalesApproved = data.totalSalesApproved || 0;
+        this.currentQuiz.analytics.revenueApproved = data.revenueApproved || 0;
+        this.currentQuiz.analytics.totalSalesPending = data.totalSalesPending || 0;
+        this.currentQuiz.analytics.revenuePending = data.revenuePending || 0;
         this.currentQuiz.analytics.lastSync = new Date().toISOString();
         this.currentQuiz.analytics.isRealData = true;
 
@@ -2732,7 +3012,9 @@ const App = {
         
         if (!silent) {
           const count = Object.values(data.stepViews || {}).reduce((a, b) => a + b, 0);
-          alert(`✅ Sincronizado com sucesso!\n\nDados da planilha carregados para o período (${filterParam.toUpperCase()}):\n• ${count} acessos registrados\n• ${(data.recentLeads || []).length} leads capturados`);
+          const salesCount = data.totalSalesApproved || 0;
+          const rev = (data.revenueApproved || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+          alert(`✅ Sincronizado com sucesso!\n\nDados carregados para (${filterParam.toUpperCase()}):\n• ${count} acessos registrados\n• ${(data.recentLeads || []).length} leads capturados\n• ${salesCount} vendas confirmadas (${rev})\n• ${(data.orders || []).length} pedidos processados`);
         }
       } else {
         throw new Error(data.message || 'Erro desconhecido retornado pelo script.');
@@ -2797,42 +3079,232 @@ const App = {
       { date: `${day04Str} 11:15`, name: 'Rodrigo Antunes', whatsapp: '11985432109', email: 'rodrigo@startup.io', score: 35, src: 'meta_ads', utm: 'meta / lookalike_compradores' }
     ];
 
+    // Pedidos Simulados Kirvano e PerfectPay
+    const sampleOrdersToday = [
+      {
+        id: 'ord_kirv_1',
+        date: `${todayStr} 10:45`,
+        name: 'Antônio Carlos Dos Santos',
+        whatsapp: '27992043806',
+        email: 'carlosantoniods73@gmail.com',
+        amount: 19.90,
+        amountFormatted: 'R$ 19,90',
+        method: 'PIX',
+        status: 'approved',
+        platform: 'Kirvano',
+        product: 'Internet NetFree',
+        src: 'CA_01|ABERTO_01|VD_02_A|Instagram_Reels',
+        utm: 'utm_source: ig / utm_campaign: 120243784908560574'
+      },
+      {
+        id: 'ord_pp_1',
+        date: `${todayStr} 09:15`,
+        name: 'Cliente de Teste Perfect',
+        whatsapp: '11900000000',
+        email: 'cliente@example.com',
+        amount: 97.00,
+        amountFormatted: 'R$ 97,00',
+        method: 'PIX',
+        status: 'approved',
+        platform: 'PerfectPay',
+        product: 'Método Funil Express',
+        src: 'stories_oferta',
+        utm: 'meta_ads / campanha_vendas'
+      },
+      {
+        id: 'ord_kirv_2',
+        date: `${todayStr} 08:30`,
+        name: 'Marcos Vinicius Ribeiro',
+        whatsapp: '31987654321',
+        email: 'marcos.v@gmail.com',
+        amount: 19.90,
+        amountFormatted: 'R$ 19,90',
+        method: 'PIX',
+        status: 'waiting_payment',
+        platform: 'Kirvano',
+        product: 'Internet NetFree',
+        src: 'CA_01|ABERTO_01|VD_02_A|Instagram_Reels',
+        utm: 'utm_source: ig / reels_organico'
+      }
+    ];
+
+    const sampleOrdersYesterday = [
+      {
+        id: 'ord_pp_2',
+        date: `${yestStr} 18:22`,
+        name: 'Rodrigo Antunes',
+        whatsapp: '11985432109',
+        email: 'rodrigo@startup.io',
+        amount: 97.00,
+        amountFormatted: 'R$ 97,00',
+        method: 'CARTÃO',
+        status: 'approved',
+        platform: 'PerfectPay',
+        product: 'Método Funil Express',
+        src: 'meta_ads',
+        utm: 'meta / lookalike_compradores'
+      },
+      {
+        id: 'ord_kirv_3',
+        date: `${yestStr} 14:10`,
+        name: 'Juliana Costa',
+        whatsapp: '11999887766',
+        email: 'juliana@costa.com',
+        amount: 19.90,
+        amountFormatted: 'R$ 19,90',
+        method: 'PIX',
+        status: 'approved',
+        platform: 'Kirvano',
+        product: 'Internet NetFree',
+        src: 'stories_parceria',
+        utm: 'influencer / parceria_out'
+      },
+      {
+        id: 'ord_pp_3',
+        date: `${yestStr} 11:05`,
+        name: 'Lucas Mendes',
+        whatsapp: '31988776655',
+        email: 'lucas@mendes.com',
+        amount: 97.00,
+        amountFormatted: 'R$ 97,00',
+        method: 'PIX',
+        status: 'waiting_payment',
+        platform: 'PerfectPay',
+        product: 'Método Funil Express',
+        src: 'tiktok_ads',
+        utm: 'tiktok / spark_ads'
+      }
+    ];
+
+    const sampleOrdersMonth = [
+      ...sampleOrdersToday,
+      ...sampleOrdersYesterday,
+      {
+        id: 'ord_pp_4',
+        date: `${day18Str} 16:40`,
+        name: 'Aline Ferreira',
+        whatsapp: '81987654321',
+        email: 'aline@design.com',
+        amount: 97.00,
+        amountFormatted: 'R$ 97,00',
+        method: 'PIX',
+        status: 'approved',
+        platform: 'PerfectPay',
+        product: 'Método Funil Express',
+        src: 'google_cpc',
+        utm: 'google / pesquisa_direta'
+      },
+      {
+        id: 'ord_kirv_4',
+        date: `${day10Str} 15:20`,
+        name: 'Gustavo Lima',
+        whatsapp: '47991234567',
+        email: 'gustavo@tech.com',
+        amount: 19.90,
+        amountFormatted: 'R$ 19,90',
+        method: 'PIX',
+        status: 'approved',
+        platform: 'Kirvano',
+        product: 'Internet NetFree',
+        src: 'CA_01|ABERTO_01|VD_02_A|Instagram_Reels',
+        utm: 'utm_source: ig / reels_campanha'
+      },
+      {
+        id: 'ord_kirv_5',
+        date: `${day04Str} 09:30`,
+        name: 'Fabiana Miranda',
+        whatsapp: '11977665544',
+        email: 'fabiana@miranda.com',
+        amount: 19.90,
+        amountFormatted: 'R$ 19,90',
+        method: 'PIX',
+        status: 'waiting_payment',
+        platform: 'Kirvano',
+        product: 'Internet NetFree',
+        src: 'stories_oferta',
+        utm: 'meta_ads / retargeting'
+      }
+    ];
+
     const viewsToday = generateViews(145);
+    viewsToday['step_checkout'] = 24;
+    viewsToday['step_sales'] = 2;
+
     const viewsYest = generateViews(190);
+    viewsYest['step_checkout'] = 31;
+    viewsYest['step_sales'] = 2;
+
     const viewsMonth = generateViews(2480);
+    viewsMonth['step_checkout'] = 380;
+    viewsMonth['step_sales'] = 6;
+
     const viewsRange = generateViews(435);
+    viewsRange['step_checkout'] = 68;
+    viewsRange['step_sales'] = 4;
 
     this.currentQuiz.analytics = {
       cachedFilters: {
         today: {
           views: viewsToday,
           leads: sampleLeadsToday,
-          totalStarts: 145
+          orders: sampleOrdersToday,
+          totalStarts: 145,
+          totalCheckouts: 24,
+          totalSalesApproved: 2,
+          revenueApproved: 116.90,
+          totalSalesPending: 1,
+          revenuePending: 19.90
         },
         yesterday: {
           views: viewsYest,
           leads: sampleLeadsYesterday,
-          totalStarts: 190
+          orders: sampleOrdersYesterday,
+          totalStarts: 190,
+          totalCheckouts: 31,
+          totalSalesApproved: 2,
+          revenueApproved: 116.90,
+          totalSalesPending: 1,
+          revenuePending: 97.00
         },
         month: {
           views: viewsMonth,
           leads: sampleLeadsMonth,
-          totalStarts: 2480
+          orders: sampleOrdersMonth,
+          totalStarts: 2480,
+          totalCheckouts: 380,
+          totalSalesApproved: 6,
+          revenueApproved: 370.60,
+          totalSalesPending: 3,
+          revenuePending: 136.80
         },
         range: {
           views: viewsRange,
           leads: sampleLeadsMonth,
+          orders: sampleOrdersMonth,
           totalStarts: 435,
+          totalCheckouts: 68,
+          totalSalesApproved: 4,
+          revenueApproved: 233.80,
+          totalSalesPending: 2,
+          revenuePending: 116.90,
           startDate: this.analyticsStartDate,
           endDate: this.analyticsEndDate
         }
       },
       views: viewsToday,
       leads: sampleLeadsToday,
+      orders: sampleOrdersToday,
+      totalStarts: 145,
+      totalCheckouts: 24,
+      totalSalesApproved: 2,
+      revenueApproved: 116.90,
+      totalSalesPending: 1,
+      revenuePending: 19.90,
       simulatedAt: new Date().toISOString()
     };
 
     this.analyticsFilter = 'today';
+    this.analyticsOrdersTab = 'approved';
     this.analyticsStartDate = this.formatIsoDate(now);
     this.analyticsEndDate = this.formatIsoDate(now);
     this.saveQuizzesToStorage();
