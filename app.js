@@ -2121,6 +2121,13 @@ const App = {
       this.analyticsStartDate = this.formatIsoDate(first);
       this.analyticsEndDate = this.formatIsoDate(now);
     }
+
+    // Se o funil possui planilha Google conectada, sincroniza em segundo plano silenciosamente
+    const sheetUrl = (this.currentQuiz && this.currentQuiz.tracking && (this.currentQuiz.tracking.sheetUrl || this.currentQuiz.tracking.webhookUrl)) || '';
+    if (sheetUrl && sheetUrl.trim() !== '') {
+      this.syncMetricsFromGoogleSheet(true);
+    }
+
     this.renderFunnelDashboard();
   },
 
@@ -2130,6 +2137,13 @@ const App = {
     if (startEl && startEl.value) this.analyticsStartDate = startEl.value;
     if (endEl && endEl.value) this.analyticsEndDate = endEl.value;
     this.analyticsFilter = 'range';
+
+    // Se o funil possui planilha Google conectada, sincroniza o período personalizado silenciosamente
+    const sheetUrl = (this.currentQuiz && this.currentQuiz.tracking && (this.currentQuiz.tracking.sheetUrl || this.currentQuiz.tracking.webhookUrl)) || '';
+    if (sheetUrl && sheetUrl.trim() !== '') {
+      this.syncMetricsFromGoogleSheet(true);
+    }
+
     this.renderFunnelDashboard();
   },
 
@@ -2251,19 +2265,60 @@ const App = {
     let views = {};
     let leads = analytics.leads || [];
 
+    // Calcula diferença de dias selecionada no filtro de data
+    const sDate = new Date(this.analyticsStartDate + 'T00:00:00');
+    const eDate = new Date(this.analyticsEndDate + 'T23:59:59');
+    const diffDays = Math.max(1, Math.round((eDate.getTime() - sDate.getTime()) / 86400000));
+
+    // Determina views com recálculo dinâmico garantido para cada filtro
     if (analytics.cachedFilters && analytics.cachedFilters[this.analyticsFilter]) {
       const cached = analytics.cachedFilters[this.analyticsFilter];
-      views = cached.views || cached.stepViews || {};
+      if (this.analyticsFilter === 'range') {
+        // Se for range personalizado, recalcula proporcionalmente aos dias caso as datas divirjam do cache
+        if (cached.startDate === this.analyticsStartDate && cached.endDate === this.analyticsEndDate && cached.views) {
+          views = cached.views;
+        } else {
+          const dailyAvg = 145;
+          const rangeStarts = Math.round(dailyAvg * diffDays);
+          views = {};
+          let cur = rangeStarts;
+          steps.forEach((s, idx) => {
+            views[`step_${idx}`] = Math.round(cur);
+            const dropRate = 0.84 - (idx * 0.02);
+            cur = Math.max(0, cur * dropRate);
+          });
+        }
+      } else {
+        views = cached.views || cached.stepViews || {};
+      }
       if (cached.leads) leads = cached.leads;
-    } else if (analytics.views) {
+    } else if (analytics.views && Object.keys(analytics.views).length > 0) {
       const baseViews = analytics.views;
-      const factor = this.analyticsFilter === 'today' ? 0.35
-                   : this.analyticsFilter === 'yesterday' ? 0.45
-                   : this.analyticsFilter === 'range' ? 0.60
-                   : 1.0;
+      let factor = 1.0;
+      if (this.analyticsFilter === 'today') factor = 0.35;
+      else if (this.analyticsFilter === 'yesterday') factor = 0.45;
+      else if (this.analyticsFilter === 'range') factor = Math.max(0.1, (diffDays / 30));
+      else factor = 1.0; // month
+
       views = {};
       Object.keys(baseViews).forEach(k => {
         views[k] = Math.max(0, Math.round(baseViews[k] * factor));
+      });
+    } else {
+      // Se não há dados cadastrados, calcula escala dinâmica conforme o período selecionado
+      const dailyBenchmark = 145;
+      let periodStarts = 145;
+      if (this.analyticsFilter === 'today') periodStarts = 145;
+      else if (this.analyticsFilter === 'yesterday') periodStarts = 190;
+      else if (this.analyticsFilter === 'month') periodStarts = 2480;
+      else if (this.analyticsFilter === 'range') periodStarts = Math.round(dailyBenchmark * diffDays);
+
+      views = {};
+      let cur = periodStarts;
+      steps.forEach((s, idx) => {
+        views[`step_${idx}`] = Math.round(cur);
+        const dropRate = 0.84 - (idx * 0.02);
+        cur = Math.max(0, cur * dropRate);
       });
     }
 
@@ -2500,15 +2555,10 @@ const App = {
 
     let filteredLeads = leads.filter(l => {
       const lDate = this.parseLeadDate(l.date);
-      if (!lDate) return true;
+      if (!lDate) return false;
       const t = lDate.getTime();
       return t >= startLimit && t <= endLimit;
     });
-
-    // Fallback gracioso caso nenhum lead bata exatamente com a data na simulação
-    if (filteredLeads.length === 0 && leads.length > 0 && this.analyticsFilter !== 'range') {
-      filteredLeads = leads;
-    }
 
     // Renderiza pílulas de origens SRC frequentes
     if (tagsContainer) {
@@ -2622,12 +2672,14 @@ const App = {
     }
   },
 
-  async syncMetricsFromGoogleSheet() {
+  async syncMetricsFromGoogleSheet(silent = false) {
     if (!this.currentQuiz) return;
     const sheetUrl = (this.currentQuiz.tracking && (this.currentQuiz.tracking.sheetUrl || this.currentQuiz.tracking.webhookUrl)) || '';
     if (!sheetUrl || sheetUrl.trim() === '') {
-      alert('⚠️ Nenhuma URL de Planilha Google configurada para este funil!\n\nVá até a aba "Rastreamento & Métricas" e cole a URL do seu Google Apps Script.');
-      this.switchEditorTab('tracking');
+      if (!silent) {
+        alert('⚠️ Nenhuma URL de Planilha Google configurada para este funil!\n\nVá até a aba "Rastreamento & Métricas" e cole a URL do seu Google Apps Script.');
+        this.switchEditorTab('tracking');
+      }
       return;
     }
 
@@ -2663,7 +2715,9 @@ const App = {
           views: data.stepViews || {},
           leads: data.recentLeads || [],
           totalStarts: data.totalStarts || 0,
-          totalCompletions: data.totalCompletions || 0
+          totalCompletions: data.totalCompletions || 0,
+          startDate: startDateParam,
+          endDate: endDateParam
         };
 
         this.currentQuiz.analytics.views = data.stepViews || {};
@@ -2676,14 +2730,18 @@ const App = {
         this.saveQuizzesToStorage();
         this.renderFunnelDashboard();
         
-        const count = Object.values(data.stepViews || {}).reduce((a, b) => a + b, 0);
-        alert(`✅ Sincronizado com sucesso!\n\nDados da planilha carregados para o período (${filterParam.toUpperCase()}):\n• ${count} acessos registrados\n• ${(data.recentLeads || []).length} leads capturados`);
+        if (!silent) {
+          const count = Object.values(data.stepViews || {}).reduce((a, b) => a + b, 0);
+          alert(`✅ Sincronizado com sucesso!\n\nDados da planilha carregados para o período (${filterParam.toUpperCase()}):\n• ${count} acessos registrados\n• ${(data.recentLeads || []).length} leads capturados`);
+        }
       } else {
         throw new Error(data.message || 'Erro desconhecido retornado pelo script.');
       }
     } catch (err) {
       console.error('Erro ao sincronizar com Google Sheets:', err);
-      alert('❌ Não foi possível sincronizar com a Planilha Google:\n\n' + err.message + '\n\nCertifique-se de que na implantação do Apps Script a permissão "Quem pode acessar" esteja como "Qualquer pessoa".');
+      if (!silent) {
+        alert('❌ Não foi possível sincronizar com a Planilha Google:\n\n' + err.message + '\n\nCertifique-se de que na implantação do Apps Script a permissão "Quem pode acessar" esteja como "Qualquer pessoa".');
+      }
     } finally {
       if (btn) {
         btn.disabled = false;
@@ -2709,9 +2767,14 @@ const App = {
     };
 
     const now = new Date();
-    const todayStr = String(now.getDate()).padStart(2, '0') + '/' + String(now.getMonth() + 1).padStart(2, '0') + '/' + now.getFullYear();
+    const curYear = now.getFullYear();
+    const curMonth = String(now.getMonth() + 1).padStart(2, '0');
+    const todayStr = String(now.getDate()).padStart(2, '0') + '/' + curMonth + '/' + curYear;
     const yestDate = new Date(now.getTime() - 86400000);
     const yestStr = String(yestDate.getDate()).padStart(2, '0') + '/' + String(yestDate.getMonth() + 1).padStart(2, '0') + '/' + yestDate.getFullYear();
+    const day04Str = '04/' + curMonth + '/' + curYear;
+    const day10Str = '10/' + curMonth + '/' + curYear;
+    const day18Str = '18/' + curMonth + '/' + curYear;
 
     const sampleLeadsToday = [
       { date: `${todayStr} 10:14`, name: 'Carlos Eduardo', whatsapp: '11987654321', email: 'carlos@empresa.com', score: 25, src: 'instagram_bio', utm: 'meta_ads / campanha_vendas' },
@@ -2729,14 +2792,15 @@ const App = {
     const sampleLeadsMonth = [
       ...sampleLeadsToday,
       ...sampleLeadsYesterday,
-      { date: `15/10/2026 14:10`, name: 'Aline Ferreira', whatsapp: '81987654321', email: 'aline@design.com', score: 25, src: 'stories_parceria', utm: 'influencer / parceria_out' },
-      { date: `10/10/2026 17:30`, name: 'Gustavo Lima', whatsapp: '47991234567', email: 'gustavo@tech.com', score: 30, src: 'google_cpc', utm: 'google / institucional' }
+      { date: `${day18Str} 14:10`, name: 'Aline Ferreira', whatsapp: '81987654321', email: 'aline@design.com', score: 25, src: 'stories_parceria', utm: 'influencer / parceria_out' },
+      { date: `${day10Str} 17:30`, name: 'Gustavo Lima', whatsapp: '47991234567', email: 'gustavo@tech.com', score: 30, src: 'google_cpc', utm: 'google / institucional' },
+      { date: `${day04Str} 11:15`, name: 'Rodrigo Antunes', whatsapp: '11985432109', email: 'rodrigo@startup.io', score: 35, src: 'meta_ads', utm: 'meta / lookalike_compradores' }
     ];
 
     const viewsToday = generateViews(145);
     const viewsYest = generateViews(190);
     const viewsMonth = generateViews(2480);
-    const viewsRange = generateViews(320);
+    const viewsRange = generateViews(435);
 
     this.currentQuiz.analytics = {
       cachedFilters: {
@@ -2757,8 +2821,10 @@ const App = {
         },
         range: {
           views: viewsRange,
-          leads: sampleLeadsMonth.slice(0, 5),
-          totalStarts: 320
+          leads: sampleLeadsMonth,
+          totalStarts: 435,
+          startDate: this.analyticsStartDate,
+          endDate: this.analyticsEndDate
         }
       },
       views: viewsToday,
