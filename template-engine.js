@@ -1548,16 +1548,19 @@ const QuizTemplateEngine = {
 
       injectUtmsIntoHtmlString(rawHtml) {
         if (!rawHtml || typeof rawHtml !== 'string') return rawHtml;
+        // Neutraliza disparos de InitiateCheckout dentro do HTML customizado para evitar duplicidade na Meta
+        let cleaned = rawHtml.replace(/fbq\s*\(\s*['"]track['"]\s*,\s*['"]InitiateCheckout['"]\s*\)/gi, '/* InitiateCheckout bloqueado */');
+
         const utms = this.utmParams || {};
-        if (Object.keys(utms).length === 0) return rawHtml;
+        if (Object.keys(utms).length === 0) return cleaned;
         try {
           const aRegex = new RegExp('href=[\\x22\\x27](https?:\\/\\/[^\\x22\\x27]+)[\\x22\\x27]', 'gi');
-          return rawHtml.replace(aRegex, (match, url) => {
+          return cleaned.replace(aRegex, (match, url) => {
             const updated = this.appendUtmsToUrl(url);
             return 'href=' + String.fromCharCode(34) + updated + String.fromCharCode(34);
           });
         } catch(e) {
-          return rawHtml;
+          return cleaned;
         }
       },
 
@@ -1783,7 +1786,7 @@ const QuizTemplateEngine = {
           const bIdx = parseInt(frame.getAttribute('data-block-idx'), 10);
           const b = (step.blocks || [])[bIdx];
           if (b && b.customHtml) {
-            frame.srcdoc = b.customHtml;
+            frame.srcdoc = this.injectUtmsIntoHtmlString(b.customHtml);
           }
           this.setupIframeAutoResize(frame);
         });
@@ -2467,12 +2470,24 @@ const QuizTemplateEngine = {
         const targetUrl = (this.config.tracking && this.config.tracking.sheetUrl) || (this.config.tracking && this.config.tracking.webhookUrl);
         if (targetUrl && targetUrl.trim() !== '') {
           try {
-            fetch(targetUrl, {
-              method: 'POST',
-              mode: 'no-cors',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify(payload)
-            }).catch(() => {});
+            const bodyStr = JSON.stringify(payload);
+            // Garante que o disparo não seja cancelado se o navegador navegar para o checkout
+            let sent = false;
+            if (navigator.sendBeacon) {
+              try {
+                const blob = new Blob([bodyStr], { type: 'text/plain' });
+                sent = navigator.sendBeacon(targetUrl, blob);
+              } catch(bErr) {}
+            }
+            if (!sent) {
+              fetch(targetUrl, {
+                method: 'POST',
+                mode: 'no-cors',
+                keepalive: true,
+                headers: { 'Content-Type': 'text/plain' },
+                body: bodyStr
+              }).catch(() => {});
+            }
           } catch(err) {}
         }
       }
