@@ -1552,14 +1552,14 @@ const QuizTemplateEngine = {
         // 1. Substitui links estáticos <a href="...">
         let result = rawHtml;
         if (utmKeys.length > 0) {
-          result = result.replace(/<a\b([^>]*?)href=(["'])(.*?)\2([^>]*?)>/gi, (match, prefix, quote, url, suffix) => {
+          result = result.replace(/<a\b([^>]*?)href=["']([^"']+)["']([^>]*?)>/gi, (match, prefix, url, suffix) => {
             if (!url || url === '#' || url.startsWith('javascript:')) return match;
             const updatedUrl = this.appendUtmsToUrl(url);
-            return `<a${prefix}href=${quote}${updatedUrl}${quote}${suffix}>`;
+            return '<a' + prefix + 'href="' + updatedUrl + '"' + suffix + '>';
           });
 
           // 2. Substitui window.location.href = "..." ou window.open("...")
-          result = result.replace(/(?:window\.location(?:\.href)?\s*=\s*|window\.open\s*\(\s*)(["'])(https?:\/\/[^"']+)\1/gi, (match, quote, url) => {
+          result = result.replace(/(?:window\.location(?:\.href)?\s*=\s*|window\.open\s*\(\s*)["'](https?:\/\/[^"']+)["']/gi, (match, url) => {
             const updatedUrl = this.appendUtmsToUrl(url);
             return match.replace(url, updatedUrl);
           });
@@ -1567,46 +1567,46 @@ const QuizTemplateEngine = {
 
         // 3. Injeta script no iframe para garantir que qualquer link ou botão dinâmico receba UTMs e rastreie o checkout
         const utmsJson = JSON.stringify(utms);
-        const scriptPayload = `\n<script>
-(function() {
-  function syncQuizUtms() {
-    var params = ${utmsJson};
-    var keys = Object.keys(params);
-    var links = document.querySelectorAll('a[href]');
-    links.forEach(function(el) {
-      var h = el.getAttribute('href');
-      if (!h || h === '#' || h.indexOf('javascript:') === 0) return;
-      if (keys.length > 0) {
-        try {
-          var isAbs = h.indexOf('http://') === 0 || h.indexOf('https://') === 0;
-          var u = new URL(isAbs ? h : window.location.origin + (h.indexOf('/') === 0 ? h : '/' + h));
-          keys.forEach(function(k) { if (!u.searchParams.has(k)) u.searchParams.set(k, params[k]); });
-          el.setAttribute('href', isAbs ? u.toString() : (u.pathname + u.search + u.hash));
-        } catch(err) {
-          var sep = h.indexOf('?') !== -1 ? '&' : '?';
-          var parts = [];
-          keys.forEach(function(k) { if (h.indexOf(k + '=') === -1) parts.push(encodeURIComponent(k) + '=' + encodeURIComponent(params[k])); });
-          if (parts.length > 0) el.setAttribute('href', h + sep + parts.join('&'));
-        }
-      }
-      if (!el.dataset.quizBound) {
-        el.dataset.quizBound = 'true';
-        el.addEventListener('click', function() {
-          try {
-            if (window.parent && window.parent.QuizApp && window.parent.QuizApp.trackFunnelEvent) {
-              window.parent.QuizApp.trackFunnelEvent('Checkout_Iniciado', { checkoutUrl: el.getAttribute('href'), fromIframe: true });
-            }
-          } catch(e) {}
-        });
-      }
-    });
-  }
-  if (document.readyState === 'loading') { document.addEventListener('DOMContentLoaded', syncQuizUtms); } else { syncQuizUtms(); }
-  setTimeout(syncQuizUtms, 400);
-  setTimeout(syncQuizUtms, 1200);
-  setTimeout(syncQuizUtms, 2500);
-})();
-<\/script>`;
+        const scriptPayload = '\n<script>\n' +
+'(function() {\n' +
+'  function syncQuizUtms() {\n' +
+'    var params = ' + utmsJson + ';\n' +
+'    var keys = Object.keys(params);\n' +
+'    var links = document.querySelectorAll("a[href]");\n' +
+'    links.forEach(function(el) {\n' +
+'      var h = el.getAttribute("href");\n' +
+'      if (!h || h === "#" || h.indexOf("javascript:") === 0) return;\n' +
+'      if (keys.length > 0) {\n' +
+'        try {\n' +
+'          var isAbs = h.indexOf("http://") === 0 || h.indexOf("https://") === 0;\n' +
+'          var u = new URL(isAbs ? h : window.location.origin + (h.indexOf("/") === 0 ? h : "/" + h));\n' +
+'          keys.forEach(function(k) { if (!u.searchParams.has(k)) u.searchParams.set(k, params[k]); });\n' +
+'          el.setAttribute("href", isAbs ? u.toString() : (u.pathname + u.search + u.hash));\n' +
+'        } catch(err) {\n' +
+'          var sep = h.indexOf("?") !== -1 ? "&" : "?";\n' +
+'          var parts = [];\n' +
+'          keys.forEach(function(k) { if (h.indexOf(k + "=") === -1) parts.push(encodeURIComponent(k) + "=" + encodeURIComponent(params[k])); });\n' +
+'          if (parts.length > 0) el.setAttribute("href", h + sep + parts.join("&"));\n' +
+'        }\n' +
+'      }\n' +
+'      if (!el.dataset.quizBound) {\n' +
+'        el.dataset.quizBound = "true";\n' +
+'        el.addEventListener("click", function() {\n' +
+'          try {\n' +
+'            if (window.parent && window.parent.QuizApp && window.parent.QuizApp.trackFunnelEvent) {\n' +
+'              window.parent.QuizApp.trackFunnelEvent("Checkout_Iniciado", { checkoutUrl: el.getAttribute("href"), fromIframe: true });\n' +
+'            }\n' +
+'          } catch(e) {}\n' +
+'        });\n' +
+'      }\n' +
+'    });\n' +
+'  }\n' +
+'  if (document.readyState === "loading") { document.addEventListener("DOMContentLoaded", syncQuizUtms); } else { syncQuizUtms(); }\n' +
+'  setTimeout(syncQuizUtms, 400);\n' +
+'  setTimeout(syncQuizUtms, 1200);\n' +
+'  setTimeout(syncQuizUtms, 2500);\n' +
+'})();\n' +
+'<' + '/script>';
 
         if (result.includes('</body>')) {
           result = result.replace('</body>', scriptPayload + '</body>');
