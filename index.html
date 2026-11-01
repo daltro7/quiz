@@ -881,10 +881,29 @@ function doGet(e) {
     var startDateParam = (e &amp;&amp; e.parameter &amp;&amp; e.parameter.startDate) || '';
     var endDateParam = (e &amp;&amp; e.parameter &amp;&amp; e.parameter.endDate) || '';
 
+    function parseDateSafe(val) {
+      if (!val) return null;
+      if (val instanceof Date) return val;
+      var str = String(val).trim();
+      var d = new Date(str);
+      if (!isNaN(d.getTime())) return d;
+      var matchBr = str.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})(?:\s+(\d{1,2}):(\d{1,2})(?::(\d{1,2}))?)?/);
+      if (matchBr) {
+        var day = parseInt(matchBr[1], 10);
+        var month = parseInt(matchBr[2], 10) - 1;
+        var year = parseInt(matchBr[3], 10);
+        var hours = parseInt(matchBr[4] || '0', 10);
+        var minutes = parseInt(matchBr[5] || '0', 10);
+        var seconds = parseInt(matchBr[6] || '0', 10);
+        return new Date(year, month, day, hours, minutes, seconds);
+      }
+      return null;
+    }
+
     function matchesFilter(dVal, filt, tDate, sDate, eDate) {
       if (!dVal || filt === 'all') return true;
-      var d = (dVal instanceof Date) ? dVal : new Date(dVal);
-      if (isNaN(d.getTime())) return true;
+      var d = parseDateSafe(dVal);
+      if (!d || isNaN(d.getTime())) return true;
       var now = new Date();
       var todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
       var tomorrowStart = todayStart + 86400000;
@@ -974,24 +993,13 @@ function doGet(e) {
       var isSalePending = (event === 'Aguardando_Pagamento' || saleStatus === 'waiting_payment' || saleStatus === 'pending' || saleStatus === 'billet_printed' || saleStatus === 'pix_generated');
 
       if (isSaleApproved || isSalePending) {
-        var ordKey = (leadPhone || leadEmail || '') + '_' + Math.round(saleVal) + '_' + (platform || 'gw');
+        var ordKey = (rawSession ? (platform + '_' + rawSession) : '') || ((leadPhone || leadEmail || leadName) + '_' + Math.round(saleVal) + '_' + (platform || 'gw'));
+        var originTag = src ? ('SRC: ' + src) : [utmSrc, utmCmp].filter(Boolean).join(' / ');
+        var formattedVal = 'R$ ' + saleVal.toFixed(2).replace('.', ',');
+
         if (!ordersMap[ordKey]) {
-          ordersMap[ordKey] = true;
-          var originTag = src ? ('SRC: ' + src) : [utmSrc, utmCmp].filter(Boolean).join(' / ');
-          var formattedVal = 'R$ ' + saleVal.toFixed(2).replace('.', ',');
-
-          if (isSaleApproved) {
-            totalSalesApproved++;
-            revenueApproved += saleVal;
-            if (!stepVisitors['step_sales']) stepVisitors['step_sales'] = {};
-            stepVisitors['step_sales'][sessionKey] = true;
-          } else {
-            totalSalesPending++;
-            revenuePending += saleVal;
-          }
-
-          orders.unshift({
-            id: sessionKey || ('ord_' + i),
+          ordersMap[ordKey] = {
+            id: rawSession || sessionKey || ('ord_' + i),
             date: rowDate ? Utilities.formatDate(new Date(rowDate), Session.getScriptTimeZone() || "GMT-3", "dd/MM/yyyy HH:mm") : '',
             name: leadName || 'Cliente',
             whatsapp: leadPhone || '',
@@ -1003,8 +1011,23 @@ function doGet(e) {
             platform: platform || (event.indexOf('Kirvano') !== -1 ? 'Kirvano' : 'PerfectPay'),
             product: product || 'Oferta',
             src: src || '-',
-            utm: originTag || '-'
-          });
+            utm: originTag || '-',
+            sessionKey: sessionKey
+          };
+        } else {
+          // Se o pedido já existia (ex: Pix gerado) e agora veio a linha de pagamento aprovado, promove para Aprovado!
+          if (isSaleApproved &amp;&amp; ordersMap[ordKey].status !== 'approved') {
+            ordersMap[ordKey].status = 'approved';
+            if (rowDate) {
+              ordersMap[ordKey].date = Utilities.formatDate(new Date(rowDate), Session.getScriptTimeZone() || "GMT-3", "dd/MM/yyyy HH:mm");
+            }
+            if (saleVal &gt; 0) {
+              ordersMap[ordKey].amount = saleVal;
+              ordersMap[ordKey].amountFormatted = formattedVal;
+            }
+            if (payMethod) ordersMap[ordKey].method = payMethod;
+            if (src &amp;&amp; (!ordersMap[ordKey].src || ordersMap[ordKey].src === '-')) ordersMap[ordKey].src = src;
+          }
         }
       }
 
@@ -1020,6 +1043,20 @@ function doGet(e) {
           });
         }
       }
+    }
+
+    for (var oKey in ordersMap) {
+      var ord = ordersMap[oKey];
+      if (ord.status === 'approved') {
+        totalSalesApproved++;
+        revenueApproved += ord.amount;
+        if (!stepVisitors['step_sales']) stepVisitors['step_sales'] = {};
+        if (ord.sessionKey) stepVisitors['step_sales'][ord.sessionKey] = true;
+      } else {
+        totalSalesPending++;
+        revenuePending += ord.amount;
+      }
+      orders.unshift(ord);
     }
 
     var stepViews = {};

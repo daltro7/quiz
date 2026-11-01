@@ -2352,8 +2352,22 @@ const App = {
       return t >= startLimit && t <= endLimit;
     });
 
-    const approvedOrders = filteredOrders.filter(o => o.status === 'approved');
-    const pendingOrders = filteredOrders.filter(o => o.status === 'waiting_payment');
+    // Reconciliação inteligente: se o mesmo pedido existir como pendente e aprovado na lista, consolida como Aprovado
+    const consolidatedMap = {};
+    filteredOrders.forEach(o => {
+      const ordKey = (o.id && !String(o.id).startsWith('ord_')) ? String(o.id) : ((o.whatsapp || o.email || o.name || '') + '_' + Math.round(parseFloat(o.amount) || 0) + '_' + (o.platform || ''));
+      if (!consolidatedMap[ordKey]) {
+        consolidatedMap[ordKey] = { ...o };
+      } else {
+        if (o.status === 'approved' || o.status === 'aprovado' || o.status === 'paid') {
+          consolidatedMap[ordKey] = { ...o, status: 'approved' };
+        }
+      }
+    });
+    filteredOrders = Object.values(consolidatedMap);
+
+    const approvedOrders = filteredOrders.filter(o => o.status === 'approved' || o.status === 'aprovado' || o.status === 'paid');
+    const pendingOrders = filteredOrders.filter(o => o.status === 'waiting_payment' || o.status === 'pending');
     const totalSalesApproved = approvedOrders.length;
     const revenueApproved = approvedOrders.reduce((sum, o) => sum + (parseFloat(o.amount) || 0), 0);
     const totalSalesPending = pendingOrders.length;

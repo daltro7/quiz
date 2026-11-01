@@ -1544,28 +1544,138 @@ const QuizTemplateEngine = {
         }
       },
 
-      applyUtmsToLinks() {
-        const links = document.querySelectorAll('.link-trackable, .cta-btn[href], .offer-container a[href]');
-        links.forEach(link => {
-          const href = link.getAttribute('href');
-          if (href && href !== '#' && !href.startsWith('javascript:')) {
-            if (this.utmParams && Object.keys(this.utmParams).length > 0) {
-              link.setAttribute('href', this.appendUtmsToUrl(href));
+      injectUtmsIntoHtmlString(rawHtml) {
+        if (!rawHtml || typeof rawHtml !== 'string') return rawHtml;
+        const utms = this.utmParams || {};
+        const utmKeys = Object.keys(utms);
+
+        // 1. Substitui links estáticos <a href="...">
+        let result = rawHtml;
+        if (utmKeys.length > 0) {
+          result = result.replace(/<a\b([^>]*?)href=(["'])(.*?)\2([^>]*?)>/gi, (match, prefix, quote, url, suffix) => {
+            if (!url || url === '#' || url.startsWith('javascript:')) return match;
+            const updatedUrl = this.appendUtmsToUrl(url);
+            return `<a${prefix}href=${quote}${updatedUrl}${quote}${suffix}>`;
+          });
+
+          // 2. Substitui window.location.href = "..." ou window.open("...")
+          result = result.replace(/(?:window\.location(?:\.href)?\s*=\s*|window\.open\s*\(\s*)(["'])(https?:\/\/[^"']+)\1/gi, (match, quote, url) => {
+            const updatedUrl = this.appendUtmsToUrl(url);
+            return match.replace(url, updatedUrl);
+          });
+        }
+
+        // 3. Injeta script no iframe para garantir que qualquer link ou botão dinâmico receba UTMs e rastreie o checkout
+        const utmsJson = JSON.stringify(utms);
+        const scriptPayload = `\n<script>
+(function() {
+  function syncQuizUtms() {
+    var params = ${utmsJson};
+    var keys = Object.keys(params);
+    var links = document.querySelectorAll('a[href]');
+    links.forEach(function(el) {
+      var h = el.getAttribute('href');
+      if (!h || h === '#' || h.indexOf('javascript:') === 0) return;
+      if (keys.length > 0) {
+        try {
+          var isAbs = h.indexOf('http://') === 0 || h.indexOf('https://') === 0;
+          var u = new URL(isAbs ? h : window.location.origin + (h.indexOf('/') === 0 ? h : '/' + h));
+          keys.forEach(function(k) { if (!u.searchParams.has(k)) u.searchParams.set(k, params[k]); });
+          el.setAttribute('href', isAbs ? u.toString() : (u.pathname + u.search + u.hash));
+        } catch(err) {
+          var sep = h.indexOf('?') !== -1 ? '&' : '?';
+          var parts = [];
+          keys.forEach(function(k) { if (h.indexOf(k + '=') === -1) parts.push(encodeURIComponent(k) + '=' + encodeURIComponent(params[k])); });
+          if (parts.length > 0) el.setAttribute('href', h + sep + parts.join('&'));
+        }
+      }
+      if (!el.dataset.quizBound) {
+        el.dataset.quizBound = 'true';
+        el.addEventListener('click', function() {
+          try {
+            if (window.parent && window.parent.QuizApp && window.parent.QuizApp.trackFunnelEvent) {
+              window.parent.QuizApp.trackFunnelEvent('Checkout_Iniciado', { checkoutUrl: el.getAttribute('href'), fromIframe: true });
             }
-            if (!link.dataset.checkoutBound) {
-              link.dataset.checkoutBound = 'true';
-              link.addEventListener('click', () => {
-                try {
-                  // Registra métrica interna de checkout iniciado (não envia ao Pixel Meta para evitar duplicidade com Kirvano/PerfectPay)
-                  this.trackFunnelEvent('Checkout_Iniciado', {
-                    checkoutUrl: link.getAttribute('href') || href,
-                    stepIndex: this.currentStepIndex
-                  });
-                } catch(e) {}
-              });
-            }
-          }
+          } catch(e) {}
         });
+      }
+    });
+  }
+  if (document.readyState === 'loading') { document.addEventListener('DOMContentLoaded', syncQuizUtms); } else { syncQuizUtms(); }
+  setTimeout(syncQuizUtms, 400);
+  setTimeout(syncQuizUtms, 1200);
+  setTimeout(syncQuizUtms, 2500);
+})();
+<\/script>`;
+
+        if (result.includes('</body>')) {
+          result = result.replace('</body>', scriptPayload + '</body>');
+        } else {
+          result = result + scriptPayload;
+        }
+
+        return result;
+      },
+
+      applyUtmsToLinks() {
+        const selectors = [
+          '.link-trackable',
+          '.cta-btn[href]',
+          '.offer-container a[href]',
+          '.custom-html-container a[href]',
+          'a[href*="kirvano.com"]',
+          'a[href*="perfectpay.com.br"]',
+          'a[href*="kiwify.com.br"]',
+          'a[href*="hotmart.com"]',
+          'a[href*="eduzz.com"]',
+          'a[href*="monetizze.com.br"]',
+          'a[href*="checkout"]',
+          'a[href*="pay."]'
+        ];
+        const links = document.querySelectorAll(selectors.join(', '));
+        links.forEach(link => {
+          this.bindTrackableLink(link);
+        });
+
+        // Inspeciona e injeta em iframes na página (como blocos de HTML livre com srcdoc)
+        const iframes = document.querySelectorAll('.custom-html-container iframe');
+        iframes.forEach(iframe => {
+          const bindFrame = () => {
+            try {
+              const doc = iframe.contentDocument || (iframe.contentWindow && iframe.contentWindow.document);
+              if (doc) {
+                const fLinks = doc.querySelectorAll('a[href]');
+                fLinks.forEach(fLink => {
+                  this.bindTrackableLink(fLink, true);
+                });
+              }
+            } catch(e) {}
+          };
+          bindFrame();
+          try { iframe.addEventListener('load', bindFrame); } catch(e) {}
+        });
+      },
+
+      bindTrackableLink(link, isInsideIframe = false) {
+        if (!link) return;
+        const href = link.getAttribute('href');
+        if (href && href !== '#' && !href.startsWith('javascript:')) {
+          if (this.utmParams && Object.keys(this.utmParams).length > 0) {
+            link.setAttribute('href', this.appendUtmsToUrl(href));
+          }
+          if (!link.dataset.checkoutBound) {
+            link.dataset.checkoutBound = 'true';
+            link.addEventListener('click', () => {
+              try {
+                this.trackFunnelEvent('Checkout_Iniciado', {
+                  checkoutUrl: link.getAttribute('href') || href,
+                  stepIndex: this.currentStepIndex,
+                  fromIframe: isInsideIframe
+                });
+              } catch(e) {}
+            });
+          }
+        }
       },
 
       calculateProgress(index, totalSteps) {
@@ -1850,16 +1960,18 @@ const QuizTemplateEngine = {
             const isIframe = block.iframeUrl || block.htmlMode === 'iframe' || (block.htmlMode !== 'inline' && this.isFullHtmlDoc(block.customHtml));
 
             if (block.iframeUrl && block.iframeUrl.trim() !== '') {
+              const finalIframeUrl = this.appendUtmsToUrl(block.iframeUrl.trim());
               bHtml += '<div class=\"custom-html-container ' + fullClass + '\">';
-              bHtml += '<iframe src=\"' + this.escapeHtml(block.iframeUrl) + '\" style=\"width:100%; height:' + height + '; border:none; border-radius:12px; display:block; background:#fff;\" sandbox=\"allow-scripts allow-same-origin allow-forms allow-popups allow-modals\" loading=\"lazy\"></iframe>';
+              bHtml += '<iframe src=\"' + this.escapeHtml(finalIframeUrl) + '\" style=\"width:100%; height:' + height + '; border:none; border-radius:12px; display:block; background:#fff;\" sandbox=\"allow-scripts allow-same-origin allow-forms allow-popups allow-modals\" loading=\"lazy\"></iframe>';
               bHtml += '</div>';
             } else if (block.customHtml && block.customHtml.trim() !== '') {
+              const processedHtml = this.injectUtmsIntoHtmlString(block.customHtml);
               if (isIframe) {
                 bHtml += '<div class=\"custom-html-container ' + fullClass + '\">';
-                bHtml += '<iframe id=\"quiz-html-frame-' + bIdx + '\" data-block-idx=\"' + bIdx + '\" srcdoc=\"' + this.escapeSrcdoc(block.customHtml) + '\" style=\"width:100%; height:' + height + '; border:none; border-radius:12px; display:block; background:#fff;\" sandbox=\"allow-scripts allow-same-origin allow-forms allow-popups allow-modals\" loading=\"lazy\"></iframe>';
+                bHtml += '<iframe id=\"quiz-html-frame-' + bIdx + '\" data-block-idx=\"' + bIdx + '\" srcdoc=\"' + this.escapeSrcdoc(processedHtml) + '\" style=\"width:100%; height:' + height + '; border:none; border-radius:12px; display:block; background:#fff;\" sandbox=\"allow-scripts allow-same-origin allow-forms allow-popups allow-modals\" loading=\"lazy\"></iframe>';
                 bHtml += '</div>';
               } else {
-                bHtml += '<div class=\"custom-html-container ' + fullClass + '\">' + block.customHtml + '</div>';
+                bHtml += '<div class=\"custom-html-container ' + fullClass + '\">' + processedHtml + '</div>';
               }
             }
           }
