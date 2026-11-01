@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"></head>
+<body>
+  <div id="status">Loading...</div>
+  <script src="template-engine.js"></script>
+  <script>
+    try {
+      const quiz = {
+  "id": "quiz_1793534405957",
+  "title": "NetFree (Importado)",
+  "description": "Quiz interativo montado por blocos modulares.",
+  "createdAt": "2026-10-30T22:15:57.366Z",
+  "updatedAt": "2026-11-01T12:10:27.047Z",
+  "theme": {
+    "primaryColor": "#10b981",
+    "primaryHover": "#4f46e5",
+    "bgColor": "#061a12",
+    "cardBg": "#0f291e",
+    "textColor": "#f0fdf4",
+    "textMuted": "#94a3b8",
+    "accentColor": "#f59e0b",
+    "borderRadius": "16px",
+    "borderWidth": "1px",
+    "borderColor": "#cbd5e1",
+    "shadow": "glow",
+    "maxWidth": "560px",
+    "showProgressBar": true,
+    "hideUntilFirstClick": true,
+    "progressTextFormat": "percent_only",
+    "startPercent": 57
+  },
+  "tracking": {
+    "webhookUrl": "https://script.google.com/macros/s/AKfycbyMy_DAsYZ57zf_xnuvaoI-Vu7USWe9zfy6Um4H-lhCsjEkOwDtAu7dWREMwf6RAt2pzw/exec",
+    "metaPixelId": "1265492645638129",
+    "ga4Id": "",
+    "sheetUrl": "https://script.google.com/macros/s/AKfycbyMy_DAsYZ57zf_xnuvaoI-Vu7USWe9zfy6Um4H-lhCsjEkOwDtAu7dWREMwf6RAt2pzw/exec"
+  },
+  "steps": [
+    {
+      "id": "step_1",
+      "title": "Etapa 1",
+      "blocks": [
+        {
+          "id": "b_head_1",
+          "type": "heading",
+          "tag": "Verificador de Conexão",
+          "title": "Descubra se o seu aparelho é compatível com o sinal .",
+          "subtitle": "Consulta rápida \n Sem necessidade de cadastro",
+          "delaySeconds": 0,
+          "subtitleSize": "base"
+        },
+        {
+          "id": "b_1793534840997",
+          "type": "delay_button",
+          "delaySeconds": 0,
+          "text": "VERIFICAR COMPATIBILIDADE AGORA",
+          "url": "",
+          "buttonSize": "normal"
+        }
+      ]
+    },
+    {
+      "id": "step_1793398941204",
+      "title": "Etapa 2",
+      "blocks": [
+        {
+          "id": "b_1793398971981",
+          "type": "heading",
+          "delaySeconds": 0,
+          "tag": "",
+          "title": "Qual é a sua operadora principal hoje?",
+          "subtitle": "Escolha a opção que melhor te descreve:",
+          "align": "center",
+          "titleSize": "md",
+          "subtitleSize": "sm"
+        },
+        {
+          "id": "b_1793399008506",
+          "type": "question",
+          "delaySeconds": 0,
+          "align": "left",
+          "options": [
+            {
+              "icon": "",
+              "text": "🟣 Vivo",
+              "points": 10,
+              "targetStepIndex": ""
+            },
+            {
+              "icon": "",
+              "text": "🔴 Claro",
+              "points": 5,
+              "targetStepIndex": ""
+            },
+            {
+              "icon": "",
+              "text": "🔵 TIM",
+              "points": 5,
+              "targetStepIndex": ""
+            },
+            {
+              "icon": "",
+              "text": "⚪ Outra / Mais de uma operadora",
+              "points": 5,
+              "targetStepIndex": ""
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "step_1793399113180",
+      "title": "Etapa 3",
+      "blocks": [
+        {
+          "id": "b_1793399114986",
+          "type": "heading",
+          "delaySeconds": 0,
+          "tag": "",
+          "title": "Qual dessas situações mais te dá raiva no dia a dia com a sua internet móvel?",
+          "subtitle": "Escolha a opção que melhor te descreve:",
+          "align": "center",
+          "titleSize": "md",
+          "subtitleSize": "sm"
+        },
+        {
+          "id": "b_1793399137335",
+          "type": "question",
+          "delaySeconds": 0,
+          "align": "left",
+          "options": [
+            {
+              "icon": "👉",
+              "text": "O sinal cair do nada no meio da rua, viagem ou momento importante",
+              "points": 10,
+              "targetStepIndex": ""
+            },
+            {
+              "icon": "👉",
+              "text": "A franquia de dados acabar antes do fim do mês e a velocidade ser cortada",
+              "points": 5,
+              "targetStepIndex": ""
+            },
+            {
+              "icon": "👉",
+              "text": "Pagar caro todo mês e ter que ficar caçando Wi-Fi na rua",
+              "points": 5,
+              "targetStepIndex": ""
+            },
+            {
+              "icon": "👉",
+              "text": "Ficar preso em contratos de fidelidade com multas abusivas",
+              "points": 5,
+              "targetStepIndex": ""
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "step_1793399277593",
+      "title": "Etapa 4",
+      "blocks": [
+        {
+          "id": "b_1793399278930",
+          "type": "heading",
+          "delaySeconds": 0,
+          "tag": "",
+          "title": "Somando recargas mensais ou planos controle, quanto você costuma pagar todo mês?",
+          "subtitle": "Escolha a opção que melhor te descreve:",
+          "align": "center",
+          "titleSize": "md",
+          "subtitleSize": "sm"
+        },
+        {
+          "id": "b_1793399290713",
+          "type": "question",
+          "delaySeconds": 0,
+          "align": "left",
+          "options": [
+            {
+              "icon": "👉",
+              "text": "R$ 25 a R$ 40 por mês",
+              "points": 10,
+              "targetStepIndex": ""
+            },
+            {
+              "icon": "👉",
+              "text": "R$ 45 a R$ 70 por mês",
+              "points": 5,
+              "targetStepIndex": ""
+            },
+            {
+              "icon": "👉",
+              "text": "Mais de R$ 80 por mês",
+              "points": 5,
+              "targetStepIndex": ""
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "step_1793399387203",
+      "title": "Etapa 5",
+      "blocks": [
+        {
+          "id": "b_1793399398568",
+          "type": "heading",
+          "delaySeconds": 0,
+          "tag": "ATENÇÃO",
+          "title": "A culpa da sua internet cair não é do seu celular.",
+          "subtitle": "As operadoras tradicionais vendem franquias limitadas e te prendem a uma única torre de transmissão. Quando você entra em uma sombra de sinal da sua rede, você fica incomunicável — mesmo tendo antenas de outras marcas funcionando perfeitas ao seu lado.",
+          "align": "center",
+          "titleSize": "md",
+          "subtitleSize": "base"
+        },
+        {
+          "id": "b_1793399467515",
+          "type": "delay_button",
+          "delaySeconds": 2,
+          "text": "Acessar Internet Ilimitada",
+          "url": "",
+          "buttonSize": "normal"
+        }
+      ]
+    },
+    {
+      "id": "step_1793399591562",
+      "title": "Etapa 6",
+      "blocks": [
+        {
+          "id": "b_1793399593250",
+          "type": "heading",
+          "delaySeconds": 0,
+          "tag": "",
+          "title": "Veja o que acontece quando o sinal se conecta à rede mais forte disponível:",
+          "subtitle": "",
+          "align": "center",
+          "titleSize": "md",
+          "subtitleSize": "sm"
+        },
+        {
+          "id": "b_1793399609523",
+          "type": "video",
+          "delaySeconds": 0,
+          "youtubeUrl": "https://www.youtube.com/shorts/uP27mdyLcYA",
+          "orientation": "vertical",
+          "autoplayMode": "direct",
+          "hideControls": false,
+          "hideRecommendations": true,
+          "cleanTopMask": false,
+          "unmuteButtonText": "🔊 Toque para Ativar o Áudio",
+          "preload": true
+        },
+        {
+          "id": "b_1793399699096",
+          "type": "delay_button",
+          "delaySeconds": 3,
+          "text": "AVANÇAR PARA COMPATIBILIDADE DO APARELHO→",
+          "url": "",
+          "buttonSize": "normal"
+        }
+      ]
+    },
+    {
+      "id": "step_1793399760614",
+      "title": "Etapa 7",
+      "blocks": [
+        {
+          "id": "b_1793399762351",
+          "type": "heading",
+          "delaySeconds": 0,
+          "tag": "",
+          "title": "Qual é o sistema do aparelho onde você vai utilizar o sinal?",
+          "subtitle": "Escolha a opção que melhor te descreve:",
+          "align": "center",
+          "titleSize": "md",
+          "subtitleSize": "sm"
+        },
+        {
+          "id": "b_1793399769664",
+          "type": "question",
+          "delaySeconds": 0,
+          "align": "left",
+          "options": [
+            {
+              "icon": "🤖",
+              "text": " Android (Samsung, Motorola, Xiaomi, etc.)",
+              "points": 10,
+              "targetStepIndex": ""
+            },
+            {
+              "icon": "🍏 ",
+              "text": "iPhone (iOS)",
+              "points": 5,
+              "targetStepIndex": ""
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "step_1793399836103",
+      "title": "Etapa 8",
+      "blocks": [
+        {
+          "id": "b_1793399837586",
+          "type": "heading",
+          "delaySeconds": 0,
+          "tag": "",
+          "title": "Para qual finalidade você mais precisa de tráfego de dados ilimitado?",
+          "subtitle": "Escolha a opção que melhor te descreve:",
+          "align": "center",
+          "titleSize": "md",
+          "subtitleSize": "sm"
+        },
+        {
+          "id": "b_1793399854166",
+          "type": "question",
+          "delaySeconds": 0,
+          "align": "left",
+          "options": [
+            {
+              "icon": "🚗 ",
+              "text": "Trabalho na rua / Uber / 99 / Entregas / Vendas externas",
+              "points": 10,
+              "targetStepIndex": ""
+            },
+            {
+              "icon": "🎬 ",
+              "text": " Assistir vídeos, redes sociais, YouTube, filmes e séries sem gastar franquia",
+              "points": 5,
+              "targetStepIndex": ""
+            },
+            {
+              "icon": "💼 ",
+              "text": "Trabalho remoto, videochamadas e envio de arquivos pesados",
+              "points": 5,
+              "targetStepIndex": ""
+            },
+            {
+              "icon": "🛣️ ",
+              "text": " Viagens constantes, praia e estradas",
+              "points": 5,
+              "targetStepIndex": ""
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "step_1793399983141",
+      "title": "Etapa 9",
+      "blocks": [
+        {
+          "id": "b_1793399984720",
+          "type": "heading",
+          "delaySeconds": 0,
+          "tag": "",
+          "title": "Como o app faz a varredura e conecta em menos de 10 segundos",
+          "subtitle": "",
+          "align": "center",
+          "titleSize": "md",
+          "subtitleSize": "sm"
+        },
+        {
+          "id": "b_1793400005377",
+          "type": "video",
+          "delaySeconds": 0,
+          "youtubeUrl": "https://www.youtube.com/shorts/0D-QNeV0lSM",
+          "orientation": "vertical",
+          "autoplayMode": "direct",
+          "hideControls": false,
+          "hideRecommendations": true,
+          "cleanTopMask": false,
+          "unmuteButtonText": "🔊 Toque para Ativar o Áudio",
+          "preload": true
+        },
+        {
+          "id": "b_1793400037172",
+          "type": "delay_button",
+          "delaySeconds": 3,
+          "text": "PROCESSAR MINHA CHAVE DE ACESSO→",
+          "url": "",
+          "buttonSize": "normal"
+        }
+      ]
+    },
+    {
+      "id": "step_1793400121726",
+      "title": "Etapa 10",
+      "blocks": [
+        {
+          "id": "b_1793491995348",
+          "type": "heading",
+          "delaySeconds": 0,
+          "tag": "",
+          "title": "Preparando o App para o seu dispositivo",
+          "subtitle": "",
+          "align": "center",
+          "titleSize": "md",
+          "subtitleSize": "sm"
+        },
+        {
+          "id": "b_1793400127277",
+          "type": "fake_loader",
+          "delaySeconds": 0,
+          "duration": 8,
+          "autoAdvance": false,
+          "messages": "Identificando torres parceiras na sua região...\nVivo, Claro, TIM e Satélites...\nVerificando acesso para 200 Mbps de velocidade...\nLiberando Dados Ilimitados...\nTudo Pronto",
+          "buttonText": "Ver Meu Diagnóstico →"
+        },
+        {
+          "id": "b_1793400478257",
+          "type": "heading",
+          "delaySeconds": 8,
+          "tag": "",
+          "title": "🟢 COMPATIBILIDADE CONFIRMADA",
+          "subtitle": "Seu dispositivo está apto para receber conexão de alta velocidade.",
+          "align": "center",
+          "titleSize": "md",
+          "subtitleSize": "base"
+        },
+        {
+          "id": "b_1793484524600",
+          "type": "potential_chart",
+          "delaySeconds": 8,
+          "chartTitle": "Mapeamento de Custos & Potencial de Sinal",
+          "chartStyle": "curve",
+          "startLabel": "Alto Custo e Limitações Atuais",
+          "endLabel": "Melhor Conexão e Custo Menor",
+          "showValues": true,
+          "startValue": "21%",
+          "endValue": "93%",
+          "startColor": "#ef4444",
+          "endColor": "#10b981",
+          "animationDuration": 4.5
+        },
+        {
+          "id": "b_1793400547227",
+          "type": "delay_button",
+          "delaySeconds": 8,
+          "text": "LIBERAR MEU ACESSO ILIMITADO ➔",
+          "url": "",
+          "buttonSize": "normal"
+        }
+      ]
+    },
+    {
+      "id": "step_1793400627048",
+      "title": "Etapa 11",
+      "blocks": [
+        {
+          "id": "b_1793400628766",
+          "type": "heading",
+          "delaySeconds": 0,
+          "tag": "Acesso Liberado",
+          "title": "Veja como ativar sua internet móvel ilimitada hoje",
+          "subtitle": "",
+          "align": "center",
+          "titleSize": "md",
+          "subtitleSize": "sm"
+        },
+        {
+          "id": "b_1793400666434",
+          "type": "video",
+          "delaySeconds": 0,
+          "youtubeUrl": "https://www.youtube.com/watch?v=00VQzqb4tWw",
+          "orientation": "horizontal",
+          "autoplayMode": "direct",
+          "hideControls": false,
+          "hideRecommendations": true,
+          "cleanTopMask": false,
+          "unmuteButtonText": "🔊 Toque para Ativar o Áudio",
+          "preload": true
+        },
+        {
+          "id": "b_1793400728940",
+          "type": "html",
+          "delaySeconds": 25,
+          "fullWidth": true,
+          "borderless": true,
+          "customHtml": "<!DOCTYPE html>\n<html lang=\"pt-BR\">\n<head>\n<meta charset=\"UTF-8\">\n<meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0, viewport-fit=cover\">\n<title>NetFree — Internet Ilimitada Sem Contrato</title>\n<meta name=\"description\" content=\"Internet ilimitada, 200 Mbps, sem contrato e sem fidelidade. Conecte-se às melhores operadoras do Brasil com o app NetFree.\">\n<meta name=\"theme-color\" content=\"#07090f\">\n\n<script> \n   let prefix = [\"https://pay.kirvano.com/\"]; \nfunction getParams() { \n    let t = \"\", \n        e = (function(){ try { return window.top.location.href; } catch(x){ return window.location.href; } })(), \n        r = new URL(e); \n    if (null != r) { \n        let a = r.searchParams.get(\"utm_source\"), \n            n = r.searchParams.get(\"utm_medium\"), \n            o = r.searchParams.get(\"utm_campaign\"), \n            m = r.searchParams.get(\"utm_term\"), \n            c = r.searchParams.get(\"utm_content\"); - 1 !== e.indexOf(\"?\") && (t = \n`&sck=${a}|${n}|${o}|${m}|${c}`), console.log(t) \n    } \n    return t \n}! function() { \nvar t = new URLSearchParams(window.location.search); \nt.toString() && document.querySelectorAll(\"a\").forEach(function(e) { \nfor (let r = 0; r < prefix.length; r++) - 1 !== e.href.indexOf(prefix[r]) && (-1 === \ne.href.indexOf(\"?\") ? e.href += \"?\" + t.toString() + getParams() : e.href += \"&\" + t.toString() + \ngetParams()) \n}) \n}(); </script>\n\n<script>\n    window.onload = (event) => {\n        const links = document.querySelectorAll(\"a\");\n        links.forEach(function (link) {\n            const href = link.href;\n            if (href !== null || href !== \"\") {\n                if (href.includes(\"kirvano\")) {\n                    let search_params = document.location.search.replace(\"?\", \"\");\n                    let urlFinal = href + (href.indexOf(\"?\") > 0 ? \"&\" : \"?\") + search_params.toString();\n                    link.href = urlFinal;\n                }\n            }\n        });\n    };\n</script>\n\n<script src="\&quot;https://cdn.kirvano.com/social-proof.js\&quot;" async=""></script>\n\n<style>\n#nf-notif{position:fixed;bottom:20px;left:20px;z-index:9998;display:flex;flex-direction:column;gap:10px;pointer-events:none}\n.nf-toast{background:#0c0f1a;border:1px solid rgba(0,212,170,.25);border-radius:12px;padding:12px 16px;display:flex;align-items:center;gap:12px;box-shadow:0 8px 32px rgba(0,0,0,.5);max-width:300px;pointer-events:none;transform:translateX(-120%);transition:transform .4s cubic-bezier(.34,1.56,.64,1),opacity .4s ease;opacity:0}\n.nf-toast.show{transform:translateX(0);opacity:1}\n.nf-toast-av{width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,rgba(0,212,170,.25),rgba(79,128,255,.25));border:1px solid rgba(0,212,170,.2);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:900;color:#00d4aa;flex-shrink:0}\n.nf-toast-txt{flex:1}\n.nf-toast-name{font-size:12px;font-weight:700;color:#fff;margin-bottom:2px}\n.nf-toast-msg{font-size:11px;color:#7a8ba8;line-height:1.4}\n.nf-toast-time{font-size:10px;color:#4a5568;margin-top:2px}\n.nf-toast-dot{width:6px;height:6px;border-radius:50%;background:#00d4aa;box-shadow:0 0 6px #00d4aa;flex-shrink:0;animation:bk 1.4s infinite}\n@media(max-width:480px){#nf-notif{bottom:14px;left:10px}.nf-toast{max-width:260px;padding:10px 12px}}\n</style>\n\n<link rel="\&quot;preconnect\&quot;" href="\&quot;https://pay.kirvano.com\&quot;">\n<link rel="\&quot;dns-prefetch\&quot;" href="\&quot;https://pay.kirvano.com\&quot;">\n<link rel="\&quot;preconnect\&quot;" href="\&quot;https://fonts.googleapis.com\&quot;">\n<link rel="\&quot;preconnect\&quot;" href="\&quot;https://fonts.gstatic.com\&quot;" crossorigin="">\n<link href="\&quot;https://fonts.googleapis.com/css2?family=Exo+2:wght@400;700;900&amp;display=swap\&quot;" rel="\&quot;stylesheet\&quot;" media="\&quot;print\&quot;" onload="\&quot;this.media='all'\&quot;">\n<noscript><link href=\"https://fonts.googleapis.com/css2?family=Exo+2:wght@400;700;900&display=swap\" rel=\"stylesheet\"></noscript>\n\n<style>\n/* ─── RESET & VARIÁVEIS ─────────────────────────────── */\n*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}\nhtml{scroll-behavior:smooth;-webkit-text-size-adjust:100%}\nbody{font-family:'Exo 2',system-ui,sans-serif;background:#07090f;color:#e8edf7;overflow-x:hidden;line-height:1.6;-webkit-font-smoothing:antialiased}\nimg{max-width:100%;height:auto;display:block}\na{text-decoration:none;color:inherit}\n\n:root{\n  --teal:#00d4aa;--teal2:#00b890;--teal-a:.1;\n  --red:#ff3b5c;--green:#00ff88;--gold:#f5d000;\n  --bg1:#07090f;--bg2:#0c0f1a;--bg3:#111827;\n  --txt:#e8edf7;--txt2:#8a9bb8;--txt3:#4a5568;\n  --bdr:rgba(255,255,255,.07);--bdr-t:rgba(0,212,170,.25);\n  --r:16px;--r2:10px;--max:960px;\n}\n\n/* ─── UTILITÁRIOS ───────────────────────────────────── */\n.w{max-width:var(--max);margin:0 auto;padding:0 20px}\n.s{padding:64px 0;position:relative}\n.lbl{font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--teal);margin-bottom:12px;text-align:center}\n.ttl{font-size:clamp(22px,5vw,40px);font-weight:900;color:#fff;line-height:1.15;letter-spacing:-.02em;text-align:center;max-width:700px;margin:0 auto 40px}\n.ttl span{color:var(--teal)}\n.div{height:1px;background:linear-gradient(90deg,transparent,var(--bdr-t),transparent)}\n\n/* ─── CTA ───────────────────────────────────────────── */\n.cta{display:inline-flex;align-items:center;justify-content:center;gap:9px;background:linear-gradient(135deg,var(--teal),var(--teal2));color:#002a20;font-weight:900;font-family:inherit;font-size:16px;padding:17px 40px;border-radius:50px;border:none;cursor:pointer;text-decoration:none;-webkit-tap-highlight-color:transparent;touch-action:manipulation;animation:pulse 2.2s ease-in-out infinite}\n.cta svg{width:17px;height:17px;flex-shrink:0}\n.cta-sm{font-size:14px;padding:14px 32px}\n.cw{text-align:center;margin-top:40px}\n@keyframes pulse{0%,100%{box-shadow:0 6px 28px rgba(0,212,170,.35),0 0 0 0 rgba(0,212,170,.35)}65%{box-shadow:0 6px 28px rgba(0,212,170,.35),0 0 0 14px rgba(0,212,170,0)}}\n@keyframes bk{0%,100%{opacity:1}50%{opacity:.2}}\n\n/* ─── PLANOS ────────────────────────────────────────── */\n.pls{background:var(--bg1)}\n.pls::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,var(--bdr-t),transparent)}\n.psub{text-align:center;font-size:14px;color:var(--txt3);max-width:460px;margin:-28px auto 40px;padding:0 8px}\n.plg{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;align-items:stretch;margin-bottom:40px}\n.pl{background:rgba(255,255,255,.03);border:1px solid var(--bdr);border-radius:20px;padding:32px 24px;text-align:center;position:relative;overflow:hidden;display:flex;flex-direction:column}\n.pl.ft{background:rgba(0,212,170,.05);border:2px solid rgba(0,212,170,.45);box-shadow:0 0 50px rgba(0,212,170,.1);transform:scale(1.04)}\n.pl-rib{position:absolute;top:0;left:50%;transform:translateX(-50%);background:linear-gradient(135deg,var(--teal),var(--teal2));color:#002a20;font-size:10px;font-weight:900;letter-spacing:.1em;text-transform:uppercase;padding:4px 20px;border-radius:0 0 10px 10px;white-space:nowrap}\n.pl-nm{font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--txt3);margin-bottom:12px}\n.pl.ft .pl-nm{color:var(--teal);margin-top:24px}\n.pl-pr{display:flex;align-items:flex-start;justify-content:center;gap:2px;margin-bottom:4px;flex-wrap:nowrap}\n.pl-cur{font-size:16px;font-weight:600;color:#fff;margin-top:9px}\n.pl-val{font-size:52px;font-weight:900;color:#fff;line-height:1;letter-spacing:-.02em}\n.pl.ft .pl-val{color:var(--teal)}\n.pl-cts{font-size:20px;font-weight:700;color:#fff;align-self:flex-end;margin-bottom:7px}\n.pl.ft .pl-cts{color:var(--teal)}\n.pl-sb{font-size:12px;color:var(--txt3);margin-bottom:18px}\n.pl.ft .pl-sb{color:var(--green);font-weight:700}\n.pl hr{border:none;border-top:1px solid rgba(255,255,255,.06);margin-bottom:18px}\n.pl.ft hr{border-top-color:rgba(0,212,170,.18)}\n.pl ul{list-style:none;text-align:left;display:flex;flex-direction:column;gap:9px;margin-bottom:24px;flex:1}\n.pl ul li{display:flex;align-items:flex-start;gap:8px;font-size:13px;color:#a0b0c8;line-height:1.45}\n.pl ul li svg{color:var(--teal);width:13px;height:13px;flex-shrink:0;margin-top:3px}\n.pl-btn{display:block;width:100%;padding:13px;border-radius:50px;font-weight:800;font-size:14px;font-family:inherit;text-align:center;border:none;cursor:pointer;-webkit-tap-highlight-color:transparent;touch-action:manipulation;margin-top:auto}\n.pl-out{background:rgba(255,255,255,.06);color:#e8edf7;border:1px solid rgba(255,255,255,.13)}\n.pl-sol{background:linear-gradient(135deg,var(--teal),var(--teal2));color:#002a20;box-shadow:0 5px 20px rgba(0,212,170,.3)}\n.pl-bonus{display:inline-flex;align-items:center;gap:5px;background:linear-gradient(135deg,rgba(255,59,92,.18),rgba(255,59,92,.08));border:1px solid rgba(255,59,92,.35);color:#ff3b5c;font-size:9px;font-weight:900;letter-spacing:.14em;text-transform:uppercase;padding:4px 11px;border-radius:20px;margin-bottom:10px;animation:bk 1.8s infinite}\n.pl-bonus svg{width:10px;height:10px}\n.bonus-item{display:block!important;margin-top:4px}\n.bonus-item strong{color:var(--teal);font-weight:700}\n.bonus-desc{background:rgba(0,212,170,.06);border:1px solid rgba(0,212,170,.18);border-radius:8px;padding:8px 10px;margin-top:6px;margin-left:21px}\n.bonus-desc p{font-size:10px;color:#7a8ba8;line-height:1.5;margin:0 0 5px}\n.bonus-badge{display:inline-block;background:rgba(0,212,170,.12);border:1px solid rgba(0,212,170,.25);color:var(--teal);font-size:8px;font-weight:700;padding:2px 7px;border-radius:12px;letter-spacing:.08em}\n\n/* ─── GARANTIA ──────────────────────────────────────── */\n.gar{background:var(--bg2);text-align:center}\n.gar::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(245,208,0,.2),transparent)}\n.gar-in{max-width:600px;margin:0 auto}\n.selo-img{width:160px;height:160px;object-fit:contain;display:block;margin:0 auto 28px;filter:drop-shadow(0 0 24px rgba(245,208,0,.2))}\n.gar h2{font-size:clamp(20px,4vw,34px);font-weight:900;color:#fff;margin-bottom:16px}\n.gar p{font-size:16px;color:var(--txt2);line-height:1.8;margin-bottom:32px}\n.gar strong{color:#fff}\n\n/* ─── PASSOS ────────────────────────────────────────── */\n.pas{background:var(--bg2)}\n.st-row{display:grid;grid-template-columns:repeat(3,1fr);gap:0;max-width:760px;margin:0 auto 48px;position:relative}\n.st-row::before{content:'';position:absolute;top:34px;left:17%;right:17%;height:1px;background:linear-gradient(90deg,rgba(0,212,170,.3),rgba(0,212,170,.08));z-index:0}\n.st{text-align:center;padding:0 16px;position:relative;z-index:1}\n.st-n{width:68px;height:68px;border-radius:50%;background:linear-gradient(135deg,rgba(0,212,170,.15),rgba(0,212,170,.04));border:1px solid rgba(0,212,170,.35);display:flex;align-items:center;justify-content:center;margin:0 auto 16px;font-size:22px;font-weight:900;color:var(--teal)}\n.st h3{font-size:14px;font-weight:700;color:#fff;margin-bottom:7px}\n.st p{font-size:13px;color:var(--txt2);line-height:1.6}\n\n/* ─── DEPOIMENTOS ───────────────────────────────────── */\n.dep{background:var(--bg1)}\n.dep::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,var(--bdr-t),transparent)}\n.rev-ttl{text-align:center;font-size:20px;font-weight:800;color:#fff;margin-bottom:6px}\n.rev-sum{display:flex;align-items:center;justify-content:center;gap:9px;margin-bottom:36px;flex-wrap:wrap}\n.s5{display:flex;gap:3px}\n.str{color:#f5d000;font-size:20px}\n.rev-sc{font-size:14px;font-weight:700;color:var(--txt2)}\n.rev-g{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:14px;margin-bottom:40px}\n.rv{background:rgba(255,255,255,.03);border:1px solid var(--bdr);border-radius:var(--r2);padding:20px}\n.rv-top{display:flex;align-items:center;gap:11px;margin-bottom:12px}\n.rv-av{width:42px;height:42px;border-radius:50%;background:linear-gradient(135deg,rgba(0,212,170,.2),rgba(79,128,255,.2));border:1px solid rgba(0,212,170,.2);display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:900;color:var(--teal);flex-shrink:0;overflow:hidden}\n.rv-av img{width:100%;height:100%;object-fit:cover;border-radius:50%}\n.rv-inf h4{font-size:13px;font-weight:700;color:#fff;margin-bottom:1px}\n.rv-inf span{font-size:11px;color:var(--txt3)}\n.rv-st{display:flex;gap:2px;margin-bottom:9px}\n.rv-s{color:#f5d000;font-size:13px}\n.rv p{font-size:13px;color:var(--txt2);line-height:1.65}\n.vf{display:inline-flex;align-items:center;gap:4px;font-size:10px;font-weight:700;color:var(--teal);margin-top:9px}\n.vf svg{width:10px;height:10px}\n\n/* ─── FAQ ───────────────────────────────────────────── */\n.faq{background:var(--bg1)}\n.fq-l{max-width:700px;margin:0 auto 40px;display:flex;flex-direction:column;gap:9px}\n.fq{background:rgba(255,255,255,.03);border:1px solid var(--bdr);border-radius:var(--r2);overflow:hidden}\n.fq.op{border-color:rgba(0,212,170,.25)}\n.fq-q{display:flex;justify-content:space-between;align-items:center;gap:14px;padding:18px 20px;font-size:14px;font-weight:700;color:var(--txt);cursor:pointer;user-select:none;-webkit-tap-highlight-color:transparent}\n.fq-q:hover{color:var(--teal)}\n.arr{width:20px;height:20px;border-radius:50%;background:rgba(255,255,255,.06);display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:transform .25s,background .2s}\n.arr svg{width:10px;height:10px;color:var(--txt3)}\n.fq.op .arr{transform:rotate(180deg);background:rgba(0,212,170,.12)}\n.fq.op .arr svg{color:var(--teal)}\n.fq-b{max-height:0;overflow:hidden;transition:max-height .32s ease}\n.fq.op .fq-b{max-height:250px}\n.fq-b p{padding:0 20px 18px;font-size:13px;color:var(--txt2);line-height:1.75;border-top:1px solid rgba(255,255,255,.05);padding-top:14px;margin:0}\n\n/* ─── FOOTER ────────────────────────────────────────── */\n.ft{background:#04060c;border-top:1px solid rgba(255,255,255,.05);padding:44px 0 28px}\n.ft-in{max-width:var(--max);margin:0 auto;padding:0 20px;text-align:center}\n.ft-logo{display:inline-flex;align-items:center;gap:9px;font-size:17px;font-weight:900;color:var(--teal);margin-bottom:20px}\n.ft-logo img{width:36px;height:36px;object-fit:contain;border-radius:50%}\n.ft-lk{display:flex;justify-content:center;gap:20px;flex-wrap:wrap;margin-bottom:20px}\n.ft-lk a{font-size:12px;color:var(--txt3)}\n.ft-lk a:hover{color:var(--teal)}\n.ft-cp{font-size:11px;color:#2d3748;line-height:1.9;max-width:640px;margin:0 auto}\n\n/* ─── RESPONSIVO (EMPILHAMENTO DOS PLANOS) ─────────── */\n@media(max-width: 1024px){\n  .plg {\n    grid-template-columns: 1fr;\n    max-width: 420px;\n    margin-left: auto;\n    margin-right: auto;\n    gap: 24px;\n  }\n  .pl.ft {\n    transform: none;\n    order: -1;\n  }\n}\n\n@media(max-width:767px){\n  .s{padding:52px 0}\n  .pl{padding:28px 20px;border-radius:16px}\n  .pl.ft{padding:32px 20px}\n  .pl-nm{font-size:10px;margin-bottom:10px}\n  .pl.ft .pl-nm{margin-top:26px}\n  .pl-val{font-size:46px}\n  .pl-cur{font-size:15px;margin-top:7px}\n  .pl-cts{font-size:18px;margin-bottom:6px}\n  .pl-sb{font-size:12px;margin-bottom:14px}\n  .pl ul{gap:8px;margin-bottom:20px}\n  .pl ul li{font-size:13px}\n  .pl-btn{font-size:14px;padding:14px}\n  .psub{font-size:13px;margin:-20px auto 28px}\n  .bonus-desc{margin-left:20px;padding:7px 9px}\n  .bonus-desc p{font-size:10px}\n  .st-row{grid-template-columns:1fr;gap:28px;max-width:300px}\n  .st-row::before{display:none}\n  .rev-g{grid-template-columns:1fr;max-width:400px;margin-left:auto;margin-right:auto}\n  .cta{font-size:15px;padding:15px 32px;width:100%;max-width:360px}\n}\n\n@media(max-width:400px){\n  .plg{max-width: 100%; padding: 0;}\n  .pl{padding:24px 16px}\n  .pl.ft{padding:28px 16px}\n  .pl-val{font-size:40px}\n  .pl-cur{font-size:14px;margin-top:6px}\n  .pl-cts{font-size:16px;margin-bottom:5px}\n  .pl-rib{font-size:9px;padding:3px 14px}\n  .pl ul li{font-size:12.5px}\n  .bonus-item strong{font-size:12px}\n  .bonus-desc{margin-left:18px;padding:6px 8px}\n  .bonus-desc p{font-size:9px;line-height:1.45}\n  .cta{padding:14px 24px}\n  .ft-lk{gap:12px}\n}\n</style>\n\n\n<!-- ═══════════ FACEBOOK PIXEL ═══════════ -->\n<script>\n!function(f,b,e,v,n,t,s)\n{if(f.fbq)return;n=f.fbq=function(){n.callMethod?\nn.callMethod.apply(n,arguments):n.queue.push(arguments)};\nif(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';\nn.queue=[];t=b.createElement(e);t.async=!0;\nt.src=v;s=b.getElementsByTagName(e)[0];\ns.parentNode.insertBefore(t,s)}(window, document,'script',\n'https://connect.facebook.net/en_US/fbevents.js');\nfbq('init', '1265492645638129');\nfbq('track', 'PageView');\n</script>\n<noscript><img height=\"1\" width=\"1\" style=\"display:none\"\nsrc=\"https://www.facebook.com/tr?id=1265492645638129&ev=PageView&noscript=1\"\n/></noscript>\n\n\n\n<!-- ═══════════════ PLANOS ═══════════════ -->\n<section class="\&quot;s" pls\"="" id="\&quot;planos\&quot;">\n<div class="\&quot;w\&quot;">\n  <div class="\&quot;lbl\&quot;">Escolha seu acesso</div>\n  <h2 class="\&quot;ttl\&quot;">Planos de Acesso <span>NetFree</span></h2>\n  <p class="\&quot;psub\&quot;">Internet ilimitada e 200 Mbps em todos os planos. Sem contrato. Acesso imediato.</p>\n  <div class="\&quot;plg\&quot;">\n    \n    <!-- PLANO 1 MÊS -->\n    <div class="\&quot;pl\&quot;">\n      <div class="\&quot;pl-nm\&quot;">1 Mês</div>\n      <div class="\&quot;pl-pr\&quot;"><span class="\&quot;pl-cur\&quot;">R$</span><span class="\&quot;pl-val\&quot;">19</span><span class="\&quot;pl-cts\&quot;">,90</span></div>\n      <div class="\&quot;pl-sb\&quot;">30 dias de acesso</div>\n      <hr>\n      <ul>\n        <li><svg viewBox="\&quot;0" 0="" 24="" 24\"="" fill="\&quot;none\&quot;" stroke="\&quot;currentColor\&quot;" stroke-width="\&quot;2.5\&quot;"><polyline points="\&quot;20" 6="" 9="" 17="" 4="" 12\"=""></polyline></svg>Internet Ilimitada</li>\n        <li><svg viewBox="\&quot;0" 0="" 24="" 24\"="" fill="\&quot;none\&quot;" stroke="\&quot;currentColor\&quot;" stroke-width="\&quot;2.5\&quot;"><polyline points="\&quot;20" 6="" 9="" 17="" 4="" 12\"=""></polyline></svg>200 Mbps velocidade</li>\n        <li><svg viewBox="\&quot;0" 0="" 24="" 24\"="" fill="\&quot;none\&quot;" stroke="\&quot;currentColor\&quot;" stroke-width="\&quot;2.5\&quot;"><polyline points="\&quot;20" 6="" 9="" 17="" 4="" 12\"=""></polyline></svg>Sem contrato</li>\n        <li><svg viewBox="\&quot;0" 0="" 24="" 24\"="" fill="\&quot;none\&quot;" stroke="\&quot;currentColor\&quot;" stroke-width="\&quot;2.5\&quot;"><polyline points="\&quot;20" 6="" 9="" 17="" 4="" 12\"=""></polyline></svg>Acesso imediato</li>\n      </ul>\n      <a href="\&quot;https://pay.kirvano.com/71ab3511-9e91-4ea2-af8f-1b00f3e62ed2\&quot;" target="\&quot;_blank\&quot;" rel="\&quot;noopener" noreferrer\"="" class="\&quot;pl-btn" pl-out\"="">Quero Este Plano</a>\n    </div>\n\n    <!-- PLANO 3 MESES (DESTAQUE) -->\n    <div class="\&quot;pl" ft\"="">\n      <div class="\&quot;pl-rib\&quot;">⭐ Melhor Custo-Benefício</div>\n      <div class="\&quot;pl-nm\&quot;">3 Meses</div>\n      <div class="\&quot;pl-pr\&quot;"><span class="\&quot;pl-cur\&quot;">R$</span><span class="\&quot;pl-val\&quot;">39</span><span class="\&quot;pl-cts\&quot;">,90</span></div>\n      <div class="\&quot;pl-sb\&quot;">Economia de R$ 19,80</div>\n      <hr>\n      <ul>\n        <li><svg viewBox="\&quot;0" 0="" 24="" 24\"="" fill="\&quot;none\&quot;" stroke="\&quot;currentColor\&quot;" stroke-width="\&quot;2.5\&quot;"><polyline points="\&quot;20" 6="" 9="" 17="" 4="" 12\"=""></polyline></svg>Internet Ilimitada</li>\n        <li><svg viewBox="\&quot;0" 0="" 24="" 24\"="" fill="\&quot;none\&quot;" stroke="\&quot;currentColor\&quot;" stroke-width="\&quot;2.5\&quot;"><polyline points="\&quot;20" 6="" 9="" 17="" 4="" 12\"=""></polyline></svg>200 Mbps velocidade</li>\n        <li><svg viewBox="\&quot;0" 0="" 24="" 24\"="" fill="\&quot;none\&quot;" stroke="\&quot;currentColor\&quot;" stroke-width="\&quot;2.5\&quot;"><polyline points="\&quot;20" 6="" 9="" 17="" 4="" 12\"=""></polyline></svg>Sem contrato</li>\n        <li><svg viewBox="\&quot;0" 0="" 24="" 24\"="" fill="\&quot;none\&quot;" stroke="\&quot;currentColor\&quot;" stroke-width="\&quot;2.5\&quot;"><polyline points="\&quot;20" 6="" 9="" 17="" 4="" 12\"=""></polyline></svg>Acesso imediato</li>\n        <li class="\&quot;bonus-item\&quot;">\n          <div style="\&quot;display:flex;align-items:center;gap:8px\&quot;">\n            <svg viewBox="\&quot;0" 0="" 24="" 24\"="" fill="\&quot;none\&quot;" stroke="\&quot;currentColor\&quot;" stroke-width="\&quot;2.5\&quot;"><polyline points="\&quot;20" 6="" 9="" 17="" 4="" 12\"=""></polyline></svg>\n            <strong>🎬 App CineFree</strong>\n          </div>\n          <div class="\&quot;bonus-desc\&quot;">\n            <p>Todos os filmes e séries em um só lugar.</p>\n            <p>Funciona em todos os dispositivos.</p>\n            <p>Tvbox, TVsmart, notbook, pc, ios, android.</p>\n            <span class="\&quot;bonus-badge\&quot;">ACESSO VITALÍCIO</span>\n          </div>\n        </li>\n      </ul>\n      <a href="\&quot;https://pay.kirvano.com/7f6776ef-be45-434a-a200-270f380f69ac\&quot;" target="\&quot;_blank\&quot;" rel="\&quot;noopener" noreferrer\"="" class="\&quot;pl-btn" pl-sol\"="">Quero Este Plano</a>\n    </div>\n\n    <!-- PLANO 6 MESES -->\n    <div class="\&quot;pl\&quot;">\n      <div class="\&quot;pl-nm\&quot;">6 Meses</div>\n      <div class="\&quot;pl-pr\&quot;"><span class="\&quot;pl-cur\&quot;">R$</span><span class="\&quot;pl-val\&quot;">67</span><span class="\&quot;pl-cts\&quot;">,90</span></div>\n      <div class="\&quot;pl-sb\&quot;" style="\&quot;color:var(--green);font-weight:700\&quot;">Apenas R$ 11,31/mês</div>\n      <hr>\n      <ul>\n        <li><svg viewBox="\&quot;0" 0="" 24="" 24\"="" fill="\&quot;none\&quot;" stroke="\&quot;currentColor\&quot;" stroke-width="\&quot;2.5\&quot;"><polyline points="\&quot;20" 6="" 9="" 17="" 4="" 12\"=""></polyline></svg>Internet Ilimitada</li>\n        <li><svg viewBox="\&quot;0" 0="" 24="" 24\"="" fill="\&quot;none\&quot;" stroke="\&quot;currentColor\&quot;" stroke-width="\&quot;2.5\&quot;"><polyline points="\&quot;20" 6="" 9="" 17="" 4="" 12\"=""></polyline></svg>200 Mbps velocidade</li>\n        <li><svg viewBox="\&quot;0" 0="" 24="" 24\"="" fill="\&quot;none\&quot;" stroke="\&quot;currentColor\&quot;" stroke-width="\&quot;2.5\&quot;"><polyline points="\&quot;20" 6="" 9="" 17="" 4="" 12\"=""></polyline></svg>Sem contrato</li>\n        <li><svg viewBox="\&quot;0" 0="" 24="" 24\"="" fill="\&quot;none\&quot;" stroke="\&quot;currentColor\&quot;" stroke-width="\&quot;2.5\&quot;"><polyline points="\&quot;20" 6="" 9="" 17="" 4="" 12\"=""></polyline></svg>Economia de R$ 51,50</li>\n        <li class="\&quot;bonus-item\&quot;">\n          <div style="\&quot;display:flex;align-items:center;gap:8px\&quot;">\n            <svg viewBox="\&quot;0" 0="" 24="" 24\"="" fill="\&quot;none\&quot;" stroke="\&quot;currentColor\&quot;" stroke-width="\&quot;2.5\&quot;"><polyline points="\&quot;20" 6="" 9="" 17="" 4="" 12\"=""></polyline></svg>\n            <strong>🎬 App CineFree</strong>\n          </div>\n          <div class="\&quot;bonus-desc\&quot;">\n            <p>Todos os filmes e séries em um só lugar.</p>\n            <p>Funciona em todos os dispositivos.</p>\n            <p>Tvbox, TVsmart, notbook, pc, ios, android.</p>\n            <span class="\&quot;bonus-badge\&quot;">ACESSO VITALÍCIO</span>\n          </div>\n        </li>\n      </ul>\n      <a href="\&quot;https://pay.kirvano.com/a4d9f7f5-bcd7-4204-a045-4be6a4166b98\&quot;" target="\&quot;_blank\&quot;" rel="\&quot;noopener" noreferrer\"="" class="\&quot;pl-btn" pl-out\"="">Quero Este Plano</a>\n    </div>\n\n  </div>\n</div>\n</section>\n\n<div class="\&quot;div\&quot;"></div>\n\n<!-- ═══════════════ GARANTIA ═══════════════ -->\n<section class="\&quot;s" gar\"="">\n<div class="\&quot;w\&quot;">\n  <div class="\&quot;gar-in\&quot;">\n    <div class="\&quot;lbl\&quot;">Risco zero</div>\n    <img class="\&quot;selo-img\&quot;" src="\&quot;https://planetaideias.com.br/wp-content/uploads/2026/01/selo-garantia-699x1024-1.png\&quot;" alt="\&quot;Selo" de="" garantia="" 30="" dias\"="" loading="\&quot;lazy\&quot;" width="\&quot;160\&quot;" height="\&quot;234\&quot;">\n    <h2>GARANTIA de 30 DIAS.</h2>\n    <p>Experimente nossa internet por 30 dias sem riscos. Se, por qualquer motivo, você não estiver 100% satisfeito, garantimos a devolução integral do seu dinheiro.\n    Basta enviar 'REEMBOLSO' para nosso WhatsApp e  <strong>devolvemos todo seu dinheiro imediatamente!</strong>. Sem perguntas, sem burocracia, sem enrolação. Você não tem nada a perder.</p>\n    <a href="\&quot;#planos\&quot;" class="\&quot;cta\&quot;">GARANTIR MEU ACESSO AGORA</a>\n  </div>\n</div>\n</section>\n\n<div class="\&quot;div\&quot;"></div>\n\n<div class="\&quot;div\&quot;"></div>\n\n<!-- ═══════════════ PASSOS ═══════════════ -->\n<section class="\&quot;s" pas\"="">\n<div class="\&quot;w\&quot;">\n  <div class="\&quot;lbl\&quot;">Simples assim</div>\n  <h2 class="\&quot;ttl\&quot;">3 Passos Para Estar <span>Conectado</span></h2>\n  <div class="\&quot;st-row\&quot;">\n    <div class="\&quot;st\&quot;"><div class="\&quot;st-n\&quot;">1</div><h3>Escolha e Pague</h3><p>Escolha o plano e pague de forma segura via Pix ou cartão.</p></div>\n    <div class="\&quot;st\&quot;"><div class="\&quot;st-n\&quot;">2</div><h3>Baixe o App</h3><p>Receba o login por e-mail e baixe o app NetFree no celular.</p></div>\n    <div class="\&quot;st\&quot;"><div class="\&quot;st-n\&quot;">3</div><h3>Conecte e Aproveite</h3><p>Aperte Conectar e aproveite internet ilimitada em qualquer lugar.</p></div>\n  </div>\n  <div class="\&quot;cw\&quot;"><a href="\&quot;#planos\&quot;" class="\&quot;cta" cta-sm\"="">VER OS PLANOS DE ACESSO</a></div>\n</div>\n</section>\n\n<div class="\&quot;div\&quot;"></div>\n\n<!-- ═══════════════ DEPOIMENTOS ═══════════════ -->\n<section class="\&quot;s" dep\"="">\n<div class="\&quot;w\&quot;">\n  <div class="\&quot;lbl\&quot;">Prova social</div>\n  <h2 class="\&quot;ttl\&quot;">Veja Quem Já Se Libertou das <span>Operadoras Tradicionais</span></h2>\n\n  <h3 class="\&quot;rev-ttl\&quot;">O Que Nossos Clientes Estão Dizendo</h3>\n  <div class="\&quot;rev-sum\&quot;">\n    <div class="\&quot;s5\&quot;"><span class="\&quot;str\&quot;">★</span><span class="\&quot;str\&quot;">★</span><span class="\&quot;str\&quot;">★</span><span class="\&quot;str\&quot;">★</span><span class="\&quot;str\&quot;">★</span></div>\n    <span class="\&quot;rev-sc\&quot;">4.9 de 5 — mais de 2.400 avaliações</span>\n  </div>\n\n  <div class="\&quot;rev-g\&quot;">\n    <div class="\&quot;rv\&quot;"><div class="\&quot;rv-top\&quot;"><div class="\&quot;rv-av\&quot;">C</div><div class="\&quot;rv-inf\&quot;"><h4>Carlos Mendonça</h4><span>Vendedor, São Paulo</span></div></div><div class="\&quot;rv-st\&quot;"><span class="\&quot;rv-s\&quot;">★</span><span class="\&quot;rv-s\&quot;">★</span><span class="\&quot;rv-s\&quot;">★</span><span class="\&quot;rv-s\&quot;">★</span><span class="\&quot;rv-s\&quot;">★</span></div><p>\"Viajei pelo interior de SP e MG e nunca fiquei sem sinal. Coisa que a Vivo nunca conseguiu em 8 anos. App incrível!\"</p><div class="\&quot;vf\&quot;"><svg viewBox="\&quot;0" 0="" 24="" 24\"="" fill="\&quot;none\&quot;" stroke="\&quot;currentColor\&quot;" stroke-width="\&quot;2.5\&quot;"><polyline points="\&quot;20" 6="" 9="" 17="" 4="" 12\"=""></polyline></svg>Compra verificada</div></div>\n\n    <div class="\&quot;rv\&quot;"><div class="\&quot;rv-top\&quot;"><div class="\&quot;rv-av\&quot;" style="\&quot;background:linear-gradient(135deg,rgba(255,79,128,.2),rgba(200,30,80,.2));color:#ff4f80\&quot;">A</div><div class="\&quot;rv-inf\&quot;"><h4>Amanda Ferreira</h4><span>Professora, Goiânia</span></div></div><div class="\&quot;rv-st\&quot;"><span class="\&quot;rv-s\&quot;">★</span><span class="\&quot;rv-s\&quot;">★</span><span class="\&quot;rv-s\&quot;">★</span><span class="\&quot;rv-s\&quot;">★</span><span class="\&quot;rv-s\&quot;">★</span></div><p>\"Economizei mais de R$ 80 por mês cancelando meu plano antigo. O NetFree funciona perfeitamente para aulas online.\"</p><div class="\&quot;vf\&quot;"><svg viewBox="\&quot;0" 0="" 24="" 24\"="" fill="\&quot;none\&quot;" stroke="\&quot;currentColor\&quot;" stroke-width="\&quot;2.5\&quot;"><polyline points="\&quot;20" 6="" 9="" 17="" 4="" 12\"=""></polyline></svg>Compra verificada</div></div>\n\n    <div class="\&quot;rv\&quot;"><div class="\&quot;rv-top\&quot;"><div class="\&quot;rv-av\&quot;" style="\&quot;background:linear-gradient(135deg,rgba(79,128,255,.2),rgba(30,60,200,.2));color:#4f80ff\&quot;">R</div><div class="\&quot;rv-inf\&quot;"><h4>Roberto Alves</h4><span>Motorista de app, Curitiba</span></div></div><div class="\&quot;rv-st\&quot;"><span class="\&quot;rv-s\&quot;">★</span><span class="\&quot;rv-s\&quot;">★</span><span class="\&quot;rv-s\&quot;">★</span><span class="\&quot;rv-s\&quot;">★</span><span class="\&quot;rv-s\&quot;">★</span></div><p>\"Trabalho o dia inteiro na rua. O app conecta rápido e nunca caiu durante uma corrida. Melhor investimento do ano.\"</p><div class="\&quot;vf\&quot;"><svg viewBox="\&quot;0" 0="" 24="" 24\"="" fill="\&quot;none\&quot;" stroke="\&quot;currentColor\&quot;" stroke-width="\&quot;2.5\&quot;"><polyline points="\&quot;20" 6="" 9="" 17="" 4="" 12\"=""></polyline></svg>Compra verificada</div></div>\n\n    <div class="\&quot;rv\&quot;"><div class="\&quot;rv-top\&quot;"><div class="\&quot;rv-av\&quot;" style="\&quot;background:linear-gradient(135deg,rgba(0,200,150,.2),rgba(0,140,100,.2));color:#00c896\&quot;">J</div><div class="\&quot;rv-inf\&quot;"><h4>Juliana Costa</h4><span>Influencer, Rio de Janeiro</span></div></div><div class="\&quot;rv-st\&quot;"><span class="\&quot;rv-s\&quot;">★</span><span class="\&quot;rv-s\&quot;">★</span><span class="\&quot;rv-s\&quot;">★</span><span class="\&quot;rv-s\&quot;">★</span><span class="\&quot;rv-s\&quot;">★</span></div><p>\"Gravo conteúdo em qualquer lugar. O NetFree nunca me deixou na mão, nem na praia nem no campo. Sensacional!\"</p><div class="\&quot;vf\&quot;"><svg viewBox="\&quot;0" 0="" 24="" 24\"="" fill="\&quot;none\&quot;" stroke="\&quot;currentColor\&quot;" stroke-width="\&quot;2.5\&quot;"><polyline points="\&quot;20" 6="" 9="" 17="" 4="" 12\"=""></polyline></svg>Compra verificada</div></div>\n\n    <div class="\&quot;rv\&quot;"><div class="\&quot;rv-top\&quot;"><div class="\&quot;rv-av\&quot;" style="\&quot;background:linear-gradient(135deg,rgba(255,179,0,.2),rgba(200,120,0,.2));color:#ffb300\&quot;">M</div><div class="\&quot;rv-inf\&quot;"><h4>Marcos Souza</h4><span>Engenheiro, Belo Horizonte</span></div></div><div class="\&quot;rv-st\&quot;"><span class="\&quot;rv-s\&quot;">★</span><span class="\&quot;rv-s\&quot;">★</span><span class="\&quot;rv-s\&quot;">★</span><span class="\&quot;rv-s\&quot;">★</span><span class="\&quot;rv-s\&quot;">★</span></div><p>\"Trabalho em obras em cidades diferentes toda semana. O NetFree sempre encontra sinal, até onde eu nunca teria cobertura.\"</p><div class="\&quot;vf\&quot;"><svg viewBox="\&quot;0" 0="" 24="" 24\"="" fill="\&quot;none\&quot;" stroke="\&quot;currentColor\&quot;" stroke-width="\&quot;2.5\&quot;"><polyline points="\&quot;20" 6="" 9="" 17="" 4="" 12\"=""></polyline></svg>Compra verificada</div></div>\n\n    <div class="\&quot;rv\&quot;"><div class="\&quot;rv-top\&quot;"><div class="\&quot;rv-av\&quot;" style="\&quot;background:linear-gradient(135deg,rgba(180,0,255,.15),rgba(100,0,200,.15));color:#b400ff\&quot;">P</div><div class="\&quot;rv-inf\&quot;"><h4>Patricia Lima</h4><span>Advogada, Brasília</span></div></div><div class="\&quot;rv-st\&quot;"><span class="\&quot;rv-s\&quot;">★</span><span class="\&quot;rv-s\&quot;">★</span><span class="\&quot;rv-s\&quot;">★</span><span class="\&quot;rv-s\&quot;">★</span><span class="\&quot;rv-s\&quot;">★</span></div><p>\"Testei a garantia de 30 dias antes de julgar. Resultado: não precisei usar. Funcionou perfeitamente em todas as audiências.\"</p><div class="\&quot;vf\&quot;"><svg viewBox="\&quot;0" 0="" 24="" 24\"="" fill="\&quot;none\&quot;" stroke="\&quot;currentColor\&quot;" stroke-width="\&quot;2.5\&quot;"><polyline points="\&quot;20" 6="" 9="" 17="" 4="" 12\"=""></polyline></svg>Compra verificada</div></div>\n\n    <div class="\&quot;rv\&quot;"><div class="\&quot;rv-top\&quot;"><div class="\&quot;rv-av\&quot;" style="\&quot;background:linear-gradient(135deg,rgba(255,59,92,.2),rgba(180,0,40,.2));color:#ff3b5c\&quot;">F</div><div class="\&quot;rv-inf\&quot;"><h4>Felipe Rodrigues</h4><span>Estudante, Recife</span></div></div><div class="\&quot;rv-st\&quot;"><span class="\&quot;rv-s\&quot;">★</span><span class="\&quot;rv-s\&quot;">★</span><span class="\&quot;rv-s\&quot;">★</span><span class="\&quot;rv-s\&quot;">★</span><span class="\&quot;rv-s\&quot;">★</span></div><p>\"Sem dinheiro para pagar mensalidade cara todo mês. O NetFree resolveu: pago quando tenho, e não fico sem internet.\"</p><div class="\&quot;vf\&quot;"><svg viewBox="\&quot;0" 0="" 24="" 24\"="" fill="\&quot;none\&quot;" stroke="\&quot;currentColor\&quot;" stroke-width="\&quot;2.5\&quot;"><polyline points="\&quot;20" 6="" 9="" 17="" 4="" 12\"=""></polyline></svg>Compra verificada</div></div>\n\n    <div class="\&quot;rv\&quot;"><div class="\&quot;rv-top\&quot;"><div class="\&quot;rv-av\&quot;" style="\&quot;background:linear-gradient(135deg,rgba(0,212,170,.2),rgba(0,140,100,.2));color:#00d4aa\&quot;">L</div><div class="\&quot;rv-inf\&quot;"><h4>Luciana Barbosa</h4><span>Dona de casa, Porto Alegre</span></div></div><div class="\&quot;rv-st\&quot;"><span class="\&quot;rv-s\&quot;">★</span><span class="\&quot;rv-s\&quot;">★</span><span class="\&quot;rv-s\&quot;">★</span><span class="\&quot;rv-s\&quot;">★</span><span class="\&quot;rv-s\&quot;">★</span></div><p>\"Desconfiava no início, mas é sério: funciona mesmo! Uso para séries e videochamada com a família. Aprovadíssimo.\"</p><div class="\&quot;vf\&quot;"><svg viewBox="\&quot;0" 0="" 24="" 24\"="" fill="\&quot;none\&quot;" stroke="\&quot;currentColor\&quot;" stroke-width="\&quot;2.5\&quot;"><polyline points="\&quot;20" 6="" 9="" 17="" 4="" 12\"=""></polyline></svg>Compra verificada</div></div>\n\n    <div class="\&quot;rv\&quot;"><div class="\&quot;rv-top\&quot;"><div class="\&quot;rv-av\&quot;" style="\&quot;background:linear-gradient(135deg,rgba(79,200,255,.2),rgba(0,140,200,.2));color:#4fc8ff\&quot;">D</div><div class="\&quot;rv-inf\&quot;"><h4>Diego Nascimento</h4><span>Fotógrafo, Salvador</span></div></div><div class="\&quot;rv-st\&quot;"><span class="\&quot;rv-s\&quot;">★</span><span class="\&quot;rv-s\&quot;">★</span><span class="\&quot;rv-s\&quot;">★</span><span class="\&quot;rv-s\&quot;">★</span><span class="\&quot;rv-s\&quot;">★</span></div><p>\"Subo fotos para o cliente na hora do ensaio. Com o NetFree a velocidade é constante mesmo em locais abertos. Nota 10!\"</p><div class="\&quot;vf\&quot;"><svg viewBox="\&quot;0" 0="" 24="" 24\"="" fill="\&quot;none\&quot;" stroke="\&quot;currentColor\&quot;" stroke-width="\&quot;2.5\&quot;"><polyline points="\&quot;20" 6="" 9="" 17="" 4="" 12\"=""></polyline></svg>Compra verificada</div></div>\n\n    <div class="\&quot;rv\&quot;"><div class="\&quot;rv-top\&quot;"><div class="\&quot;rv-av\&quot;" style="\&quot;background:linear-gradient(135deg,rgba(255,140,0,.2),rgba(200,80,0,.2));color:#ff8c00\&quot;">T</div><div class="\&quot;rv-inf\&quot;"><h4>Thiago Oliveira</h4><span>Caminhoneiro, Minas Gerais</span></div></div><div class="\&quot;rv-st\&quot;"><span class="\&quot;rv-s\&quot;">★</span><span class="\&quot;rv-s\&quot;">★</span><span class="\&quot;rv-s\&quot;">★</span><span class="\&quot;rv-s\&quot;">★</span><span class="\&quot;rv-s\&quot;">★</span></div><p>\"Dirijo Brasil afora e sempre tive problema com sinal. Com o NetFree a internet me acompanha em todas as rodovias.\"</p><div class="\&quot;vf\&quot;"><svg viewBox="\&quot;0" 0="" 24="" 24\"="" fill="\&quot;none\&quot;" stroke="\&quot;currentColor\&quot;" stroke-width="\&quot;2.5\&quot;"><polyline points="\&quot;20" 6="" 9="" 17="" 4="" 12\"=""></polyline></svg>Compra verificada</div></div>\n  </div>\n\n  <div class="\&quot;cw\&quot;"><a href="\&quot;#planos\&quot;" class="\&quot;cta" cta-sm\"="">VER OS PLANOS DE ACESSO</a></div>\n</div>\n</section>\n\n<!-- ═══════════════ FAQ ═══════════════ -->\n<section class="\&quot;s" faq\"="">\n<div class="\&quot;w\&quot;">\n  <div class="\&quot;lbl\&quot;">Tire suas dúvidas</div>\n  <h2 class="\&quot;ttl\&quot;">Perguntas <span>Frequentes</span></h2>\n  <div class="\&quot;fq-l\&quot;">\n    <div class="\&quot;fq" op\"=""><div class="\&quot;fq-q\&quot;">O NetFree é uma operadora de telefonia?<div class="\&quot;arr\&quot;"><svg viewBox="\&quot;0" 0="" 24="" 24\"="" fill="\&quot;none\&quot;" stroke="\&quot;currentColor\&quot;" stroke-width="\&quot;2.5\&quot;"><polyline points="\&quot;6" 9="" 12="" 15="" 18="" 9\"=""></polyline></svg></div></div><div class="\&quot;fq-b\&quot;"><p>Não. O NetFree é uma plataforma global de conectividade. Nosso app funciona como um GPS inteligente que conecta você automaticamente à rede mais forte disponível na sua região, usando acordos com multioperadoras e tecnologia de satélite.</p></div></div>\n    <div class="\&quot;fq\&quot;"><div class="\&quot;fq-q\&quot;">Funciona em qualquer lugar do Brasil?<div class="\&quot;arr\&quot;"><svg viewBox="\&quot;0" 0="" 24="" 24\"="" fill="\&quot;none\&quot;" stroke="\&quot;currentColor\&quot;" stroke-width="\&quot;2.5\&quot;"><polyline points="\&quot;6" 9="" 12="" 15="" 18="" 9\"=""></polyline></svg></div></div><div class="\&quot;fq-b\&quot;"><p>Sim! Nosso banco de dados possui milhões de pontos de acesso pelo Brasil. Onde não há sinal de uma operadora, há de outra. Em áreas remotas, priorizamos conexão via satélite. A cobertura é praticamente universal.</p></div></div>\n    <div class="\&quot;fq\&quot;"><div class="\&quot;fq-q\&quot;">Preciso assinar contrato de fidelidade?<div class="\&quot;arr\&quot;"><svg viewBox="\&quot;0" 0="" 24="" 24\"="" fill="\&quot;none\&quot;" stroke="\&quot;currentColor\&quot;" stroke-width="\&quot;2.5\&quot;"><polyline points="\&quot;6" 9="" 12="" 15="" 18="" 9\"=""></polyline></svg></div></div><div class="\&quot;fq-b\&quot;"><p>Não. O NetFree funciona como um pré-pago. Você paga apenas pelo tempo que quiser usar, sem contratos de fidelidade, sem análise de crédito e sem taxas escondidas. Total liberdade.</p></div></div>\n    <div class="\&quot;fq\&quot;"><div class="\&quot;fq-q\&quot;">Como recebo o acesso após o pagamento?<div class="\&quot;arr\&quot;"><svg viewBox="\&quot;0" 0="" 24="" 24\"="" fill="\&quot;none\&quot;" stroke="\&quot;currentColor\&quot;" stroke-width="\&quot;2.5\&quot;"><polyline points="\&quot;6" 9="" 12="" 15="" 18="" 9\"=""></polyline></svg></div></div><div class="\&quot;fq-b\&quot;"><p>Após a confirmação do pagamento você receberá por e-mail os dados de login. O acesso é liberado em minutos, sem precisar esperar nada.</p></div></div>\n    <div class="\&quot;fq\&quot;"><div class="\&quot;fq-q\&quot;">O app funciona no Android e iPhone?<div class="\&quot;arr\&quot;"><svg viewBox="\&quot;0" 0="" 24="" 24\"="" fill="\&quot;none\&quot;" stroke="\&quot;currentColor\&quot;" stroke-width="\&quot;2.5\&quot;"><polyline points="\&quot;6" 9="" 12="" 15="" 18="" 9\"=""></polyline></svg></div></div><div class="\&quot;fq-b\&quot;"><p>Sim! O app NetFree é compatível com Android e iOS. Basta baixar, fazer login com os dados enviados por e-mail e apertar o botão Conectar. Simples assim.</p></div></div>\n    <div class="\&quot;fq\&quot;"><div class="\&quot;fq-q\&quot;">E se eu não gostar? Como funciona a garantia?<div class="\&quot;arr\&quot;"><svg viewBox="\&quot;0" 0="" 24="" 24\"="" fill="\&quot;none\&quot;" stroke="\&quot;currentColor\&quot;" stroke-width="\&quot;2.5\&quot;"><polyline points="\&quot;6" 9="" 12="" 15="" 18="" 9\"=""></polyline></svg></div></div><div class="\&quot;fq-b\&quot;"><p>Oferecemos 30 dias de garantia total. Se o sinal não for satisfatório na sua região, devolvemos 100% do valor pago. Sem perguntas, sem burocracia e sem enrolação.</p></div></div>\n    <div class="\&quot;fq\&quot;"><div class="\&quot;fq-q\&quot;">[ Adicione sua pergunta aqui ]<div class="\&quot;arr\&quot;"><svg viewBox="\&quot;0" 0="" 24="" 24\"="" fill="\&quot;none\&quot;" stroke="\&quot;currentColor\&quot;" stroke-width="\&quot;2.5\&quot;"><polyline points="\&quot;6" 9="" 12="" 15="" 18="" 9\"=""></polyline></svg></div></div><div class="\&quot;fq-b\&quot;"><p>[ Adicione a resposta aqui ]</p></div></div>\n  </div>\n  <div class="\&quot;cw\&quot;"><a href="\&quot;#planos\&quot;" class="\&quot;cta\&quot;">GARANTIR MEU ACESSO AGORA</a></div>\n</div>\n</section>\n\n<!-- ═══════════ TRACKING SRC ═══════════ -->\n<script>\n(function() {\n    const urlParams = new URLSearchParams(window.location.search);\n    let src = urlParams.get('src');\n    if (src) { localStorage.setItem('lead_src', src); }\n    else { src = localStorage.getItem('lead_src'); }\n    if (src) {\n        const checkoutLinks = document.querySelectorAll('a[href*=\"pay.kirvano.com\"]');\n        checkoutLinks.forEach(link => {\n            try {\n                let url = new URL(link.href);\n                url.searchParams.set('src', src);\n                url.searchParams.set('utm_source', src);\n                link.href = url.toString();\n            } catch (e) { console.error(\"Erro ao formatar link de checkout:\", e); }\n        });\n    }\n})();\n</script>\n\n<!-- ═══════════════ FOOTER ═══════════════ -->\n<footer class="\&quot;ft\&quot;">\n<div class="\&quot;ft-in\&quot;">\n  <div class="\&quot;ft-logo\&quot;">\n    <img src="\&quot;https://planetaideias.com.br/wp-content/uploads/2026/03/compacta-logo.png\&quot;" alt="\&quot;NetFree\&quot;" loading="\&quot;lazy\&quot;" width="\&quot;36\&quot;" height="\&quot;36\&quot;">\n    NetFree\n  </div>\n  <div class="\&quot;ft-lk\&quot;">\n    <a href="\&quot;#\&quot;">Termos de Uso</a>\n    <a href="\&quot;#\&quot;">Política de Privacidade</a>\n    <a href="\&quot;#\&quot;"><span>[email&nbsp;protected]</span></a>\n    <a href="\&quot;#\&quot;">💬 WhatsApp Suporte</a>\n  </div>\n  <div class="\&quot;ft-cp\&quot;">NetFree — CNPJ: 13.119.378/0001-97<br>Este produto é uma plataforma de conectividade digital. Os resultados podem variar conforme a região e disponibilidade de rede. A garantia de 30 dias é válida conforme os Termos de Uso.<br>© 2026 NetFree. Todos os direitos reservados.</div>\n</div>\n</footer>\n\n<!-- ═══════════════ SCRIPTS: PROTEÇÃO / UTM / FAQ / SCROLL ═══════════════ -->\n<script>\n/* ── PROTEÇÃO ───────────────────────────────────────── */\ndocument.addEventListener('contextmenu',function(e){e.preventDefault();return false;});\ndocument.addEventListener('keydown',function(e){\n  var k=e.key||e.keyCode;\n  if(k==='F12'||k===123||(e.ctrlKey&&e.shiftKey&&(k==='I'||k==='i'||k===73))||(e.ctrlKey&&e.shiftKey&&(k==='J'||k==='j'||k===74))||(e.ctrlKey&&e.shiftKey&&(k==='C'||k==='c'||k===67))||(e.ctrlKey&&(k==='U'||k==='u'||k===85))||(e.ctrlKey&&(k==='S'||k==='s'||k===83))){e.preventDefault();e.stopPropagation();return false;}\n});\n/* anti-inspect removed */\ndocument.addEventListener('dragstart',function(e){e.preventDefault();});\n\n/* ── UTM / SRC ──────────────────────────────────────── */\nvar NF_UTM=(function(){\n  var p=new URLSearchParams(window.location.search);\n  var d={src:p.get('src')||'',utm_source:p.get('utm_source')||'',utm_medium:p.get('utm_medium')||'',utm_campaign:p.get('utm_campaign')||'',utm_content:p.get('utm_content')||'',utm_term:p.get('utm_term')||'',sck:p.get('sck')||''};\n  try{var ex=JSON.parse(sessionStorage.getItem('nf_utm')||'{}');for(var k in d){if(!ex[k]&&d[k])ex[k]=d[k];}sessionStorage.setItem('nf_utm',JSON.stringify(ex));d=ex;}catch(e){}\n  return d;\n})();\n\nfunction buildURL(base){\n  var q=new URLSearchParams();\n  if(NF_UTM.src)q.set('src',NF_UTM.src);\n  if(NF_UTM.utm_source)q.set('utm_source',NF_UTM.utm_source);\n  if(NF_UTM.utm_medium)q.set('utm_medium',NF_UTM.utm_medium);\n  if(NF_UTM.utm_campaign)q.set('utm_campaign',NF_UTM.utm_campaign);\n  if(NF_UTM.utm_content)q.set('utm_content',NF_UTM.utm_content);\n  if(NF_UTM.utm_term)q.set('utm_term',NF_UTM.utm_term);\n  if(NF_UTM.sck)q.set('sck',NF_UTM.sck);\n  var qs=q.toString();\n  return qs?base+(base.indexOf('?')>=0?'&':'?')+qs:base;\n}\n\n/* Abre checkout em NOVA ABA (evita erro de X-Frame-Options em iframe) */\ndocument.querySelectorAll('a[href*=\"kirvano.com\"]').forEach(function(a){\n  var finalURL=buildURL(a.getAttribute('href'));\n  a.setAttribute('href',finalURL);\n  a.setAttribute('target','_blank'); // Força abrir em nova aba\n  a.addEventListener('click',function(){\n    if(typeof fbq==='function') fbq('track','InitiateCheckout');\n  });\n});\n\n/* ── FAQ ────────────────────────────────────────────── */\ndocument.querySelectorAll('.fq-q').forEach(function(q){\n  q.addEventListener('click',function(){\n    var item=q.closest('.fq'),isOpen=item.classList.contains('op');\n    document.querySelectorAll('.fq').forEach(function(i){i.classList.remove('op');});\n    if(!isOpen)item.classList.add('op');\n  });\n});\n\n/* ── SCROLL ─────────────────────────────────────────── */\ndocument.querySelectorAll('a[href=\"#planos\"]').forEach(function(a){\n  a.addEventListener('click',function(e){\n    e.preventDefault();\n    var el=document.getElementById('planos');\n    if(el)el.scrollIntoView({behavior:'smooth',block:'start'});\n  });\n});\n</script>\n\n<!-- ═══════════ NOTIFICAÇÕES DE COMPRA ═══════════ -->\n<script>\n(function(){\n  var buyers=[\n    {n:'Carlos M.',c:'SP',p:'Plano 3 Meses',t:'agora mesmo'},\n    {n:'Amanda F.',c:'GO',p:'Plano 1 Mês',t:'há 2 minutos'},\n    {n:'Roberto A.',c:'PR',p:'Plano 6 Meses',t:'há 3 minutos'},\n    {n:'Juliana C.',c:'RJ',p:'Plano 3 Meses',t:'há 5 minutos'},\n    {n:'Marcos S.',c:'MG',p:'Plano 1 Mês',t:'há 6 minutos'},\n    {n:'Patricia L.',c:'DF',p:'Plano 6 Meses',t:'há 8 minutos'},\n    {n:'Felipe R.',c:'PE',p:'Plano 3 Meses',t:'há 10 minutos'},\n    {n:'Luciana B.',c:'RS',p:'Plano 1 Mês',t:'há 12 minutos'},\n    {n:'Diego N.',c:'BA',p:'Plano 6 Meses',t:'há 14 minutos'},\n    {n:'Thiago O.',c:'MG',p:'Plano 3 Meses',t:'há 15 minutos'},\n    {n:'Fernanda S.',c:'SC',p:'Plano 1 Mês',t:'há 18 minutos'},\n    {n:'Bruno L.',c:'CE',p:'Plano 6 Meses',t:'há 20 minutos'},\n  ];\n\n  var container=document.createElement('div');\n  container.id='nf-notif';\n  document.body.appendChild(container);\n\n  var idx=0;\n  var active=null;\n\n  function showNext(){\n    var b=buyers[idx%buyers.length];idx++;\n    var toast=document.createElement('div');\n    toast.className='nf-toast';\n    toast.innerHTML=\n      '<div class=\"nf-toast-av\">'+b.n.charAt(0)+'</div>'+\n      '<div class=\"nf-toast-txt\">'+\n        '<div class=\"nf-toast-name\">'+b.n+' — '+b.c+'</div>'+\n        '<div class=\"nf-toast-msg\">acabou de comprar o <strong style=\"color:#00d4aa\">'+b.p+'</strong></div>'+\n        '<div class=\"nf-toast-time\">'+b.t+'</div>'+\n      '</div>'+\n      '<div class=\"nf-toast-dot\"></div>';\n    container.appendChild(toast);\n    requestAnimationFrame(function(){\n      requestAnimationFrame(function(){ toast.classList.add('show'); });\n    });\n    if(active){\n      var old=active;\n      setTimeout(function(){\n        old.classList.remove('show');\n        setTimeout(function(){if(old.parentNode)old.parentNode.removeChild(old);},400);\n      },100);\n    }\n    active=toast;\n    setTimeout(function(){\n      toast.classList.remove('show');\n      setTimeout(function(){if(toast.parentNode)toast.parentNode.removeChild(toast);},400);\n      active=null;\n    },5000);\n  }\n\n  setTimeout(function(){\n    showNext();\n    setInterval(showNext, Math.floor(Math.random()*12000)+18000);\n  },4000);\n})();\n</script>\n\n\n",
+          "htmlMode": "iframe"
+        }
+      ]
+    }
+  ],
+  "analytics": {
+    "views": {
+      "step_0": 4
+    },
+    "cachedFilters": {
+      "today": {
+        "views": {},
+        "leads": [],
+        "orders": [],
+        "totalStarts": 0,
+        "totalCompletions": 0,
+        "totalCheckouts": 0,
+        "totalSalesApproved": 0,
+        "revenueApproved": 0,
+        "totalSalesPending": 0,
+        "revenuePending": 0,
+        "startDate": "2026-10-31",
+        "endDate": "2026-10-31"
+      },
+      "range": {
+        "views": {
+          "step_0": 4
+        },
+        "leads": [],
+        "orders": [],
+        "totalStarts": 4,
+        "totalCompletions": 0,
+        "totalCheckouts": 0,
+        "totalSalesApproved": 0,
+        "revenueApproved": 0,
+        "totalSalesPending": 0,
+        "revenuePending": 0,
+        "startDate": "2026-10-20",
+        "endDate": "2026-11-01"
+      }
+    },
+    "leads": [],
+    "orders": [],
+    "totalStarts": 4,
+    "totalCompletions": 0,
+    "totalCheckouts": 0,
+    "totalSalesApproved": 0,
+    "revenueApproved": 0,
+    "totalSalesPending": 0,
+    "revenuePending": 0,
+    "lastSync": "2026-11-01T12:02:48.617Z",
+    "isRealData": true
+  }
+};
+      const html = QuizTemplateEngine.generate(quiz, 0);
+      const el = document.createElement('textarea');
+      el.id = 'exported-quiz';
+      el.value = html;
+      document.body.appendChild(el);
+      document.getElementById('status').innerText = 'READY';
+    } catch(err) {
+      document.getElementById('status').innerText = 'ERR: ' + err.toString();
+    }
+  
+
+</body></html>

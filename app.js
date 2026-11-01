@@ -1710,7 +1710,7 @@ const App = {
         else cardEl.classList.remove('card-borderless');
       }
 
-      // Garante que iframes de blocos HTML recebam o conteúdo completo no preview
+      // Garante que iframes de blocos HTML recebam o conteúdo completo no preview e ajustem a altura automaticamente
       const htmlFrames = contentEl.querySelectorAll('iframe[data-block-idx]');
       htmlFrames.forEach(frame => {
         const bIdx = parseInt(frame.getAttribute('data-block-idx'), 10);
@@ -1718,6 +1718,7 @@ const App = {
         if (b && b.customHtml) {
           frame.srcdoc = b.customHtml;
         }
+        this.setupIframeAutoResize(frame);
       });
 
       // Demanda 4: Universal Delay em todos os blocos no preview
@@ -1728,9 +1729,12 @@ const App = {
           if (el) {
             const timer = setTimeout(() => {
               el.style.display = 'block';
+              const f = el.querySelector('iframe');
+              if (f) this.setupIframeAutoResize(f);
               setTimeout(() => {
                 el.style.opacity = '1';
                 el.style.transition = 'opacity 0.4s ease';
+                if (f) this.setupIframeAutoResize(f);
               }, 20);
             }, delay * 1000);
             this.preview.stepTimers.push(timer);
@@ -1968,6 +1972,56 @@ const App = {
       overlay.style.pointerEvents = 'none';
       setTimeout(() => { overlay.style.display = 'none'; }, 300);
     }
+  },
+
+  setupIframeAutoResize(iframe) {
+    if (!iframe) return;
+    iframe.setAttribute('scrolling', 'no');
+    iframe.style.overflow = 'hidden';
+
+    const updateHeight = () => {
+      try {
+        const doc = iframe.contentDocument || (iframe.contentWindow && iframe.contentWindow.document);
+        if (!doc) return;
+        if (doc.body) {
+          doc.body.style.overflow = 'hidden';
+          doc.body.style.margin = '0';
+        }
+        if (doc.documentElement) {
+          doc.documentElement.style.overflow = 'hidden';
+        }
+        const scrollHeight = Math.max(
+          doc.body ? doc.body.scrollHeight : 0,
+          doc.body ? doc.body.offsetHeight : 0,
+          doc.documentElement ? doc.documentElement.scrollHeight : 0,
+          doc.documentElement ? doc.documentElement.offsetHeight : 0
+        );
+        if (scrollHeight > 50) {
+          iframe.style.height = (scrollHeight + 15) + 'px';
+        }
+      } catch (err) {}
+    };
+
+    try {
+      iframe.addEventListener('load', () => {
+        updateHeight();
+        setTimeout(updateHeight, 150);
+        setTimeout(updateHeight, 500);
+        setTimeout(updateHeight, 1200);
+        setTimeout(updateHeight, 2500);
+        try {
+          const doc = iframe.contentDocument || (iframe.contentWindow && iframe.contentWindow.document);
+          if (doc && window.ResizeObserver) {
+            const ro = new ResizeObserver(() => updateHeight());
+            if (doc.body) ro.observe(doc.body);
+          }
+        } catch(e) {}
+      });
+    } catch(e) {}
+
+    updateHeight();
+    setTimeout(updateHeight, 200);
+    setTimeout(updateHeight, 600);
   },
 
   preloadVideos(steps) {
