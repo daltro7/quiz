@@ -464,7 +464,10 @@ const App = {
           <span>📱</span> Captura de Lead
         </button>
         <button onclick="App.addBlockToStep(${stepIdx}, 'offer')" class="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-violet-400 text-xs font-semibold border border-slate-700 transition flex items-center gap-1">
-          <span>🎁</span> Oferta / Checkout
+          <span>🎁</span> Planos / Oferta
+        </button>
+        <button onclick="App.addBlockToStep(${stepIdx}, 'guarantee')" class="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-amber-300 text-xs font-semibold border border-amber-500/30 transition flex items-center gap-1 shadow-sm">
+          <span>🛡️</span> Garantia Risco Zero
         </button>
         <button onclick="App.addBlockToStep(${stepIdx}, 'potential_chart')" class="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-rose-400 text-xs font-semibold border border-rose-500/30 transition flex items-center gap-1 shadow-sm">
           <span>📈</span> Gráfico de Potencial
@@ -900,50 +903,195 @@ const App = {
       `;
     }
 
-    // 7. BLOCO DE OFERTA / CHECKOUT (Demandas 8, 10, 11 e Imagens)
+    // 7. BLOCO DE OFERTA / PLANOS COMPARATIVOS (Demandas 8, 10, 11 e Imagens)
     else if (block.type === 'offer') {
-      blockBadge = '<span class="text-violet-400 font-bold text-xs flex items-center gap-1.5"><span>🎁</span> Oferta Final & Checkout</span>';
+      const isMultiPlan = Array.isArray(block.plans);
+      blockBadge = `<span class="text-violet-400 font-bold text-xs flex items-center gap-1.5"><span>🎁</span> ${isMultiPlan ? 'Tabela Comparativa de Planos (Multi-Planos)' : 'Oferta / Produto Único'}</span>`;
+      
+      if (isMultiPlan) {
+        let plansHtml = '';
+        block.plans.forEach((plan, pIdx) => {
+          const isFeatured = plan.featured === true;
+          const rawFeats = Array.isArray(plan.features) ? plan.features.join('\n') : (plan.features || '');
+          const bonus = plan.bonus || {};
+
+          plansHtml += `
+            <div class="p-3.5 rounded-xl border ${isFeatured ? 'border-emerald-500/50 bg-emerald-950/20 shadow-md' : 'border-slate-700/80 bg-slate-900/60'} space-y-3 relative">
+              <div class="flex items-center justify-between pb-2 border-b border-slate-700/50">
+                <div class="flex items-center gap-2">
+                  <span class="text-xs font-bold ${isFeatured ? 'text-emerald-400' : 'text-slate-300'}">Cartão ${pIdx + 1}: ${this.escape(plan.title || 'Plano')}</span>
+                  ${isFeatured ? '<span class="text-[9px] bg-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded font-extrabold uppercase">Destaque Ativo</span>' : ''}
+                </div>
+                <div class="flex items-center gap-3">
+                  <label class="inline-flex items-center gap-1.5 cursor-pointer text-xs ${isFeatured ? 'text-emerald-300 font-bold' : 'text-slate-400'}">
+                    <input type="checkbox" ${isFeatured ? 'checked' : ''} onchange="App.updatePlanProp(${stepIdx}, ${bIdx}, ${pIdx}, 'featured', this.checked)" class="rounded bg-slate-800 border-slate-700 text-emerald-500 focus:ring-0">
+                    <span>Destacar Bloco</span>
+                  </label>
+                  ${block.plans.length > 1 ? `
+                    <button onclick="App.removePlanFromOffer(${stepIdx}, ${bIdx}, ${pIdx})" class="text-slate-500 hover:text-red-400 text-xs transition" title="Remover este plano">
+                      🗑️
+                    </button>
+                  ` : ''}
+                </div>
+              </div>
+
+              ${isFeatured ? `
+                <div>
+                  <label class="block text-[10px] font-bold text-emerald-400 mb-1">Faixa / Selo Superior do Destaque (Ribbon)</label>
+                  <input type="text" value="${this.escape(plan.featuredBadge || '⭐ MELHOR CUSTO-BENEFÍCIO')}" oninput="App.updatePlanProp(${stepIdx}, ${bIdx}, ${pIdx}, 'featuredBadge', this.value)" placeholder="Ex: ⭐ MELHOR CUSTO-BENEFÍCIO" class="w-full bg-slate-950 border border-emerald-500/40 px-2.5 py-1.5 rounded-lg text-xs text-white font-bold">
+                </div>
+              ` : ''}
+
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                <div>
+                  <label class="block text-[10px] font-bold text-slate-400 mb-1">Nome / Período do Plano</label>
+                  <input type="text" value="${this.escape(plan.title || '')}" oninput="App.updatePlanProp(${stepIdx}, ${bIdx}, ${pIdx}, 'title', this.value)" placeholder="Ex: 3 MESES ou MENSAL" class="w-full bg-slate-950 border border-slate-700 px-2.5 py-1.5 rounded-lg text-xs text-white font-bold">
+                </div>
+                <div>
+                  <label class="block text-[10px] font-bold text-slate-400 mb-1">Preço Rasurado de Ancoragem</label>
+                  <input type="text" value="${this.escape(plan.anchorPrice || '')}" oninput="App.updatePlanProp(${stepIdx}, ${bIdx}, ${pIdx}, 'anchorPrice', this.value)" placeholder="Ex: De R$ 119,90" class="w-full bg-slate-950 border border-slate-700 px-2.5 py-1.5 rounded-lg text-xs text-slate-300 font-semibold">
+                </div>
+              </div>
+
+              <div class="grid grid-cols-3 gap-2">
+                <div>
+                  <label class="block text-[10px] font-bold text-slate-400 mb-1">Moeda</label>
+                  <input type="text" value="${this.escape(plan.currency || 'R$')}" oninput="App.updatePlanProp(${stepIdx}, ${bIdx}, ${pIdx}, 'currency', this.value)" class="w-full bg-slate-950 border border-slate-700 px-2.5 py-1.5 rounded-lg text-xs text-white">
+                </div>
+                <div>
+                  <label class="block text-[10px] font-bold text-slate-400 mb-1">Valor Principal</label>
+                  <input type="text" value="${this.escape(plan.priceMain || '')}" oninput="App.updatePlanProp(${stepIdx}, ${bIdx}, ${pIdx}, 'priceMain', this.value)" placeholder="Ex: 67" class="w-full bg-slate-950 border border-slate-700 px-2.5 py-1.5 rounded-lg text-xs text-emerald-400 font-extrabold text-center">
+                </div>
+                <div>
+                  <label class="block text-[10px] font-bold text-slate-400 mb-1">Centavos</label>
+                  <input type="text" value="${this.escape(plan.priceCents || '')}" oninput="App.updatePlanProp(${stepIdx}, ${bIdx}, ${pIdx}, 'priceCents', this.value)" placeholder="Ex: ,90" class="w-full bg-slate-950 border border-slate-700 px-2.5 py-1.5 rounded-lg text-xs text-emerald-400 font-extrabold text-center">
+                </div>
+              </div>
+
+              <div>
+                <label class="block text-[10px] font-bold text-slate-400 mb-1">Subtítulo / Descritivo do Período</label>
+                <input type="text" value="${this.escape(plan.periodSub || '')}" oninput="App.updatePlanProp(${stepIdx}, ${bIdx}, ${pIdx}, 'periodSub', this.value)" placeholder="Ex: 3 meses de acesso (R$ 22,63/mês)" class="w-full bg-slate-950 border border-slate-700 px-2.5 py-1.5 rounded-lg text-xs text-slate-300">
+              </div>
+
+              <div>
+                <label class="block text-[10px] font-bold text-slate-400 mb-1">Benefícios com Ícone ✓ (1 por linha, aceita **negrito**)</label>
+                <textarea rows="3" oninput="App.updatePlanProp(${stepIdx}, ${bIdx}, ${pIdx}, 'features', this.value)" placeholder="Todos os canais liberados&#10;Qualidade Full HD e 4K&#10;Suporte prioritário via WhatsApp" class="quiz-textarea w-full bg-slate-950 border border-slate-700 px-2.5 py-1.5 rounded-lg text-xs text-white leading-relaxed">${this.escape(rawFeats)}</textarea>
+              </div>
+
+              <!-- Box de Bônus (Opcional) -->
+              <div class="p-2.5 rounded-lg bg-slate-950/70 border border-slate-800 space-y-2">
+                <div class="text-[10px] font-bold text-teal-400 uppercase tracking-wider">Bônus Especial Incluso (Opcional)</div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <div>
+                    <input type="text" value="${this.escape(bonus.title || '')}" oninput="App.updatePlanProp(${stepIdx}, ${bIdx}, ${pIdx}, 'bonus.title', this.value)" placeholder="Título do Bônus (ex: 🎬 App CineFree)" class="w-full bg-slate-900 border border-slate-700 px-2 py-1 rounded text-xs text-white">
+                  </div>
+                  <div>
+                    <input type="text" value="${this.escape(bonus.tag || '')}" oninput="App.updatePlanProp(${stepIdx}, ${bIdx}, ${pIdx}, 'bonus.tag', this.value)" placeholder="Tag (ex: Grátis)" class="w-full bg-slate-900 border border-slate-700 px-2 py-1 rounded text-xs text-white">
+                  </div>
+                </div>
+                <input type="text" value="${this.escape(bonus.desc || '')}" oninput="App.updatePlanProp(${stepIdx}, ${bIdx}, ${pIdx}, 'bonus.desc', this.value)" placeholder="Descrição do Bônus (ex: Acesso liberado a filmes e séries)" class="w-full bg-slate-900 border border-slate-700 px-2 py-1 rounded text-xs text-slate-300">
+              </div>
+
+              <!-- Botão CTA e Link de Checkout -->
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
+                <div>
+                  <label class="block text-[10px] font-bold text-slate-400 mb-1">Texto do Botão Deste Plano</label>
+                  <input type="text" value="${this.escape(plan.ctaText || 'Quero Este Plano')}" oninput="App.updatePlanProp(${stepIdx}, ${bIdx}, ${pIdx}, 'ctaText', this.value)" placeholder="Ex: Quero Este Plano" class="w-full bg-slate-950 border border-slate-700 px-2.5 py-1.5 rounded-lg text-xs text-white font-bold">
+                </div>
+                <div>
+                  <label class="block text-[10px] font-bold text-slate-400 mb-1">Link de Checkout / Kirvano / Kiwify</label>
+                  <input type="url" value="${this.escape(plan.ctaUrl || '')}" oninput="App.updatePlanProp(${stepIdx}, ${bIdx}, ${pIdx}, 'ctaUrl', this.value)" placeholder="https://pay.kirvano.com/..." class="w-full bg-slate-950 border border-slate-700 px-2.5 py-1.5 rounded-lg text-xs text-white">
+                </div>
+              </div>
+            </div>
+          `;
+        });
+
+        blockBody = `
+          <div class="space-y-3 pt-1">
+            <div class="flex items-center justify-between bg-slate-900/80 p-2.5 rounded-xl border border-slate-800">
+              <span class="text-xs text-slate-300 font-medium">✨ Layout com cartões comparativos nativos (rastreamento de checkout automático).</span>
+              <button onclick="App.switchOfferMode(${stepIdx}, ${bIdx}, 'single')" class="text-[11px] text-violet-400 hover:underline font-semibold">
+                Alternar p/ Oferta Única
+              </button>
+            </div>
+            <div class="space-y-3">
+              ${plansHtml}
+            </div>
+            <button onclick="App.addPlanToOffer(${stepIdx}, ${bIdx})" class="w-full py-2 rounded-xl bg-slate-900 hover:bg-slate-800 border border-dashed border-slate-700 hover:border-violet-500 text-xs font-bold text-violet-300 transition flex items-center justify-center gap-1.5">
+              <span>➕</span> Adicionar Novo Plano / Cartão
+            </button>
+          </div>
+        `;
+      } else {
+        // Fallback para edição de oferta clássica única
+        blockBody = `
+          <div class="space-y-2.5 pt-1">
+            <div class="flex items-center justify-between bg-slate-900/80 p-2.5 rounded-xl border border-slate-800">
+              <span class="text-xs text-slate-300 font-medium">Modo Oferta Simples (1 produto).</span>
+              <button onclick="App.switchOfferMode(${stepIdx}, ${bIdx}, 'multi_plan')" class="text-[11px] text-emerald-400 hover:underline font-bold">
+                Alternar p/ 3 Cartões Comparativos
+              </button>
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+              <div>
+                <label class="block text-[10px] font-bold text-slate-400 mb-1">Nome do Produto / Serviço</label>
+                <textarea rows="1" oninput="App.updateBlockProp(${stepIdx}, ${bIdx}, 'productTitle', this.value)" placeholder="Ex: Método Vendas Rápidas" class="quiz-textarea w-full bg-slate-900 border border-slate-700 px-2.5 py-1.5 rounded-lg text-xs text-white font-semibold">${this.escape(block.productTitle || '')}</textarea>
+              </div>
+              <div>
+                <label class="block text-[10px] font-bold text-slate-400 mb-1">Preço em Destaque</label>
+                <input type="text" value="${this.escape(block.productPrice || '')}" oninput="App.updateBlockProp(${stepIdx}, ${bIdx}, 'productPrice', this.value)" placeholder="Ex: 12x de R$ 19,90" class="w-full bg-slate-900 border border-slate-700 px-2.5 py-1.5 rounded-lg text-xs text-emerald-400 font-bold">
+              </div>
+              <div class="sm:col-span-2">
+                <label class="block text-[10px] font-bold text-slate-400 mb-1">Descrição Curta / Benefícios</label>
+                <textarea rows="2" oninput="App.updateBlockProp(${stepIdx}, ${bIdx}, 'productDescription', this.value)" placeholder="Ex: Acesso imediato + bônus exclusivos..." class="quiz-textarea w-full bg-slate-900 border border-slate-700 px-2.5 py-1.5 rounded-lg text-xs text-white">${this.escape(block.productDescription || '')}</textarea>
+              </div>
+              <div>
+                <label class="block text-[10px] font-bold text-slate-400 mb-1">Link de Pagamento / WhatsApp</label>
+                <input type="url" value="${this.escape(block.ctaUrl || '')}" oninput="App.updateBlockProp(${stepIdx}, ${bIdx}, 'ctaUrl', this.value)" placeholder="https://pay.hotmart.com/..." class="w-full bg-slate-900 border border-slate-700 px-2.5 py-1.5 rounded-lg text-xs text-white">
+              </div>
+              <div>
+                <label class="block text-[10px] font-bold text-slate-400 mb-1">Texto do Botão de Compra</label>
+                <input type="text" value="${this.escape(block.ctaText || 'Garantir Minha Oferta Exclusiva Agora →')}" oninput="App.updateBlockProp(${stepIdx}, ${bIdx}, 'ctaText', this.value)" class="w-full bg-slate-900 border border-slate-700 px-2.5 py-1.5 rounded-lg text-xs text-white font-bold">
+              </div>
+            </div>
+          </div>
+        `;
+      }
+    }
+
+    // 7.1 BLOCO DE GARANTIA INCONDICIONAL / RISCO ZERO (Demanda e Imagem 2)
+    else if (block.type === 'guarantee') {
+      blockBadge = '<span class="text-amber-300 font-bold text-xs flex items-center gap-1.5"><span>🛡️</span> Garantia Incondicional (Risco Zero)</span>';
       blockBody = `
-        <div class="space-y-2.5 pt-1">
+        <div class="space-y-3 pt-1">
+          <!-- Presets Rápidos de Dias -->
+          <div class="flex items-center gap-2 p-2 rounded-lg bg-slate-900/80 border border-slate-800">
+            <span class="text-[11px] font-bold text-slate-400">Presets de Prazo:</span>
+            <div class="flex items-center gap-1.5">
+              <button type="button" onclick="App.setGuaranteePreset(${stepIdx}, ${bIdx}, 7)" class="px-2 py-0.5 rounded bg-slate-800 hover:bg-amber-500/20 hover:text-amber-300 text-[11px] font-bold text-slate-300 transition">7 Dias</button>
+              <button type="button" onclick="App.setGuaranteePreset(${stepIdx}, ${bIdx}, 15)" class="px-2 py-0.5 rounded bg-slate-800 hover:bg-amber-500/20 hover:text-amber-300 text-[11px] font-bold text-slate-300 transition">15 Dias</button>
+              <button type="button" onclick="App.setGuaranteePreset(${stepIdx}, ${bIdx}, 30)" class="px-2 py-0.5 rounded bg-slate-800 hover:bg-amber-500/20 hover:text-amber-300 text-[11px] font-bold text-slate-300 transition">30 Dias</button>
+              <button type="button" onclick="App.setGuaranteePreset(${stepIdx}, ${bIdx}, 60)" class="px-2 py-0.5 rounded bg-slate-800 hover:bg-amber-500/20 hover:text-amber-300 text-[11px] font-bold text-slate-300 transition">60 Dias</button>
+            </div>
+          </div>
+
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
             <div>
-              <label class="block text-[10px] font-bold text-slate-400 mb-1">Nome do Produto / Serviço</label>
-              <textarea rows="1" oninput="App.updateBlockProp(${stepIdx}, ${bIdx}, 'productTitle', this.value)" placeholder="Ex: Método Vendas Rápidas" class="quiz-textarea w-full bg-slate-900 border border-slate-700 px-2.5 py-1.5 rounded-lg text-xs text-white font-semibold">${this.escape(block.productTitle || '')}</textarea>
+              <label class="block text-[10px] font-bold text-slate-400 mb-1">Tag Superior (Ex: RISCO ZERO)</label>
+              <input type="text" value="${this.escape(block.tag || 'RISCO ZERO')}" oninput="App.updateBlockProp(${stepIdx}, ${bIdx}, 'tag', this.value)" class="w-full bg-slate-900 border border-slate-700 px-2.5 py-1.5 rounded-lg text-xs text-amber-400 font-bold">
             </div>
             <div>
-              <label class="block text-[10px] font-bold text-slate-400 mb-1">Preço em Destaque</label>
-              <input type="text" value="${this.escape(block.productPrice || '')}" oninput="App.updateBlockProp(${stepIdx}, ${bIdx}, 'productPrice', this.value)" placeholder="Ex: 12x de R$ 19,90" class="w-full bg-slate-900 border border-slate-700 px-2.5 py-1.5 rounded-lg text-xs text-emerald-400 font-bold">
+              <label class="block text-[10px] font-bold text-slate-400 mb-1">Título da Garantia</label>
+              <input type="text" value="${this.escape(block.title || 'GARANTIA de 30 DIAS.')}" oninput="App.updateBlockProp(${stepIdx}, ${bIdx}, 'title', this.value)" class="w-full bg-slate-900 border border-slate-700 px-2.5 py-1.5 rounded-lg text-xs text-white font-bold">
             </div>
             <div class="sm:col-span-2">
-              <label class="block text-[10px] font-bold text-slate-400 mb-1">Descrição Curta / Benefícios (Enter aceito)</label>
-              <textarea rows="2" oninput="App.updateBlockProp(${stepIdx}, ${bIdx}, 'productDescription', this.value)" placeholder="Ex: Acesso imediato + bônus exclusivos..." class="quiz-textarea w-full bg-slate-900 border border-slate-700 px-2.5 py-1.5 rounded-lg text-xs text-white">${this.escape(block.productDescription || '')}</textarea>
+              <label class="block text-[10px] font-bold text-slate-400 mb-1">Texto da Garantia (Aceita **negrito** e quebra de linha)</label>
+              <textarea rows="3" oninput="App.updateBlockProp(${stepIdx}, ${bIdx}, 'description', this.value)" class="quiz-textarea w-full bg-slate-900 border border-slate-700 px-2.5 py-1.5 rounded-lg text-xs text-white leading-relaxed">${this.escape(block.description || '')}</textarea>
             </div>
-            <div>
-              <label class="block text-[10px] font-bold text-slate-400 mb-1">Imagem do Produto (Link Externo HTTPS)</label>
-              <input type="url" value="${this.escape(block.imageUrl || '')}" oninput="App.updateBlockProp(${stepIdx}, ${bIdx}, 'imageUrl', this.value)" placeholder="https://..." class="w-full bg-slate-900 border border-slate-700 px-2.5 py-1.5 rounded-lg text-xs text-white">
-            </div>
-            <div>
-              <label class="block text-[10px] font-bold text-slate-400 mb-1">Link de Pagamento / WhatsApp</label>
-              <input type="url" value="${this.escape(block.ctaUrl || '')}" oninput="App.updateBlockProp(${stepIdx}, ${bIdx}, 'ctaUrl', this.value)" placeholder="https://pay.hotmart.com/..." class="w-full bg-slate-900 border border-slate-700 px-2.5 py-1.5 rounded-lg text-xs text-white">
-            </div>
-            <div>
-              <label class="block text-[10px] font-bold text-slate-400 mb-1">Texto do Botão de Compra</label>
-              <input type="text" value="${this.escape(block.ctaText || 'Garantir Minha Oferta Exclusiva Agora →')}" oninput="App.updateBlockProp(${stepIdx}, ${bIdx}, 'ctaText', this.value)" class="w-full bg-slate-900 border border-slate-700 px-2.5 py-1.5 rounded-lg text-xs text-white font-bold">
-            </div>
-            <div class="flex items-center gap-3 pt-4">
-              <!-- Tamanho do Botão -->
-              <div class="flex-1">
-                <select onchange="App.updateBlockProp(${stepIdx}, ${bIdx}, 'buttonSize', this.value)" class="w-full bg-slate-900 border border-slate-700 px-2 py-1.5 rounded-lg text-xs text-white">
-                  <option value="normal" ${block.buttonSize === 'normal' ? 'selected' : ''}>Normal</option>
-                  <option value="large" ${block.buttonSize === 'large' ? 'selected' : ''}>Grande</option>
-                  <option value="featured" ${!block.buttonSize || block.buttonSize === 'featured' ? 'selected' : ''}>Destaque Alto Impacto</option>
-                </select>
-              </div>
-              <!-- Cor do Botão -->
-              <div class="flex items-center gap-1.5">
-                <input type="color" value="${block.buttonColor || '#6366f1'}" onchange="App.updateBlockProp(${stepIdx}, ${bIdx}, 'buttonColor', this.value)" class="w-7 h-7 rounded cursor-pointer bg-transparent border-0" title="Cor individual deste botão de oferta">
-                ${block.buttonColor ? `<button onclick="App.updateBlockProp(${stepIdx}, ${bIdx}, 'buttonColor', '')" class="text-[10px] text-red-400 hover:underline">reset</button>` : ''}
-              </div>
+            <div class="sm:col-span-2">
+              <label class="block text-[10px] font-bold text-slate-400 mb-1">URL de Selo Customizado (Opcional - deixe vazio para usar o Selo Dourado Vetorial Oficial)</label>
+              <input type="url" value="${this.escape(block.customSealUrl || '')}" oninput="App.updateBlockProp(${stepIdx}, ${bIdx}, 'customSealUrl', this.value)" placeholder="https://... (Vazio = Selo Dourado Nativo)" class="w-full bg-slate-900 border border-slate-700 px-2.5 py-1.5 rounded-lg text-xs text-slate-300">
             </div>
           </div>
         </div>
@@ -1254,12 +1402,61 @@ const App = {
       newBlock.requireEmail = true;
       newBlock.submitButtonText = 'Liberar Meu Diagnóstico Completo →';
     } else if (blockType === 'offer') {
-      newBlock.productTitle = 'Acesso Completo ao Método';
-      newBlock.productPrice = 'R$ 97,00 à vista';
-      newBlock.productDescription = 'Tudo o que você precisa para implementar e ter resultados rápidos.';
-      newBlock.ctaText = 'Quero Garantir Minha Vaga Agora →';
-      newBlock.ctaUrl = '#';
-      newBlock.buttonSize = 'featured';
+      newBlock.mode = 'multi_plan';
+      newBlock.plans = (typeof QuizTemplateEngine !== 'undefined' && QuizTemplateEngine.getDefaultPricingPlans)
+        ? QuizTemplateEngine.getDefaultPricingPlans()
+        : [
+            {
+              id: 'plan_1',
+              title: 'MENSAL',
+              anchorPrice: 'De R$ 59,90',
+              currency: 'R$',
+              priceMain: '39',
+              priceCents: ',90',
+              periodSub: '1 mês de acesso',
+              features: ['Todos os canais liberados', 'Qualidade Full HD e 4K', 'Suporte prioritário via WhatsApp'],
+              bonus: null,
+              ctaText: 'Quero Este Plano',
+              ctaUrl: '#',
+              featured: false,
+              featuredBadge: ''
+            },
+            {
+              id: 'plan_2',
+              title: '3 MESES',
+              anchorPrice: 'De R$ 119,90',
+              currency: 'R$',
+              priceMain: '67',
+              priceCents: ',90',
+              periodSub: '3 meses de acesso (R$ 22,63/mês)',
+              features: ['Todos os canais liberados', 'Qualidade Full HD e 4K', 'Suporte prioritário via WhatsApp', 'Acesso simultâneo em 2 telas'],
+              bonus: { title: '🎬 App CineFree', tag: 'Grátis', desc: 'Acesso liberado a filmes e séries de streaming' },
+              ctaText: 'Quero Este Plano',
+              ctaUrl: '#',
+              featured: true,
+              featuredBadge: '⭐ MELHOR CUSTO-BENEFÍCIO'
+            },
+            {
+              id: 'plan_3',
+              title: 'ANUAL',
+              anchorPrice: 'De R$ 299,90',
+              currency: 'R$',
+              priceMain: '147',
+              priceCents: ',90',
+              periodSub: '1 ano de acesso (R$ 12,25/mês)',
+              features: ['Todos os canais liberados', 'Qualidade Full HD e 4K', 'Suporte VIP 24h via WhatsApp', 'Acesso simultâneo em 4 telas'],
+              bonus: { title: '🎬 App CineFree VIP', tag: 'Grátis', desc: 'Acesso vitalício a filmes, séries e lançamentos' },
+              ctaText: 'Quero Este Plano',
+              ctaUrl: '#',
+              featured: false,
+              featuredBadge: ''
+            }
+          ];
+    } else if (blockType === 'guarantee') {
+      newBlock.tag = 'RISCO ZERO';
+      newBlock.title = 'GARANTIA de 30 DIAS.';
+      newBlock.description = 'Você tem **30 dias de garantia incondicional**.\nSe por qualquer motivo você não gostar ou achar que não é para você, basta solicitar o reembolso e **devolveremos 100% do seu dinheiro**, sem perguntas e sem complicação.';
+      newBlock.customSealUrl = '';
     } else if (blockType === 'potential_chart') {
       newBlock.chartTitle = 'Projeção de Transformação & Potencial';
       newBlock.chartStyle = 'curve'; // 'curve' | 'bars'
@@ -1383,6 +1580,106 @@ const App = {
     const sampleHtml = `<iframe src="https://example.com" style="width:100%;height:320px;border-radius:10px;border:none;"></iframe>`;
     this.updateBlockProp(stepIdx, bIdx, 'customHtml', sampleHtml);
     this.renderSteps();
+  },
+
+  addPlanToOffer(stepIdx, bIdx) {
+    if (!this.currentQuiz || !this.currentQuiz.steps[stepIdx]) return;
+    const block = this.currentQuiz.steps[stepIdx].blocks[bIdx];
+    if (!block.plans) block.plans = [];
+
+    const planNumber = block.plans.length + 1;
+    block.plans.push({
+      id: 'plan_' + Date.now(),
+      title: 'PLANO ' + planNumber,
+      anchorPrice: 'De R$ 97,00',
+      currency: 'R$',
+      priceMain: '47',
+      priceCents: ',90',
+      periodSub: 'Acesso completo',
+      features: [
+        'Acesso imediato e vitalício',
+        'Suporte dedicado'
+      ],
+      bonus: null,
+      ctaText: 'Quero Este Plano',
+      ctaUrl: '#',
+      featured: false,
+      featuredBadge: ''
+    });
+
+    this.currentQuiz.updatedAt = new Date().toISOString();
+    this.saveQuizzesToStorage();
+    this.renderSteps();
+    this.refreshPreview(stepIdx);
+  },
+
+  removePlanFromOffer(stepIdx, bIdx, planIdx) {
+    if (!this.currentQuiz || !this.currentQuiz.steps[stepIdx]) return;
+    const block = this.currentQuiz.steps[stepIdx].blocks[bIdx];
+    if (!block.plans) return;
+
+    block.plans.splice(planIdx, 1);
+    this.currentQuiz.updatedAt = new Date().toISOString();
+    this.saveQuizzesToStorage();
+    this.renderSteps();
+    this.refreshPreview(stepIdx);
+  },
+
+  updatePlanProp(stepIdx, bIdx, planIdx, prop, value) {
+    if (!this.currentQuiz || !this.currentQuiz.steps[stepIdx]) return;
+    const block = this.currentQuiz.steps[stepIdx].blocks[bIdx];
+    if (!block.plans || !block.plans[planIdx]) return;
+
+    if (prop === 'features' && typeof value === 'string') {
+      block.plans[planIdx].features = value.split('\n').map(s => s.trim()).filter(Boolean);
+    } else if (prop.startsWith('bonus.')) {
+      const bField = prop.split('.')[1];
+      if (!block.plans[planIdx].bonus) {
+        block.plans[planIdx].bonus = { title: '', tag: '', desc: '' };
+      }
+      block.plans[planIdx].bonus[bField] = value;
+    } else {
+      block.plans[planIdx][prop] = value;
+    }
+
+    this.currentQuiz.updatedAt = new Date().toISOString();
+    this.saveQuizzesToStorage();
+    this.refreshPreview(stepIdx);
+  },
+
+  switchOfferMode(stepIdx, bIdx, mode) {
+    if (!this.currentQuiz || !this.currentQuiz.steps[stepIdx]) return;
+    const block = this.currentQuiz.steps[stepIdx].blocks[bIdx];
+    block.mode = mode;
+    if (mode === 'multi_plan') {
+      if (!block.plans || block.plans.length === 0) {
+        block.plans = (typeof QuizTemplateEngine !== 'undefined' && QuizTemplateEngine.getDefaultPricingPlans)
+          ? QuizTemplateEngine.getDefaultPricingPlans()
+          : [];
+      }
+    } else {
+      if (!block.productTitle) {
+        block.productTitle = 'Acesso Completo';
+        block.productPrice = 'R$ 97,00';
+      }
+      delete block.plans;
+    }
+    this.currentQuiz.updatedAt = new Date().toISOString();
+    this.saveQuizzesToStorage();
+    this.renderSteps();
+    this.refreshPreview(stepIdx);
+  },
+
+  setGuaranteePreset(stepIdx, bIdx, days) {
+    if (!this.currentQuiz || !this.currentQuiz.steps[stepIdx]) return;
+    const block = this.currentQuiz.steps[stepIdx].blocks[bIdx];
+    block.tag = 'RISCO ZERO';
+    block.title = `GARANTIA de ${days} DIAS.`;
+    block.description = `Você tem **${days} dias de garantia incondicional**.\nSe por qualquer motivo você não gostar ou achar que não é para você, basta solicitar o reembolso e **devolveremos 100% do seu dinheiro**, sem burocracia e sem ressentimentos.`;
+    this.currentQuiz.updatedAt = new Date().toISOString();
+    this.saveQuizzesToStorage();
+    this.renderSteps();
+    this.refreshPreview(stepIdx);
   },
 
   // ==========================================

@@ -19,8 +19,13 @@ const QuizTemplateEngine = {
       return match;
     });
 
-    // 2. Remove tags <noscript> de rastreamento do Pixel
-    html = html.replace(/<noscript\b[^>]*>[\s\S]*?facebook\.com\/tr[\s\S]*?<\/noscript>/gi, '<!-- [QuizForge] Meta Pixel noscript removido -->');
+    // 2. Remove apenas a tag <noscript> específica do Pixel da Meta (sem apagar outras como fontes ou estilos)
+    html = html.replace(/<noscript\b[^>]*>([\s\S]*?)<\/noscript>/gi, (match, body) => {
+      if (/facebook\.com\/tr/i.test(body) || /fbq/i.test(body)) {
+        return '<!-- [QuizForge] Meta Pixel noscript removido -->';
+      }
+      return match;
+    });
 
     // 3. Neutraliza chamadas diretas de fbq('init', ...)
     html = html.replace(/fbq\s*\(\s*['"]init['"][^)]*\);?/gi, '/* [QuizForge] fbq init bloqueado */');
@@ -49,6 +54,18 @@ const QuizTemplateEngine = {
         }
         if (b.type === 'image') {
           if (!b.titleSize) b.titleSize = 'md';
+        }
+        if (b.type === 'offer') {
+          if (!b.plans && !b.productTitle) {
+            b.plans = this.getDefaultPricingPlans();
+          }
+        }
+        if (b.type === 'guarantee') {
+          if (!b.tag) b.tag = 'RISCO ZERO';
+          if (!b.title) b.title = 'GARANTIA de 30 DIAS.';
+          if (!b.description) {
+            b.description = 'Você tem **30 dias de garantia incondicional**.\nSe por qualquer motivo você não gostar ou achar que não é para você, basta solicitar o reembolso e **devolveremos 100% do seu dinheiro**, sem burocracia e sem ressentimentos.';
+          }
         }
         if (b.type === 'fake_loader') {
           if (!b.duration) b.duration = 4;
@@ -143,6 +160,261 @@ const QuizTemplateEngine = {
 
     step.blocks = blocks;
     return step;
+  },
+
+  getDefaultPricingPlans() {
+    return [
+      {
+        id: 'plan_1',
+        title: 'MENSAL',
+        anchorPrice: 'De R$ 59,90',
+        currency: 'R$',
+        priceMain: '39',
+        priceCents: ',90',
+        periodSub: '1 mês de acesso',
+        features: [
+          'Todos os canais liberados',
+          'Qualidade Full HD e 4K',
+          'Suporte prioritário via WhatsApp'
+        ],
+        bonus: null,
+        ctaText: 'Quero Este Plano',
+        ctaUrl: '#',
+        featured: false,
+        featuredBadge: ''
+      },
+      {
+        id: 'plan_2',
+        title: '3 MESES',
+        anchorPrice: 'De R$ 119,90',
+        currency: 'R$',
+        priceMain: '67',
+        priceCents: ',90',
+        periodSub: '3 meses de acesso (R$ 22,63/mês)',
+        features: [
+          'Todos os canais liberados',
+          'Qualidade Full HD e 4K',
+          'Suporte prioritário via WhatsApp',
+          'Acesso simultâneo em 2 telas'
+        ],
+        bonus: {
+          title: '🎬 App CineFree',
+          tag: 'Grátis',
+          desc: 'Acesso liberado a filmes e séries de streaming'
+        },
+        ctaText: 'Quero Este Plano',
+        ctaUrl: '#',
+        featured: true,
+        featuredBadge: '⭐ MELHOR CUSTO-BENEFÍCIO'
+      },
+      {
+        id: 'plan_3',
+        title: 'ANUAL',
+        anchorPrice: 'De R$ 299,90',
+        currency: 'R$',
+        priceMain: '147',
+        priceCents: ',90',
+        periodSub: '1 ano de acesso (R$ 12,25/mês)',
+        features: [
+          'Todos os canais liberados',
+          'Qualidade Full HD e 4K',
+          'Suporte VIP 24h via WhatsApp',
+          'Acesso simultâneo em 4 telas'
+        ],
+        bonus: {
+          title: '🎬 App CineFree VIP',
+          tag: 'Grátis',
+          desc: 'Acesso vitalício a filmes, séries e lançamentos'
+        },
+        ctaText: 'Quero Este Plano',
+        ctaUrl: '#',
+        featured: false,
+        featuredBadge: ''
+      }
+    ];
+  },
+
+  getGuaranteeSealSvg() {
+    return `<svg class="guarantee-seal-img" viewBox="0 0 160 160" width="140" height="140" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="qfGoldRing" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#fef08a"/>
+      <stop offset="30%" stop-color="#f59e0b"/>
+      <stop offset="70%" stop-color="#b45309"/>
+      <stop offset="100%" stop-color="#fef08a"/>
+    </linearGradient>
+    <linearGradient id="qfRibbonGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#dc2626"/>
+      <stop offset="50%" stop-color="#ef4444"/>
+      <stop offset="100%" stop-color="#b91c1c"/>
+    </linearGradient>
+    <filter id="qfSealShadow" x="-10%" y="-10%" width="130%" height="130%">
+      <feDropShadow dx="0" dy="4" stdDeviation="6" flood-color="#f59e0b" flood-opacity="0.35"/>
+    </filter>
+  </defs>
+  <g filter="url(#qfSealShadow)">
+    <circle cx="80" cy="74" r="66" fill="url(#qfGoldRing)"/>
+    <circle cx="80" cy="74" r="60" fill="#0b1120" stroke="url(#qfGoldRing)" stroke-width="2"/>
+    <circle cx="80" cy="74" r="54" fill="none" stroke="url(#qfGoldRing)" stroke-width="1.5" stroke-dasharray="3,2"/>
+    <g fill="#fef08a" transform="translate(48, 32) scale(0.65)">
+      <polygon points="10,1 12,7 18,7 13,11 15,17 10,13 5,17 7,11 2,7 8,7"/>
+      <polygon points="28,1 30,7 36,7 31,11 33,17 28,13 23,17 25,11 20,7 26,7"/>
+      <polygon points="46,1 48,7 54,7 49,11 51,17 46,13 41,17 43,11 38,7 44,7"/>
+      <polygon points="64,1 66,7 72,7 67,11 69,17 64,13 59,17 61,11 56,7 62,7"/>
+      <polygon points="82,1 84,7 90,7 85,11 87,17 82,13 77,17 79,11 74,7 80,7"/>
+    </g>
+    <text x="80" y="66" font-family="'Plus Jakarta Sans', sans-serif" font-weight="900" font-size="20" fill="url(#qfGoldRing)" text-anchor="middle" letter-spacing="1">100%</text>
+    <text x="80" y="80" font-family="'Plus Jakarta Sans', sans-serif" font-weight="800" font-size="9" fill="#f8fafc" text-anchor="middle" letter-spacing="2">GARANTIA</text>
+    <text x="80" y="91" font-family="'Plus Jakarta Sans', sans-serif" font-weight="700" font-size="7.5" fill="#fef08a" text-anchor="middle" letter-spacing="1.5">DE SATISFAÇÃO</text>
+  </g>
+  <g>
+    <path d="M 22 124 L 38 108 L 38 128 Z" fill="#991b1b"/>
+    <path d="M 138 124 L 122 108 L 122 128 Z" fill="#991b1b"/>
+    <path d="M 28 112 L 18 120 L 28 132 L 38 126 L 38 114 Z" fill="#b91c1c"/>
+    <path d="M 132 112 L 142 120 L 132 132 L 122 126 L 122 114 Z" fill="#b91c1c"/>
+    <rect x="30" y="104" width="100" height="24" rx="4" fill="url(#qfRibbonGrad)" stroke="#fef08a" stroke-width="1"/>
+    <text x="80" y="120" font-family="'Plus Jakarta Sans', sans-serif" font-weight="800" font-size="9.5" fill="#ffffff" text-anchor="middle" letter-spacing="1.5">RISCO ZERO</text>
+  </g>
+</svg>`;
+  },
+
+  formatMarkdown(str) {
+    if (!str || typeof str !== 'string') return '';
+    let out = this.escapeHtml(str);
+    out = out.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+    return out;
+  },
+
+  renderOfferBlockHtml(block, isPreview = false) {
+    if (block.plans && Array.isArray(block.plans) && block.plans.length > 0) {
+      let gridHtml = '<div class="pricing-plans-grid">';
+      block.plans.forEach(plan => {
+        const isFeatured = plan.featured === true;
+        const featuredClass = isFeatured ? 'featured' : '';
+        const badgeText = plan.featuredBadge || (isFeatured ? '⭐ MELHOR CUSTO-BENEFÍCIO' : '');
+        const anchorPrice = plan.anchorPrice || '';
+        const currency = plan.currency || 'R$';
+        const priceMain = plan.priceMain || '';
+        const priceCents = plan.priceCents || '';
+        const periodSub = plan.periodSub || '';
+        const ctaText = plan.ctaText || 'Quero Este Plano';
+        const ctaUrl = plan.ctaUrl || '#';
+        const rawFeatures = Array.isArray(plan.features) ? plan.features : (plan.features ? String(plan.features).split('\n') : []);
+        const features = rawFeatures.map(f => f.trim()).filter(Boolean);
+
+        gridHtml += `<div class="pricing-plan-card ${featuredClass}">`;
+        
+        if (isFeatured && badgeText) {
+          gridHtml += `<div class="plan-badge-ribbon">${this.escapeHtml(badgeText)}</div>`;
+        }
+
+        gridHtml += `<div class="plan-title">${this.escapeHtml(plan.title || 'PLANO')}</div>`;
+
+        if (anchorPrice) {
+          gridHtml += `<div class="plan-anchor-price">${this.escapeHtml(anchorPrice)}</div>`;
+        }
+
+        if (priceMain || priceCents) {
+          gridHtml += `<div class="plan-price-wrapper">`;
+          if (currency) gridHtml += `<span class="plan-currency">${this.escapeHtml(currency)}</span>`;
+          gridHtml += `<span class="plan-val-main">${this.escapeHtml(priceMain)}</span>`;
+          if (priceCents) gridHtml += `<span class="plan-cents">${this.escapeHtml(priceCents)}</span>`;
+          gridHtml += `</div>`;
+        }
+
+        if (periodSub) {
+          gridHtml += `<div class="plan-period-sub">${this.escapeHtml(periodSub)}</div>`;
+        }
+
+        gridHtml += `<div class="plan-divider"></div>`;
+
+        if (features.length > 0) {
+          gridHtml += `<ul class="plan-features-list">`;
+          features.forEach(feat => {
+            gridHtml += `<li class="plan-feature-item">`;
+            gridHtml += `<svg class="plan-check-icon" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>`;
+            gridHtml += `<span>${this.formatMarkdown(feat)}</span>`;
+            gridHtml += `</li>`;
+          });
+          gridHtml += `</ul>`;
+        }
+
+        if (plan.bonus && (plan.bonus.title || plan.bonus.desc)) {
+          gridHtml += `<div class="plan-bonus-box">`;
+          gridHtml += `<div class="plan-bonus-header">`;
+          gridHtml += `<span class="plan-bonus-title">${this.escapeHtml(plan.bonus.title || '')}</span>`;
+          if (plan.bonus.tag) {
+            gridHtml += `<span class="plan-bonus-tag">${this.escapeHtml(plan.bonus.tag)}</span>`;
+          }
+          gridHtml += `</div>`;
+          if (plan.bonus.desc) {
+            gridHtml += `<div class="plan-bonus-desc">${this.escapeHtml(plan.bonus.desc)}</div>`;
+          }
+          gridHtml += `</div>`;
+        }
+
+        gridHtml += `<a href="${this.escapeHtml(ctaUrl)}" target="_blank" class="plan-cta-btn cta-btn link-trackable">${this.escapeHtml(ctaText)}</a>`;
+
+        gridHtml += `</div>`;
+      });
+      gridHtml += '</div>';
+      return gridHtml;
+    }
+
+    // Fallback: Oferta Simples clássica
+    const btnSize = block.buttonSize || 'featured';
+    const customColor = block.buttonColor ? `style="background: ${block.buttonColor}; border-color: ${block.buttonColor};"` : '';
+    const sizeClass = `btn-size-${btnSize}`;
+
+    let blockHtml = '<div class="offer-container">';
+    blockHtml += '<div class="badge-result">✨ Diagnóstico Concluído com Sucesso</div>';
+
+    if (block.imageUrl) {
+      blockHtml += `<div class="quiz-image-card align-center quiz-image-medium"><img src="${this.escapeHtml(block.imageUrl)}" alt="${this.escapeHtml(block.productTitle || '')}"></div>`;
+    }
+
+    if (block.productTitle) {
+      blockHtml += '<div class="product-box">';
+      blockHtml += '<h4>' + this.escapeHtml(block.productTitle) + '</h4>';
+      if (block.productDescription) {
+        blockHtml += '<p>' + this.escapeHtml(block.productDescription) + '</p>';
+      }
+      if (block.productPrice) {
+        blockHtml += '<div style="margin-top: 8px; font-size: 18px; font-weight: 800; color: var(--accent);">' + this.escapeHtml(block.productPrice) + '</div>';
+      }
+      blockHtml += '</div>';
+    }
+
+    const ctaText = block.ctaText || 'Garantir Minha Oferta Exclusiva Agora →';
+    const ctaUrl = block.ctaUrl || '#';
+    blockHtml += '<div style="margin-top: 6px;">';
+    blockHtml += '<a href="' + this.escapeHtml(ctaUrl) + '" target="_blank" class="cta-btn link-trackable ' + sizeClass + '" ' + customColor + ' style="text-align: center; text-decoration: none;">' + this.escapeHtml(ctaText) + '</a>';
+    blockHtml += '</div>';
+    blockHtml += '</div>';
+    return blockHtml;
+  },
+
+  renderGuaranteeBlockHtml(block) {
+    const tag = block.tag || 'RISCO ZERO';
+    const title = block.title || 'GARANTIA de 30 DIAS.';
+    const desc = block.description || '';
+    const sealHtml = block.customSealUrl
+      ? `<img src="${this.escapeHtml(block.customSealUrl)}" alt="Selo de Garantia" class="guarantee-seal-img" loading="lazy">`
+      : this.getGuaranteeSealSvg();
+
+    let blockHtml = `<div class="guarantee-card">`;
+    if (tag) {
+      blockHtml += `<div class="guarantee-tag">${this.escapeHtml(tag)}</div>`;
+    }
+    blockHtml += `<div class="guarantee-seal-wrap">${sealHtml}</div>`;
+    if (title) {
+      blockHtml += `<h3 class="guarantee-title">${this.escapeHtml(title)}</h3>`;
+    }
+    if (desc) {
+      blockHtml += `<div class="guarantee-desc">${this.formatMarkdown(desc)}</div>`;
+    }
+    blockHtml += `</div>`;
+    return blockHtml;
   },
 
   // Cálculo psicológico de progresso da barra
@@ -1077,6 +1349,339 @@ const QuizTemplateEngine = {
       word-break: break-word;
     }
 
+    /* Tabela de Planos e Ofertas de Alta Conversão (3 Blocos / Multi-Plan) */
+    ${scope} .pricing-plans-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 16px;
+      margin: 16px 0;
+      width: 100%;
+      align-items: stretch;
+      box-sizing: border-box;
+    }
+
+    ${scope} .pricing-plan-card {
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: calc(var(--radius) + 2px);
+      padding: 24px 18px;
+      text-align: center;
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      transition: all 0.3s ease;
+      box-sizing: border-box;
+    }
+
+    ${scope} .pricing-plan-card:hover {
+      border-color: rgba(255, 255, 255, 0.18);
+      transform: translateY(-2px);
+    }
+
+    /* Cartão Destacado / Destaque de Alta Conversão */
+    ${scope} .pricing-plan-card.featured {
+      background: rgba(0, 212, 170, 0.04);
+      border: 2px solid var(--accent, #00d4aa);
+      box-shadow: 0 0 35px rgba(0, 212, 170, 0.16), 0 8px 30px rgba(0, 0, 0, 0.35);
+      position: relative;
+      z-index: 2;
+    }
+
+    @media (min-width: 640px) {
+      ${scope} .pricing-plan-card.featured {
+        transform: scale(1.03);
+      }
+      ${scope} .pricing-plan-card.featured:hover {
+        transform: scale(1.05) translateY(-2px);
+      }
+    }
+
+    /* Badge Superior do Cartão Destacado */
+    ${scope} .plan-badge-ribbon {
+      position: absolute;
+      top: -12px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: linear-gradient(135deg, var(--accent, #00d4aa), #00b890);
+      color: #002a20;
+      font-size: 10px;
+      font-weight: 900;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      padding: 4px 14px;
+      border-radius: 9999px;
+      white-space: nowrap;
+      box-shadow: 0 4px 12px rgba(0, 212, 170, 0.35);
+      z-index: 3;
+    }
+
+    /* Título do Plano */
+    ${scope} .plan-title {
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-top: 4px;
+      margin-bottom: 8px;
+    }
+
+    ${scope} .pricing-plan-card.featured .plan-title {
+      color: var(--accent, #00d4aa);
+    }
+
+    /* Preço Rasurado de Ancoragem */
+    ${scope} .plan-anchor-price {
+      font-size: 12px;
+      color: var(--text-muted);
+      text-decoration: line-through;
+      opacity: 0.65;
+      font-weight: 600;
+      margin-bottom: 2px;
+    }
+
+    /* Preço Principal */
+    ${scope} .plan-price-wrapper {
+      display: flex;
+      align-items: flex-start;
+      justify-content: center;
+      gap: 2px;
+      margin-bottom: 4px;
+      line-height: 1;
+    }
+
+    ${scope} .plan-currency {
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--text);
+      margin-top: 8px;
+    }
+
+    ${scope} .plan-val-main {
+      font-size: 46px;
+      font-weight: 900;
+      color: var(--text);
+      letter-spacing: -0.02em;
+    }
+
+    ${scope} .pricing-plan-card.featured .plan-val-main {
+      color: var(--accent, #00d4aa);
+    }
+
+    ${scope} .plan-cents {
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--text);
+      margin-top: 8px;
+    }
+
+    ${scope} .pricing-plan-card.featured .plan-cents {
+      color: var(--accent, #00d4aa);
+    }
+
+    /* Subtítulo / Nota do Período */
+    ${scope} .plan-period-sub {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--text-muted);
+      margin-bottom: 14px;
+    }
+
+    ${scope} .pricing-plan-card.featured .plan-period-sub {
+      color: var(--accent, #00d4aa);
+    }
+
+    /* Divisor */
+    ${scope} .plan-divider {
+      height: 1px;
+      background: rgba(255, 255, 255, 0.08);
+      margin: 12px 0 16px 0;
+    }
+
+    ${scope} .pricing-plan-card.featured .plan-divider {
+      background: linear-gradient(90deg, transparent, rgba(0, 212, 170, 0.35), transparent);
+    }
+
+    /* Lista de Benefícios */
+    ${scope} .plan-features-list {
+      list-style: none;
+      padding: 0;
+      margin: 0 0 16px 0;
+      text-align: left;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      flex: 1;
+    }
+
+    ${scope} .plan-feature-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 9px;
+      font-size: 13px;
+      color: var(--text);
+      line-height: 1.4;
+    }
+
+    ${scope} .plan-check-icon {
+      width: 16px;
+      height: 16px;
+      flex-shrink: 0;
+      color: var(--accent, #00d4aa);
+      margin-top: 1px;
+    }
+
+    /* Box de Bônus dentro do Cartão */
+    ${scope} .plan-bonus-box {
+      background: rgba(0, 212, 170, 0.06);
+      border: 1px solid rgba(0, 212, 170, 0.22);
+      border-radius: 10px;
+      padding: 10px 12px;
+      margin: 8px 0 14px 0;
+      text-align: left;
+    }
+
+    ${scope} .plan-bonus-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 6px;
+      margin-bottom: 4px;
+    }
+
+    ${scope} .plan-bonus-title {
+      font-size: 12px;
+      font-weight: 800;
+      color: #fff;
+    }
+
+    ${scope} .plan-bonus-tag {
+      font-size: 9px;
+      font-weight: 800;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      background: rgba(0, 212, 170, 0.2);
+      color: var(--accent, #00d4aa);
+      padding: 2px 6px;
+      border-radius: 4px;
+    }
+
+    ${scope} .plan-bonus-desc {
+      font-size: 11px;
+      color: var(--text-muted);
+      line-height: 1.35;
+    }
+
+    /* Botão CTA do Plano */
+    ${scope} .plan-cta-btn {
+      width: 100%;
+      display: block;
+      padding: 14px 18px;
+      border-radius: 9999px;
+      font-size: 14px;
+      font-weight: 800;
+      text-align: center;
+      text-decoration: none;
+      cursor: pointer;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      background: #192030;
+      color: #ffffff;
+      transition: all 0.25s ease;
+      box-sizing: border-box;
+      margin-top: 10px;
+    }
+
+    ${scope} .plan-cta-btn:hover {
+      background: #242e44;
+      transform: scale(1.02);
+    }
+
+    ${scope} .pricing-plan-card.featured .plan-cta-btn {
+      background: linear-gradient(135deg, var(--accent, #00d4aa), #00b890);
+      color: #002a20;
+      border: none;
+      box-shadow: 0 4px 20px rgba(0, 212, 170, 0.4);
+      animation: qfPlanPulse 2.2s infinite;
+    }
+
+    ${scope} .pricing-plan-card.featured .plan-cta-btn:hover {
+      transform: scale(1.03);
+      box-shadow: 0 6px 24px rgba(0, 212, 170, 0.55);
+    }
+
+    @keyframes qfPlanPulse {
+      0%, 100% { box-shadow: 0 4px 20px rgba(0, 212, 170, 0.35); }
+      50% { box-shadow: 0 4px 25px rgba(0, 212, 170, 0.65), 0 0 0 4px rgba(0, 212, 170, 0.15); }
+    }
+
+    /* Bloco de Garantia Incondicional (Imagem 2) */
+    ${scope} .guarantee-card {
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid rgba(255, 255, 255, 0.07);
+      border-radius: var(--radius);
+      padding: 32px 20px;
+      text-align: center;
+      margin: 18px 0;
+      box-sizing: border-box;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+    }
+
+    ${scope} .guarantee-tag {
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: var(--accent, #00d4aa);
+    }
+
+    ${scope} .guarantee-seal-wrap {
+      margin: 4px auto 8px auto;
+      display: inline-block;
+      transition: transform 0.3s ease;
+    }
+
+    ${scope} .guarantee-seal-wrap:hover {
+      transform: scale(1.05);
+    }
+
+    ${scope} .guarantee-seal-img {
+      max-width: 140px;
+      height: auto;
+      display: block;
+      margin: 0 auto;
+      filter: drop-shadow(0 8px 24px rgba(245, 158, 11, 0.3));
+    }
+
+    ${scope} .guarantee-title {
+      font-size: 26px;
+      font-weight: 900;
+      color: #ffffff;
+      letter-spacing: -0.01em;
+      line-height: 1.25;
+      margin: 4px 0;
+      text-transform: uppercase;
+    }
+
+    ${scope} .guarantee-desc {
+      font-size: 14px;
+      color: var(--text-muted);
+      line-height: 1.65;
+      max-width: 620px;
+      margin: 0 auto;
+      white-space: pre-line;
+      word-break: break-word;
+    }
+
+    ${scope} .guarantee-desc strong,
+    ${scope} .guarantee-desc b {
+      color: #ffffff;
+      font-weight: 700;
+    }
+
     /* Botão Voltar */
     ${scope} .btn-back {
       background: transparent;
@@ -1320,37 +1925,14 @@ const QuizTemplateEngine = {
         blockHtml += '</form>';
       }
 
-      // 7. Bloco de Oferta / Checkout Final
+      // 7. Bloco de Oferta / Checkout Final (Multi-Planos ou Oferta Simples)
       else if (block.type === 'offer') {
-        const btnSize = block.buttonSize || 'featured';
-        const customColor = block.buttonColor ? `style="background: ${block.buttonColor}; border-color: ${block.buttonColor};"` : '';
-        const sizeClass = `btn-size-${btnSize}`;
+        blockHtml += this.renderOfferBlockHtml(block, isPreview);
+      }
 
-        blockHtml += '<div class="offer-container">';
-        blockHtml += '<div class="badge-result">✨ Diagnóstico Concluído com Sucesso</div>';
-
-        if (block.imageUrl) {
-          blockHtml += `<div class="quiz-image-card align-center quiz-image-medium"><img src="${this.escapeHtml(block.imageUrl)}" alt="${this.escapeHtml(block.productTitle || '')}"></div>`;
-        }
-
-        if (block.productTitle) {
-          blockHtml += '<div class="product-box">';
-          blockHtml += '<h4>' + this.escapeHtml(block.productTitle) + '</h4>';
-          if (block.productDescription) {
-            blockHtml += '<p>' + this.escapeHtml(block.productDescription) + '</p>';
-          }
-          if (block.productPrice) {
-            blockHtml += '<div style="margin-top: 8px; font-size: 18px; font-weight: 800; color: var(--accent);">' + this.escapeHtml(block.productPrice) + '</div>';
-          }
-          blockHtml += '</div>';
-        }
-
-        const ctaText = block.ctaText || 'Garantir Minha Oferta Exclusiva Agora →';
-        const ctaUrl = block.ctaUrl || '#';
-        blockHtml += '<div style="margin-top: 6px;">';
-        blockHtml += '<a href="' + ctaUrl + '" target="_blank" class="cta-btn link-trackable ' + sizeClass + '" ' + customColor + ' style="text-align: center; text-decoration: none;">' + this.escapeHtml(ctaText) + '</a>';
-        blockHtml += '</div>';
-        blockHtml += '</div>';
+      // 7.1 Bloco de Garantia Incondicional / Risco Zero
+      else if (block.type === 'guarantee') {
+        blockHtml += this.renderGuaranteeBlockHtml(block);
       }
 
       // 8. NOVO BLOCO: Barra de Carregamento e Análise (fake_loader)
@@ -1610,7 +2192,12 @@ const QuizTemplateEngine = {
             }
             return match;
           })
-          .replace(/<noscript\\b[^>]*>[\\s\\S]*?facebook\\.com\\/tr[\\s\\S]*?<\\/noscript>/gi, '<!-- [QuizForge] Meta Pixel noscript removido -->')
+          .replace(/<noscript\\b[^>]*>([\\s\\S]*?)<\\/noscript>/gi, function(match, body) {
+            if (/facebook\\.com\\/tr/i.test(body) || /fbq/i.test(body)) {
+              return '<!-- [QuizForge] Meta Pixel noscript removido -->';
+            }
+            return match;
+          })
           .replace(/fbq\\s*\\(\\s*['"]init['"][^)]*\\);?/gi, '/* [QuizForge] fbq init bloqueado */')
           .replace(/fbq\\s*\\(\\s*['"]track['"]\\s*,\\s*['"]PageView['"][^)]*\\);?/gi, '/* [QuizForge] PageView duplicado bloqueado */')
           .replace(/fbq\\s*\\(\\s*['"]track['"]\\s*,\\s*['"]InitiateCheckout['"][^)]*\\);?/gi, '/* [QuizForge] InitiateCheckout bloqueado */');
@@ -1632,6 +2219,8 @@ const QuizTemplateEngine = {
         const selectors = [
           '.link-trackable',
           '.cta-btn[href]',
+          '.plan-cta-btn[href]',
+          '.pricing-plans-grid a[href]',
           '.offer-container a[href]',
           '.custom-html-container a[href]',
           'a[href*="kirvano.com"]',
@@ -2105,23 +2694,10 @@ const QuizTemplateEngine = {
             bHtml += '</form>';
           }
           else if (block.type === 'offer') {
-            const btnSize = block.buttonSize || 'featured';
-            const customColor = block.buttonColor ? 'style=\"background: ' + block.buttonColor + '; border-color: ' + block.buttonColor + ';\"' : '';
-            const sizeClass = 'btn-size-' + btnSize;
-
-            bHtml += '<div class=\"offer-container\"><div class=\"badge-result\">✨ Diagnóstico Concluído com Sucesso</div>';
-            if (block.imageUrl) {
-              bHtml += '<div class=\"quiz-image-card align-center quiz-image-medium\"><img src=\"' + this.escapeHtml(block.imageUrl) + '\" alt=\"' + this.escapeHtml(block.productTitle || '') + '\"></div>';
-            }
-            if (block.productTitle) {
-              bHtml += '<div class=\"product-box\"><h4>' + this.escapeHtml(block.productTitle) + '</h4>';
-              if (block.productDescription) bHtml += '<p>' + this.escapeHtml(block.productDescription) + '</p>';
-              if (block.productPrice) bHtml += '<div style=\"margin-top: 8px; font-size: 18px; font-weight: 800; color: var(--accent);\">' + this.escapeHtml(block.productPrice) + '</div>';
-              bHtml += '</div>';
-            }
-            const ctaText = block.ctaText || 'Garantir Minha Oferta Exclusiva Agora →';
-            const ctaUrl = block.ctaUrl || '#';
-            bHtml += '<div style=\"margin-top: 6px;\"><a href=\"' + ctaUrl + '\" target=\"_blank\" class=\"cta-btn link-trackable ' + sizeClass + '\" ' + customColor + ' style=\"text-align: center; text-decoration: none;\">' + this.escapeHtml(ctaText) + '</a></div></div>';
+            bHtml += this.renderOfferHtml(block);
+          }
+          else if (block.type === 'guarantee') {
+            bHtml += this.renderGuaranteeHtml(block);
           }
           else if (block.type === 'fake_loader') {
             bHtml += '<div class=\"fake-loader-card\">';
@@ -2229,6 +2805,159 @@ const QuizTemplateEngine = {
         });
 
         return html;
+      },
+
+      formatMarkdown(str) {
+        if (!str || typeof str !== 'string') return '';
+        let out = this.escapeHtml(str);
+        out = out.replace(/\\*\\*([^\\*]+)\\*\\*/g, '<strong>$1</strong>');
+        return out;
+      },
+
+      getGuaranteeSealSvg() {
+        return '<svg class="guarantee-seal-img" viewBox="0 0 160 160" width="140" height="140" fill="none" xmlns="http://www.w3.org/2000/svg">' +
+  '<defs>' +
+    '<linearGradient id="qfGoldRingApp" x1="0%" y1="0%" x2="100%" y2="100%">' +
+      '<stop offset="0%" stop-color="#fef08a"/>' +
+      '<stop offset="30%" stop-color="#f59e0b"/>' +
+      '<stop offset="70%" stop-color="#b45309"/>' +
+      '<stop offset="100%" stop-color="#fef08a"/>' +
+    '</linearGradient>' +
+    '<linearGradient id="qfRibbonGradApp" x1="0%" y1="0%" x2="100%" y2="0%">' +
+      '<stop offset="0%" stop-color="#dc2626"/>' +
+      '<stop offset="50%" stop-color="#ef4444"/>' +
+      '<stop offset="100%" stop-color="#b91c1c"/>' +
+    '</linearGradient>' +
+    '<filter id="qfSealShadowApp" x="-10%" y="-10%" width="130%" height="130%">' +
+      '<feDropShadow dx="0" dy="4" stdDeviation="6" flood-color="#f59e0b" flood-opacity="0.35"/>' +
+    '</filter>' +
+  '</defs>' +
+  '<g filter="url(#qfSealShadowApp)">' +
+    '<circle cx="80" cy="74" r="66" fill="url(#qfGoldRingApp)"/>' +
+    '<circle cx="80" cy="74" r="60" fill="#0b1120" stroke="url(#qfGoldRingApp)" stroke-width="2"/>' +
+    '<circle cx="80" cy="74" r="54" fill="none" stroke="url(#qfGoldRingApp)" stroke-width="1.5" stroke-dasharray="3,2"/>' +
+    '<g fill="#fef08a" transform="translate(48, 32) scale(0.65)">' +
+      '<polygon points="10,1 12,7 18,7 13,11 15,17 10,13 5,17 7,11 2,7 8,7"/>' +
+      '<polygon points="28,1 30,7 36,7 31,11 33,17 28,13 23,17 25,11 20,7 26,7"/>' +
+      '<polygon points="46,1 48,7 54,7 49,11 51,17 46,13 41,17 43,11 38,7 44,7"/>' +
+      '<polygon points="64,1 66,7 72,7 67,11 69,17 64,13 59,17 61,11 56,7 62,7"/>' +
+      '<polygon points="82,1 84,7 90,7 85,11 87,17 82,13 77,17 79,11 74,7 80,7"/>' +
+    '</g>' +
+    '<text x="80" y="66" font-family="\'Plus Jakarta Sans\', sans-serif" font-weight="900" font-size="20" fill="url(#qfGoldRingApp)" text-anchor="middle" letter-spacing="1">100%</text>' +
+    '<text x="80" y="80" font-family="\'Plus Jakarta Sans\', sans-serif" font-weight="800" font-size="9" fill="#f8fafc" text-anchor="middle" letter-spacing="2">GARANTIA</text>' +
+    '<text x="80" y="91" font-family="\'Plus Jakarta Sans\', sans-serif" font-weight="700" font-size="7.5" fill="#fef08a" text-anchor="middle" letter-spacing="1.5">DE SATISFAÇÃO</text>' +
+  '</g>' +
+  '<g>' +
+    '<path d="M 22 124 L 38 108 L 38 128 Z" fill="#991b1b"/>' +
+    '<path d="M 138 124 L 122 108 L 122 128 Z" fill="#991b1b"/>' +
+    '<path d="M 28 112 L 18 120 L 28 132 L 38 126 L 38 114 Z" fill="#b91c1c"/>' +
+    '<path d="M 132 112 L 142 120 L 132 132 L 122 126 L 122 114 Z" fill="#b91c1c"/>' +
+    '<rect x="30" y="104" width="100" height="24" rx="4" fill="url(#qfRibbonGradApp)" stroke="#fef08a" stroke-width="1"/>' +
+    '<text x="80" y="120" font-family="\'Plus Jakarta Sans\', sans-serif" font-weight="800" font-size="9.5" fill="#ffffff" text-anchor="middle" letter-spacing="1.5">RISCO ZERO</text>' +
+  '</g>' +
+'</svg>';
+      },
+
+      renderOfferHtml(block) {
+        if (block.plans && Array.isArray(block.plans) && block.plans.length > 0) {
+          let gridHtml = '<div class=\"pricing-plans-grid\">';
+          block.plans.forEach(plan => {
+            const isFeatured = plan.featured === true;
+            const featuredClass = isFeatured ? 'featured' : '';
+            const badgeText = plan.featuredBadge || (isFeatured ? '⭐ MELHOR CUSTO-BENEFÍCIO' : '');
+            const anchorPrice = plan.anchorPrice || '';
+            const currency = plan.currency || 'R$';
+            const priceMain = plan.priceMain || '';
+            const priceCents = plan.priceCents || '';
+            const periodSub = plan.periodSub || '';
+            const ctaText = plan.ctaText || 'Quero Este Plano';
+            const ctaUrl = plan.ctaUrl || '#';
+            const rawFeatures = Array.isArray(plan.features) ? plan.features : (plan.features ? String(plan.features).split('\\n') : []);
+            const features = rawFeatures.map(f => f.trim()).filter(Boolean);
+
+            gridHtml += '<div class=\"pricing-plan-card ' + featuredClass + '\">';
+            if (isFeatured && badgeText) {
+              gridHtml += '<div class=\"plan-badge-ribbon\">' + this.escapeHtml(badgeText) + '</div>';
+            }
+            gridHtml += '<div class=\"plan-title\">' + this.escapeHtml(plan.title || 'PLANO') + '</div>';
+            if (anchorPrice) {
+              gridHtml += '<div class=\"plan-anchor-price\">' + this.escapeHtml(anchorPrice) + '</div>';
+            }
+            if (priceMain || priceCents) {
+              gridHtml += '<div class=\"plan-price-wrapper\">';
+              if (currency) gridHtml += '<span class=\"plan-currency\">' + this.escapeHtml(currency) + '</span>';
+              gridHtml += '<span class=\"plan-val-main\">' + this.escapeHtml(priceMain) + '</span>';
+              if (priceCents) gridHtml += '<span class=\"plan-cents\">' + this.escapeHtml(priceCents) + '</span>';
+              gridHtml += '</div>';
+            }
+            if (periodSub) {
+              gridHtml += '<div class=\"plan-period-sub\">' + this.escapeHtml(periodSub) + '</div>';
+            }
+            gridHtml += '<div class=\"plan-divider\"></div>';
+
+            if (features.length > 0) {
+              gridHtml += '<ul class=\"plan-features-list\">';
+              features.forEach(feat => {
+                gridHtml += '<li class=\"plan-feature-item\"><svg class=\"plan-check-icon\" viewBox=\"0 0 20 20\" fill=\"currentColor\"><path fill-rule=\"evenodd\" d=\"M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z\" clip-rule=\"evenodd\"/></svg><span>' + this.formatMarkdown(feat) + '</span></li>';
+              });
+              gridHtml += '</ul>';
+            }
+
+            if (plan.bonus && (plan.bonus.title || plan.bonus.desc)) {
+              gridHtml += '<div class=\"plan-bonus-box\">';
+              gridHtml += '<div class=\"plan-bonus-header\"><span class=\"plan-bonus-title\">' + this.escapeHtml(plan.bonus.title || '') + '</span>';
+              if (plan.bonus.tag) {
+                gridHtml += '<span class=\"plan-bonus-tag\">' + this.escapeHtml(plan.bonus.tag) + '</span>';
+              }
+              gridHtml += '</div>';
+              if (plan.bonus.desc) {
+                gridHtml += '<div class=\"plan-bonus-desc\">' + this.escapeHtml(plan.bonus.desc) + '</div>';
+              }
+              gridHtml += '</div>';
+            }
+
+            gridHtml += '<a href=\"' + this.escapeHtml(ctaUrl) + '\" target=\"_blank\" class=\"plan-cta-btn cta-btn link-trackable\">' + this.escapeHtml(ctaText) + '</a>';
+            gridHtml += '</div>';
+          });
+          gridHtml += '</div>';
+          return gridHtml;
+        }
+
+        const btnSize = block.buttonSize || 'featured';
+        const customColor = block.buttonColor ? 'style=\"background: ' + block.buttonColor + '; border-color: ' + block.buttonColor + ';\"' : '';
+        const sizeClass = 'btn-size-' + btnSize;
+
+        let bHtml = '<div class=\"offer-container\"><div class=\"badge-result\">✨ Diagnóstico Concluído com Sucesso</div>';
+        if (block.imageUrl) {
+          bHtml += '<div class=\"quiz-image-card align-center quiz-image-medium\"><img src=\"' + this.escapeHtml(block.imageUrl) + '\" alt=\"' + this.escapeHtml(block.productTitle || '') + '\"></div>';
+        }
+        if (block.productTitle) {
+          bHtml += '<div class=\"product-box\"><h4>' + this.escapeHtml(block.productTitle) + '</h4>';
+          if (block.productDescription) bHtml += '<p>' + this.escapeHtml(block.productDescription) + '</p>';
+          if (block.productPrice) bHtml += '<div style=\"margin-top: 8px; font-size: 18px; font-weight: 800; color: var(--accent);\">' + this.escapeHtml(block.productPrice) + '</div>';
+          bHtml += '</div>';
+        }
+        const ctaText = block.ctaText || 'Garantir Minha Oferta Exclusiva Agora →';
+        const ctaUrl = block.ctaUrl || '#';
+        bHtml += '<div style=\"margin-top: 6px;\"><a href=\"' + this.escapeHtml(ctaUrl) + '\" target=\"_blank\" class=\"cta-btn link-trackable ' + sizeClass + '\" ' + customColor + ' style=\"text-align: center; text-decoration: none;\">' + this.escapeHtml(ctaText) + '</a></div></div>';
+        return bHtml;
+      },
+
+      renderGuaranteeHtml(block) {
+        const tag = block.tag || 'RISCO ZERO';
+        const title = block.title || 'GARANTIA de 30 DIAS.';
+        const desc = block.description || '';
+        const sealHtml = block.customSealUrl
+          ? '<img src=\"' + this.escapeHtml(block.customSealUrl) + '\" alt=\"Selo de Garantia\" class=\"guarantee-seal-img\" loading=\"lazy\">'
+          : this.getGuaranteeSealSvg();
+
+        let bHtml = '<div class=\"guarantee-card\">';
+        if (tag) bHtml += '<div class=\"guarantee-tag\">' + this.escapeHtml(tag) + '</div>';
+        bHtml += '<div class=\"guarantee-seal-wrap\">' + sealHtml + '</div>';
+        if (title) bHtml += '<h3 class=\"guarantee-title\">' + this.escapeHtml(title) + '</h3>';
+        if (desc) bHtml += '<div class=\"guarantee-desc\">' + this.formatMarkdown(desc) + '</div>';
+        bHtml += '</div>';
+        return bHtml;
       },
 
       extractYouTubeId(url) {
