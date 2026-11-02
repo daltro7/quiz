@@ -3217,8 +3217,9 @@ const QuizTemplateEngine = {
                   value: (eventData && eventData.value) ? Number(eventData.value) : 0,
                   currency: 'BRL'
                 });
+              } else {
+                fbq('trackCustom', 'Checkout_Iniciado', eventData);
               }
-              fbq('trackCustom', 'Checkout_Iniciado', eventData);
             } else {
               fbq('trackCustom', eventName, eventData);
             }
@@ -3232,9 +3233,12 @@ const QuizTemplateEngine = {
                 gtag('event', 'begin_checkout', {
                   items: [{ item_name: this.config.title || 'Oferta' }]
                 });
+              } else {
+                gtag('event', eventName, eventData);
               }
+            } else {
+              gtag('event', eventName, eventData);
             }
-            gtag('event', eventName, eventData);
           } catch(err) {}
         }
 
