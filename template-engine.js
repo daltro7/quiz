@@ -3202,18 +3202,40 @@ const QuizTemplateEngine = {
           data: eventData
         };
 
-        // Envia eventos para o Pixel Meta, exceto Checkout (deixando a Kirvano / PerfectPay como fonte única para evitar duplicidade de InitiateCheckout)
+        // Rastreamento Meta Pixel & GA4
         const isCheckoutEvent = (eventName === 'Checkout_Iniciado' || eventName === 'InitiateCheckout');
+        const trackingConf = this.config.tracking || {};
 
-        if (window.fbq && !isCheckoutEvent) {
+        if (window.fbq) {
           try {
-            if (eventName === 'Lead') fbq('track', 'Lead');
-            else fbq('trackCustom', eventName, eventData);
+            if (eventName === 'Lead') {
+              fbq('track', 'Lead');
+            } else if (isCheckoutEvent) {
+              if (trackingConf.sendInitiateCheckout !== false) {
+                fbq('track', 'InitiateCheckout', {
+                  content_name: this.config.title || 'Oferta',
+                  value: (eventData && eventData.value) ? Number(eventData.value) : 0,
+                  currency: 'BRL'
+                });
+              }
+              fbq('trackCustom', 'Checkout_Iniciado', eventData);
+            } else {
+              fbq('trackCustom', eventName, eventData);
+            }
           } catch(err) {}
         }
 
-        if (window.gtag && !isCheckoutEvent) {
-          try { gtag('event', eventName, eventData); } catch(err) {}
+        if (window.gtag) {
+          try {
+            if (isCheckoutEvent) {
+              if (trackingConf.sendInitiateCheckout !== false) {
+                gtag('event', 'begin_checkout', {
+                  items: [{ item_name: this.config.title || 'Oferta' }]
+                });
+              }
+            }
+            gtag('event', eventName, eventData);
+          } catch(err) {}
         }
 
         const targetUrl = (this.config.tracking && this.config.tracking.sheetUrl) || (this.config.tracking && this.config.tracking.webhookUrl);

@@ -1931,6 +1931,13 @@ const App = {
     if (document.getElementById('tracking-pixel')) document.getElementById('tracking-pixel').value = tracking.metaPixelId || '';
     if (document.getElementById('tracking-ga4')) document.getElementById('tracking-ga4').value = tracking.ga4Id || '';
 
+    // Meta Conversions API (CAPI) & Checkout Tracking
+    if (document.getElementById('tracking-meta-token')) document.getElementById('tracking-meta-token').value = tracking.metaApiToken || '';
+    if (document.getElementById('tracking-meta-test-code')) document.getElementById('tracking-meta-test-code').value = tracking.metaTestCode || '';
+    if (document.getElementById('tracking-send-initiate-checkout')) {
+      document.getElementById('tracking-send-initiate-checkout').checked = tracking.sendInitiateCheckout !== false;
+    }
+
     // Demanda 6: Injeção de Scripts em 3 posições
     if (document.getElementById('tracking-head-scripts')) document.getElementById('tracking-head-scripts').value = tracking.customHeadScripts || '';
     if (document.getElementById('tracking-body-top-scripts')) document.getElementById('tracking-body-top-scripts').value = tracking.customBodyTopScripts || '';
@@ -4230,9 +4237,21 @@ const App = {
   },
 
   copySheetsScript() {
-    const code = document.getElementById('sheets-script-code').innerText;
+    let code = document.getElementById('sheets-script-code').innerText;
+    if (this.currentQuiz && this.currentQuiz.tracking) {
+      const tracking = this.currentQuiz.tracking;
+      if (tracking.metaPixelId) {
+        code = code.replace(/var META_PIXEL_ID = ".*?";/, `var META_PIXEL_ID = "${tracking.metaPixelId.trim()}";`);
+      }
+      if (tracking.metaApiToken) {
+        code = code.replace(/var META_API_TOKEN = ".*?";/, `var META_API_TOKEN = "${tracking.metaApiToken.trim()}";`);
+      }
+      if (tracking.metaTestCode) {
+        code = code.replace(/var META_TEST_EVENT_CODE = ".*?";/, `var META_TEST_EVENT_CODE = "${tracking.metaTestCode.trim()}";`);
+      }
+    }
     navigator.clipboard.writeText(code).then(() => {
-      alert('Código do Apps Script copiado para a área de transferência!');
+      alert('Código do Apps Script copiado para a área de transferência com suas configurações aplicadas!');
     });
   },
 

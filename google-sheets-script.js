@@ -1,6 +1,112 @@
-﻿// =====================================================================
-// SCRIPT INTEGRADO: QUIZFORGE + KIRVANO + PERFECTPAY (Métricas & Vendas)
 // =====================================================================
+// SCRIPT INTEGRADO: QUIZFORGE + KIRVANO + PERFECTPAY + META CAPI
+// Métricas, Funil, Leads e Envio de Vendas Aprovadas para a Meta
+// =====================================================================
+
+// ==========================================
+// CONFIGURAÇÕES META CONVERSIONS API (CAPI)
+// Preencha para enviar Vendas Aprovadas direto para a Meta (Facebook Ads)
+// garantindo que Pix NÃO pago NUNCA seja contabilizado como compra!
+// ==========================================
+var META_PIXEL_ID = "1375613420763965";        // Seu Pixel ID da Meta
+var META_API_TOKEN = "";                       // Cole o Token de Acesso da Conversions API (gerado no Gerenciador de Eventos)
+var META_TEST_EVENT_CODE = "";                 // Opcional: Cole aqui o código de teste da aba "Testar Eventos" da Meta (ex: TEST12345)
+var META_QUIZ_URL = "https://orcaobra.site";   // URL da sua página / quiz
+
+// Funções de Criptografia SHA-256 e Formatação para a Meta API
+function sha256(input) {
+  if (!input) return null;
+  var clean = String(input).trim().toLowerCase();
+  if (!clean) return null;
+  var rawHash = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, clean, Utilities.Charset.UTF_8);
+  var txt = '';
+  for (var i = 0; i < rawHash.length; i++) {
+    var b = rawHash[i];
+    if (b < 0) b += 256;
+    var hex = b.toString(16);
+    if (hex.length === 1) hex = '0' + hex;
+    txt += hex;
+  }
+  return txt;
+}
+
+function normalizePhoneForMeta(rawPhone) {
+  if (!rawPhone) return '';
+  var digits = String(rawPhone).replace(/\D/g, '');
+  if (!digits) return '';
+  if (digits.indexOf('0') === 0) digits = digits.substring(1);
+  if (digits.indexOf('55') === 0 && digits.length >= 12) return digits;
+  if (digits.length === 10 || digits.length === 11) return '55' + digits;
+  return digits;
+}
+
+function sendMetaCapiPurchase(params) {
+  var pixelId = (META_PIXEL_ID || '').trim();
+  var token = (META_API_TOKEN || '').trim();
+  if (!pixelId || !token) {
+    return { success: false, reason: 'META_PIXEL_ID ou META_API_TOKEN não preenchidos no topo do script.' };
+  }
+  try {
+    var userData = {};
+    if (params.email) {
+      var hEm = sha256(params.email);
+      if (hEm) userData.em = [hEm];
+    }
+    if (params.phone) {
+      var hPh = sha256(normalizePhoneForMeta(params.phone));
+      if (hPh) userData.ph = [hPh];
+    }
+    if (params.name) {
+      var parts = String(params.name).trim().split(/\s+/);
+      if (parts[0]) {
+        var hFn = sha256(parts[0]);
+        if (hFn) userData.fn = [hFn];
+      }
+      if (parts.length > 1) {
+        var hLn = sha256(parts.slice(1).join(' '));
+        if (hLn) userData.ln = [hLn];
+      }
+    }
+    userData.country = [sha256('br')];
+
+    var evt = {
+      event_name: 'Purchase',
+      event_time: Math.floor(Date.now() / 1000),
+      event_id: String(params.orderId || ('ord_' + Date.now())),
+      action_source: 'website',
+      event_source_url: (META_QUIZ_URL || 'https://orcaobra.site').trim(),
+      user_data: userData,
+      custom_data: {
+        currency: 'BRL',
+        value: Number(params.amount) || 0,
+        content_name: params.productName || 'Oferta',
+        order_id: String(params.orderId || '')
+      }
+    };
+
+    var payload = {
+      data: [evt]
+    };
+    if (META_TEST_EVENT_CODE && String(META_TEST_EVENT_CODE).trim() !== '') {
+      payload.test_event_code = String(META_TEST_EVENT_CODE).trim();
+    }
+
+    var url = 'https://graph.facebook.com/v19.0/' + encodeURIComponent(pixelId) + '/events?access_token=' + encodeURIComponent(token);
+    var options = {
+      method: 'post',
+      contentType: 'application/json',
+      payload: JSON.stringify(payload),
+      muteHttpExceptions: true
+    };
+
+    var resp = UrlFetchApp.fetch(url, options);
+    var resCode = resp.getResponseCode();
+    var resText = resp.getContentText();
+    return { success: resCode >= 200 && resCode < 300, code: resCode, response: resText };
+  } catch(e) {
+    return { success: false, error: e.toString() };
+  }
+}
 
 // 1. LEITURA DOS DADOS (QuizForge ➔ Planilha: Funil, Leads e Vendas)
 function doGet(e) {
@@ -245,7 +351,7 @@ function doPost(e) {
   try {
     var sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
     var lastCol = sheet.getLastColumn();
-    var expectedHeaders = ['Data/Hora', 'Sessão (ID)', 'Evento', 'Quiz / Produto', 'Etapa', 'Status Venda', 'Valor (R$)', 'Método', 'Plataforma', 'Nome', 'WhatsApp', 'Email', 'SRC', 'UTM_Source', 'UTM_Campaign', 'UTM_Medium', 'UTM_Content'];
+    var expectedHeaders = ['Data/Hora', 'Sessão (ID)', 'Evento', 'Quiz / Produto', 'Etapa', 'Status Venda', 'Valor (R$)', 'Método', 'Plataforma', 'Nome', 'WhatsApp', 'Email', 'SRC', 'UTM_Source', 'UTM_Campaign', 'UTM_Medium', 'UTM_Content', 'Meta CAPI'];
 
     if (lastCol === 0) {
       sheet.appendRow(expectedHeaders);
@@ -315,6 +421,20 @@ function doPost(e) {
       setVal(['utm_campaign', 'campaign'], utmsK.utm_campaign || '');
       setVal(['utm_medium', 'medium'], utmsK.utm_medium || '');
       setVal(['utm_content', 'content'], utmsK.utm_content || '');
+
+      // Disparo Meta CAPI exclusivo para vendas aprovadas (Elimina Pix pendente)
+      if (isApproved) {
+        var capiResK = sendMetaCapiPurchase({
+          orderId: data.sale_id || ('kirv_' + Date.now()),
+          amount: amountVal,
+          productName: prodName,
+          name: cust.name || '',
+          email: cust.email || '',
+          phone: cust.phone_number || ''
+        });
+        setVal(['meta capi', 'capi'], capiResK.success ? 'Enviado (Purchase)' : ('Erro: ' + (capiResK.error || capiResK.code || capiResK.reason)));
+      }
+
       sheet.appendRow(newRow);
       return ContentService.createTextOutput(JSON.stringify({ status: 'success', platform: 'Kirvano' })).setMimeType(ContentService.MimeType.JSON);
     }
@@ -346,6 +466,20 @@ function doPost(e) {
       setVal(['utm_campaign', 'campaign'], metaP.utm_campaign || '');
       setVal(['utm_medium', 'medium'], metaP.utm_medium || '');
       setVal(['utm_content', 'content'], metaP.utm_content || '');
+
+      // Disparo Meta CAPI exclusivo para vendas aprovadas (Elimina Pix pendente)
+      if (isAppP) {
+        var capiResP = sendMetaCapiPurchase({
+          orderId: data.code || ('pp_' + Date.now()),
+          amount: amountValP,
+          productName: prodNameP,
+          name: custP.full_name || custP.name || '',
+          email: custP.email || '',
+          phone: phoneP
+        });
+        setVal(['meta capi', 'capi'], capiResP.success ? 'Enviado (Purchase)' : ('Erro: ' + (capiResP.error || capiResP.code || capiResP.reason)));
+      }
+
       sheet.appendRow(newRow);
       return ContentService.createTextOutput(JSON.stringify({ status: 'success', platform: 'PerfectPay' })).setMimeType(ContentService.MimeType.JSON);
     }
