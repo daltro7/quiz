@@ -6,6 +6,18 @@
 
 const STORAGE_KEY = 'quizforge_quizzes_data';
 
+// ==========================================
+// CONFIGURAÇÃO FIREBASE CLOUD (PROJETO QUIZFORGE)
+// ==========================================
+const firebaseConfig = {
+  apiKey: "AIzaSyBWmHeY4k7siSHZ2pvdq2RY1eyNLYtMmBs",
+  authDomain: "quizforge-b4253.firebaseapp.com",
+  projectId: "quizforge-b4253",
+  storageBucket: "quizforge-b4253.firebasestorage.app",
+  messagingSenderId: "726780728889",
+  appId: "1:726780728889:web:453d978c3fa9192b101fe8"
+};
+
 const App = {
   quizzes: [],
   currentQuiz: null,
@@ -19,6 +31,15 @@ const App = {
   currentEditingStepIndex: 0,
   refreshTimeout: null,
 
+  // Firebase Cloud State
+  firebaseApp: null,
+  firebaseAuth: null,
+  firestore: null,
+  firebaseUser: null,
+  authMode: 'login', // 'login' | 'register' | 'reset'
+  cloudSyncDebounceTimer: null,
+  isCloudSyncing: false,
+
   // Estado interativo do celular de preview
   preview: {
     currentStepIndex: 0,
@@ -30,6 +51,7 @@ const App = {
 
   init() {
     this.loadQuizzesFromStorage();
+    this.initFirebase();
     if (this.quizzes && this.quizzes.length > 0) {
       this.openEditor(this.quizzes[0].id);
       const params = new URLSearchParams(window.location.search);
@@ -75,15 +97,35 @@ const App = {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(this.quizzes));
       this.showSaveBadge();
+
+      // Sincronização automática na Nuvem Firebase (com debounce de 800ms)
+      if (this.firebaseUser && this.firestore && this.currentQuiz) {
+        clearTimeout(this.cloudSyncDebounceTimer);
+        this.cloudSyncDebounceTimer = setTimeout(() => {
+          this.cloudSaveQuiz(this.currentQuiz, true);
+        }, 800);
+      }
     } catch (err) {
       console.error('Erro ao salvar quizzes no localStorage:', err);
     }
   },
 
-  showSaveBadge() {
+  showSavingBadge() {
     const badge = document.getElementById('save-status-badge');
     if (badge) {
-      badge.innerHTML = '<i class="ph ph-check-circle"></i> Salvo';
+      badge.innerHTML = '<i class="ph ph-arrows-clockwise animate-spin"></i> Salvando na Nuvem...';
+      badge.className = 'text-[11px] text-amber-400 font-semibold bg-amber-500/10 px-2.5 py-0.5 rounded-full border border-amber-500/20 flex items-center gap-1';
+    }
+  },
+
+  showSaveBadge(isCloud = true, customMsg = null) {
+    const badge = document.getElementById('save-status-badge');
+    if (!badge) return;
+    if (this.firebaseUser && isCloud) {
+      badge.innerHTML = '<i class="ph ph-cloud-check text-emerald-400"></i> Salvo na Nuvem';
+      badge.className = 'text-[11px] text-emerald-400 font-semibold bg-emerald-500/10 px-2.5 py-0.5 rounded-full border border-emerald-500/20 flex items-center gap-1';
+    } else {
+      badge.innerHTML = '<i class="ph ph-check-circle"></i> ' + (customMsg || 'Salvo');
       badge.className = 'text-[11px] text-emerald-400 font-semibold bg-emerald-500/10 px-2.5 py-0.5 rounded-full border border-emerald-500/20 flex items-center gap-1';
     }
   },
@@ -99,6 +141,8 @@ const App = {
     if (dash) dash.classList.remove('hidden');
     if (editor) editor.classList.add('hidden');
     if (btnBack) btnBack.classList.add('hidden');
+
+    this.renderDashboardCloudBanner();
 
     const grid = document.getElementById('quiz-list-grid');
     if (!grid) return;
@@ -128,7 +172,10 @@ const App = {
               <span class="text-[11px] font-bold px-2.5 py-1 rounded-full bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
                 ${stepCount} Etapas
               </span>
-              <span class="text-[11px] text-slate-500">Atualizado: ${lastModified}</span>
+              <div class="flex items-center gap-2">
+                ${this.firebaseUser ? '<span class="text-[10px] text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20 flex items-center gap-1 font-semibold"><i class="ph ph-cloud-check"></i> Na Nuvem</span>' : ''}
+                <span class="text-[11px] text-slate-500">Atualizado: ${lastModified}</span>
+              </div>
             </div>
 
             <h3 class="font-extrabold text-white text-base leading-snug line-clamp-1 mb-1.5" title="${this.escape(quiz.title)}">
@@ -218,6 +265,9 @@ const App = {
 
     this.quizzes.unshift(newQuiz);
     this.saveQuizzesToStorage();
+    if (this.firebaseUser) {
+      this.cloudSaveQuiz(newQuiz, false);
+    }
     this.openEditor(newQuiz.id);
   },
 
@@ -232,6 +282,9 @@ const App = {
 
     this.quizzes.unshift(copy);
     this.saveQuizzesToStorage();
+    if (this.firebaseUser) {
+      this.cloudSaveQuiz(copy, false);
+    }
     this.renderDashboard();
   },
 
@@ -239,6 +292,9 @@ const App = {
     if (!confirm('Tem certeza que deseja excluir este funil de quiz?')) return;
     this.quizzes = this.quizzes.filter(q => q.id !== quizId);
     this.saveQuizzesToStorage();
+    if (this.firebaseUser) {
+      this.cloudDeleteQuiz(quizId);
+    }
     this.renderDashboard();
   },
 
@@ -2486,6 +2542,9 @@ const App = {
 
         this.quizzes.unshift(importedQuiz);
         this.saveQuizzesToStorage();
+        if (this.firebaseUser) {
+          this.cloudSaveQuiz(importedQuiz, false);
+        }
         this.renderDashboard();
         this.openEditor(importedQuiz.id);
         alert('Projeto importado com sucesso!');
@@ -3776,6 +3835,397 @@ const App = {
 
   closeModals() {
     document.querySelectorAll('[id^="modal-"]').forEach(modal => modal.classList.add('hidden'));
+  },
+
+  // ==========================================
+  // FIREBASE CLOUD & AUTENTICAÇÃO
+  // ==========================================
+  initFirebase() {
+    try {
+      if (typeof firebase === 'undefined') {
+        console.warn('[QuizForge Cloud] Firebase SDK compat não carregado. Operando localmente.');
+        this.updateAuthUi();
+        this.renderDashboardCloudBanner();
+        return;
+      }
+
+      if (!firebase.apps.length) {
+        this.firebaseApp = firebase.initializeApp(firebaseConfig);
+      } else {
+        this.firebaseApp = firebase.app();
+      }
+
+      this.firebaseAuth = firebase.auth();
+      this.firestore = firebase.firestore();
+
+      // Monitor de estado de autenticação
+      this.firebaseAuth.onAuthStateChanged(async (user) => {
+        this.firebaseUser = user;
+        this.updateAuthUi();
+        this.renderDashboardCloudBanner();
+        this.showSaveBadge(true);
+        if (user) {
+          console.log('[QuizForge Cloud] Autenticado com sucesso:', user.email);
+          await this.syncQuizzesFromCloud();
+        }
+      });
+    } catch (err) {
+      console.error('[QuizForge Cloud] Falha ao iniciar Firebase:', err);
+      this.updateAuthUi();
+      this.renderDashboardCloudBanner();
+    }
+  },
+
+  updateAuthUi() {
+    const container = document.getElementById('cloud-auth-container');
+    if (!container) return;
+
+    if (this.firebaseUser) {
+      const email = this.firebaseUser.email || 'Usuário';
+      container.innerHTML = `
+        <div class="inline-flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-slate-800/90 border border-slate-700 text-xs shadow-sm">
+          <span class="w-2 h-2 rounded-full bg-emerald-400 shadow-sm shadow-emerald-400/50" title="Nuvem conectada"></span>
+          <span class="text-slate-200 font-medium truncate max-w-[120px] md:max-w-[180px]" title="${this.escape(email)}">
+            ${this.escape(email)}
+          </span>
+          <button type="button" onclick="App.syncQuizzesFromCloud()" class="p-1 rounded hover:bg-slate-700 text-slate-400 hover:text-indigo-400 transition" title="Sincronizar agora">
+            <i class="ph ph-arrows-clockwise text-sm"></i>
+          </button>
+          <button type="button" onclick="App.logoutUser()" class="p-1 rounded hover:bg-red-500/20 text-slate-400 hover:text-red-400 transition" title="Sair da conta">
+            <i class="ph ph-sign-out text-sm"></i>
+          </button>
+        </div>
+      `;
+    } else {
+      container.innerHTML = `
+        <button type="button" onclick="App.openAuthModal()" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold shadow-lg shadow-indigo-500/20 transition">
+          <i class="ph ph-cloud text-sm"></i>
+          <span class="hidden sm:inline">Conectar Nuvem</span>
+          <span class="sm:hidden">Entrar</span>
+        </button>
+      `;
+    }
+  },
+
+  renderDashboardCloudBanner() {
+    const banner = document.getElementById('dashboard-cloud-banner');
+    if (!banner) return;
+
+    if (this.firebaseUser) {
+      const email = this.firebaseUser.email || 'sua conta';
+      banner.innerHTML = `
+        <div class="bg-gradient-to-r from-emerald-950/40 via-slate-900 to-indigo-950/30 border border-emerald-500/30 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div class="flex items-center gap-3.5">
+            <div class="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center shrink-0 text-xl border border-emerald-500/20 shadow-inner">
+              <i class="ph ph-cloud-check"></i>
+            </div>
+            <div>
+              <div class="flex items-center gap-2">
+                <h4 class="font-bold text-white text-sm">Sincronização em Nuvem Ativa</h4>
+                <span class="text-[10px] bg-emerald-500/20 text-emerald-300 font-bold px-2 py-0.5 rounded-full border border-emerald-500/30">Online</span>
+              </div>
+              <p class="text-xs text-slate-400 mt-0.5">Conectado como <b class="text-slate-200">${this.escape(email)}</b>. Suas alterações são salvas automaticamente no Firebase.</p>
+            </div>
+          </div>
+          <div class="flex items-center gap-2 shrink-0">
+            <button type="button" onclick="App.syncQuizzesFromCloud()" class="px-3.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold border border-slate-700 flex items-center gap-1.5 transition">
+              <i class="ph ph-arrows-clockwise text-sm"></i>
+              Sincronizar Agora
+            </button>
+          </div>
+        </div>
+      `;
+    } else {
+      banner.innerHTML = `
+        <div class="bg-gradient-to-r from-indigo-950/40 via-slate-900 to-purple-950/30 border border-indigo-500/30 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div class="flex items-center gap-3.5">
+            <div class="w-10 h-10 rounded-xl bg-indigo-500/10 text-indigo-400 flex items-center justify-center shrink-0 text-xl border border-indigo-500/20 shadow-inner">
+              <i class="ph ph-cloud"></i>
+            </div>
+            <div>
+              <h4 class="font-bold text-white text-sm">Acesse seus quizzes em qualquer computador ou celular</h4>
+              <p class="text-xs text-slate-400 mt-0.5">Conecte sua conta do Firebase para sincronizar seus funis na nuvem e nunca perder suas alterações.</p>
+            </div>
+          </div>
+          <button type="button" onclick="App.openAuthModal()" class="shrink-0 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold shadow-lg shadow-indigo-500/20 flex items-center gap-1.5 transition">
+            <i class="ph ph-sign-in text-sm"></i>
+            Conectar Nuvem (Login / Cadastro)
+          </button>
+        </div>
+      `;
+    }
+  },
+
+  openAuthModal() {
+    this.closeModals();
+    this.setAuthMode('login');
+    const modal = document.getElementById('modal-auth');
+    if (modal) modal.classList.remove('hidden');
+    setTimeout(() => {
+      const emailInput = document.getElementById('auth-email');
+      if (emailInput) emailInput.focus();
+    }, 100);
+  },
+
+  setAuthMode(mode) {
+    this.authMode = mode;
+    const title = document.getElementById('auth-modal-title');
+    const subtitle = document.getElementById('auth-modal-subtitle');
+    const tabLogin = document.getElementById('tab-auth-login');
+    const tabRegister = document.getElementById('tab-auth-register');
+    const passContainer = document.getElementById('auth-password-container');
+    const submitBtn = document.getElementById('btn-auth-submit');
+    const alertBox = document.getElementById('auth-alert');
+
+    if (alertBox) alertBox.classList.add('hidden');
+
+    if (mode === 'login') {
+      if (title) title.textContent = 'Entrar na Minha Conta';
+      if (subtitle) subtitle.textContent = 'Acesse seus quizzes em qualquer dispositivo';
+      if (tabLogin) tabLogin.className = 'py-2 rounded-lg bg-indigo-600 text-white transition';
+      if (tabRegister) tabRegister.className = 'py-2 rounded-lg text-slate-400 hover:text-white transition';
+      if (passContainer) passContainer.classList.remove('hidden');
+      if (submitBtn) submitBtn.innerHTML = '<span>Entrar na Conta</span>';
+    } else if (mode === 'register') {
+      if (title) title.textContent = 'Criar Nova Conta';
+      if (subtitle) subtitle.textContent = 'Crie sua conta para sincronizar seus quizzes na nuvem';
+      if (tabLogin) tabLogin.className = 'py-2 rounded-lg text-slate-400 hover:text-white transition';
+      if (tabRegister) tabRegister.className = 'py-2 rounded-lg bg-indigo-600 text-white transition';
+      if (passContainer) passContainer.classList.remove('hidden');
+      if (submitBtn) submitBtn.innerHTML = '<span>Criar Conta e Sincronizar</span>';
+    } else if (mode === 'reset') {
+      if (title) title.textContent = 'Recuperar Minha Senha';
+      if (subtitle) subtitle.textContent = 'Digite seu e-mail para receber o link de redefinição';
+      if (tabLogin) tabLogin.className = 'py-2 rounded-lg text-slate-400 hover:text-white transition';
+      if (tabRegister) tabRegister.className = 'py-2 rounded-lg text-slate-400 hover:text-white transition';
+      if (passContainer) passContainer.classList.add('hidden');
+      if (submitBtn) submitBtn.innerHTML = '<span>Enviar Link de Recuperação</span>';
+    }
+  },
+
+  showAuthAlert(type, message) {
+    const alertBox = document.getElementById('auth-alert');
+    if (!alertBox) return;
+    alertBox.classList.remove('hidden');
+    if (type === 'error') {
+      alertBox.className = 'p-3 rounded-xl text-xs font-medium border bg-red-500/10 border-red-500/30 text-red-300 flex items-start gap-2';
+      alertBox.innerHTML = '<i class="ph ph-warning-circle text-base text-red-400 shrink-0 mt-0.5"></i> <div>' + message + '</div>';
+    } else {
+      alertBox.className = 'p-3 rounded-xl text-xs font-medium border bg-emerald-500/10 border-emerald-500/30 text-emerald-300 flex items-start gap-2';
+      alertBox.innerHTML = '<i class="ph ph-check-circle text-base text-emerald-400 shrink-0 mt-0.5"></i> <div>' + message + '</div>';
+    }
+  },
+
+  async handleAuthSubmit(event) {
+    event.preventDefault();
+    if (!this.firebaseAuth) {
+      this.showAuthAlert('error', 'O serviço do Firebase não está disponível. Verifique se o navegador tem acesso à internet.');
+      return;
+    }
+
+    const email = (document.getElementById('auth-email').value || '').trim();
+    const passInput = document.getElementById('auth-password');
+    const password = passInput ? passInput.value : '';
+    const submitBtn = document.getElementById('btn-auth-submit');
+    const originalBtnHtml = submitBtn.innerHTML;
+
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<i class="ph ph-arrows-clockwise animate-spin text-base"></i> Processando...';
+
+    try {
+      if (this.authMode === 'login') {
+        await this.firebaseAuth.signInWithEmailAndPassword(email, password);
+        this.closeModals();
+        this.showToast('Login realizado com sucesso! Quizzes sincronizados.', 'success');
+      } else if (this.authMode === 'register') {
+        if (!password || password.length < 6) {
+          throw { code: 'auth/weak-password' };
+        }
+        await this.firebaseAuth.createUserWithEmailAndPassword(email, password);
+        this.closeModals();
+        this.showToast('Conta criada com sucesso! Seus quizzes foram salvos na nuvem.', 'success');
+      } else if (this.authMode === 'reset') {
+        await this.firebaseAuth.sendPasswordResetEmail(email);
+        this.showAuthAlert('success', 'E-mail de recuperação enviado! Verifique sua caixa de entrada.');
+      }
+    } catch (err) {
+      console.error('[QuizForge Auth Error]', err);
+      let msg = 'Ocorreu um erro ao processar. Tente novamente.';
+      if (err.code === 'auth/user-not-found') {
+        msg = 'Nenhuma conta encontrada com este e-mail. Clique na aba <b>Criar Nova Conta</b>.';
+      } else if (err.code === 'auth/wrong-password') {
+        msg = 'Senha incorreta. Verifique e tente novamente.';
+      } else if (err.code === 'auth/invalid-credential') {
+        msg = 'E-mail ou senha incorretos.';
+      } else if (err.code === 'auth/invalid-email') {
+        msg = 'O formato do e-mail é inválido.';
+      } else if (err.code === 'auth/email-already-in-use') {
+        msg = 'Este e-mail já está cadastrado. Clique na aba <b>Entrar</b>.';
+      } else if (err.code === 'auth/weak-password') {
+        msg = 'A senha precisa ter no mínimo 6 caracteres.';
+      } else if (err.code === 'auth/too-many-requests') {
+        msg = 'Muitas tentativas com falha. Aguarde alguns instantes e tente novamente.';
+      } else if (err.message) {
+        msg = err.message;
+      }
+      this.showAuthAlert('error', msg);
+    } finally {
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = originalBtnHtml;
+    }
+  },
+
+  async logoutUser() {
+    if (!confirm('Deseja realmente desconectar da sua conta na nuvem? (Seus quizzes permanecerão seguros no Firebase)')) return;
+    try {
+      if (this.firebaseAuth) {
+        await this.firebaseAuth.signOut();
+      }
+      this.firebaseUser = null;
+      this.updateAuthUi();
+      this.renderDashboardCloudBanner();
+      this.showSaveBadge(false, 'Salvo localmente');
+      this.showToast('Desconectado com sucesso.', 'info');
+    } catch (err) {
+      console.error('[QuizForge Cloud] Erro ao deslogar:', err);
+    }
+  },
+
+  async syncQuizzesFromCloud() {
+    if (!this.firestore || !this.firebaseUser) return;
+    this.isCloudSyncing = true;
+    this.showSavingBadge();
+    try {
+      const snapshot = await this.firestore
+        .collection('users')
+        .doc(this.firebaseUser.uid)
+        .collection('quizzes')
+        .get();
+
+      if (!snapshot.empty) {
+        const cloudQuizzes = [];
+        snapshot.forEach(doc => {
+          const data = doc.data();
+          if (data && data.id) {
+            cloudQuizzes.push(data);
+          }
+        });
+
+        if (cloudQuizzes.length > 0) {
+          // Normaliza os quizzes baixados da nuvem
+          cloudQuizzes.forEach(q => {
+            if (!q.theme) q.theme = {};
+            if (q.theme.startPercent === undefined) q.theme.startPercent = 60;
+            if (q.theme.hideUntilFirstClick === undefined) q.theme.hideUntilFirstClick = true;
+            if (q.steps) {
+              q.steps = q.steps.map(s => QuizTemplateEngine.normalizeStep(s));
+            }
+          });
+
+          // Se tiver quizzes locais que ainda não estão na nuvem, faz upload para não perder nada
+          const cloudIds = new Set(cloudQuizzes.map(q => q.id));
+          const localOnly = (this.quizzes || []).filter(q => !cloudIds.has(q.id) && q.id !== 'sample_quiz_vendas');
+
+          if (localOnly.length > 0) {
+            for (const localQuiz of localOnly) {
+              await this.cloudSaveQuiz(localQuiz, false);
+              cloudQuizzes.unshift(localQuiz);
+            }
+          }
+
+          // Ordena pelo mais recente
+          cloudQuizzes.sort((a, b) => new Date(b.updatedAt || 0) - new Date(a.updatedAt || 0));
+
+          this.quizzes = cloudQuizzes;
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(this.quizzes));
+
+          // Atualiza visualização ativa
+          if (this.currentQuiz) {
+            const reloaded = this.quizzes.find(q => q.id === this.currentQuiz.id);
+            if (reloaded) {
+              this.currentQuiz = reloaded;
+              this.renderCurrentStepEditor();
+              this.updatePreview();
+            }
+          }
+          this.renderDashboard();
+        }
+      } else {
+        // Se a nuvem do usuário estiver vazia (primeiro login), faz upload dos quizzes locais
+        if (this.quizzes && this.quizzes.length > 0) {
+          for (const q of this.quizzes) {
+            await this.cloudSaveQuiz(q, false);
+          }
+        }
+      }
+      this.showSaveBadge(true);
+    } catch (err) {
+      console.error('[QuizForge Cloud] Erro ao sincronizar com a nuvem:', err);
+      this.showSaveBadge(false, 'Salvo localmente (verifique regras do Firestore)');
+    } finally {
+      this.isCloudSyncing = false;
+    }
+  },
+
+  async cloudSaveQuiz(quiz, updateBadge = true) {
+    if (!this.firestore || !this.firebaseUser || !quiz || !quiz.id) return;
+    if (updateBadge) this.showSavingBadge();
+    try {
+      quiz.updatedAt = new Date().toISOString();
+      const cleanQuiz = JSON.parse(JSON.stringify(quiz));
+      await this.firestore
+        .collection('users')
+        .doc(this.firebaseUser.uid)
+        .collection('quizzes')
+        .doc(quiz.id)
+        .set(cleanQuiz, { merge: true });
+
+      if (updateBadge) this.showSaveBadge(true);
+    } catch (err) {
+      console.error('[QuizForge Cloud] Erro ao salvar quiz na nuvem:', err);
+      if (updateBadge) this.showSaveBadge(false, 'Salvo localmente (verifique permissão)');
+    }
+  },
+
+  async cloudDeleteQuiz(quizId) {
+    if (!this.firestore || !this.firebaseUser || !quizId) return;
+    try {
+      await this.firestore
+        .collection('users')
+        .doc(this.firebaseUser.uid)
+        .collection('quizzes')
+        .doc(quizId)
+        .delete();
+      console.log('[QuizForge Cloud] Quiz excluído da nuvem:', quizId);
+    } catch (err) {
+      console.error('[QuizForge Cloud] Erro ao deletar quiz da nuvem:', err);
+    }
+  },
+
+  showToast(message, type = 'info') {
+    let toast = document.getElementById('quizforge-toast');
+    if (!toast) {
+      toast = document.createElement('div');
+      toast.id = 'quizforge-toast';
+      toast.className = 'fixed bottom-6 right-6 z-50 transition-all duration-300 transform translate-y-10 opacity-0 pointer-events-none';
+      document.body.appendChild(toast);
+    }
+    const colorClass = type === 'success' 
+      ? 'bg-emerald-600 text-white shadow-emerald-500/20' 
+      : type === 'error' 
+        ? 'bg-red-600 text-white shadow-red-500/20' 
+        : 'bg-indigo-600 text-white shadow-indigo-500/20';
+
+    toast.innerHTML = `
+      <div class="${colorClass} px-4 py-3 rounded-xl shadow-xl flex items-center gap-2.5 text-xs font-bold border border-white/10">
+        <i class="ph ${type === 'success' ? 'ph-check-circle' : type === 'error' ? 'ph-warning-circle' : 'ph-info'} text-base"></i>
+        <span>${message}</span>
+      </div>
+    `;
+    toast.classList.remove('translate-y-10', 'opacity-0', 'pointer-events-none');
+    setTimeout(() => {
+      toast.classList.add('translate-y-10', 'opacity-0', 'pointer-events-none');
+    }, 3500);
   },
 
   copySheetsScript() {

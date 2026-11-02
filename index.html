@@ -41,6 +41,11 @@
   <!-- Ícones Phosphor -->
   <script src="https://unpkg.com/@phosphor-icons/web"></script>
   
+  <!-- Firebase SDKs (Compat v10) -->
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+  
   <!-- Estilos Customizados -->
   <link rel="stylesheet" href="styles.css">
 
@@ -88,6 +93,11 @@
         <i class="ph ph-folder text-sm"></i>
         Meus Quizzes
       </button>
+
+      <!-- Nuvem / Login Firebase -->
+      <div id="cloud-auth-container" class="flex items-center">
+        <!-- Renderizado dinamicamente via App.updateAuthUi() -->
+      </div>
     </div>
   </header>
 
@@ -117,6 +127,9 @@
         </button>
       </div>
     </div>
+
+    <!-- Banner de Status Nuvem / Firebase -->
+    <div id="dashboard-cloud-banner" class="mb-6"></div>
 
     <!-- Lista / Grade de Quizzes -->
     <div id="quiz-list-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -1356,8 +1369,82 @@ function doPost(e) {
     </div>
   </div>
 
+  <!-- ========================================== -->
+  <!-- MODAL: AUTENTICAÇÃO FIREBASE (LOGIN / CADASTRO) -->
+  <!-- ========================================== -->
+  <div id="modal-auth" class="hidden fixed inset-0 z-50 bg-slate-950/85 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-800 rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-5">
+      <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+        <div class="flex items-center gap-2.5">
+          <div class="w-9 h-9 rounded-xl bg-indigo-500/20 text-indigo-400 flex items-center justify-center text-lg font-bold">
+            <i class="ph ph-cloud"></i>
+          </div>
+          <div>
+            <h3 id="auth-modal-title" class="font-extrabold text-white text-base">Conectar Nuvem QuizForge</h3>
+            <p id="auth-modal-subtitle" class="text-xs text-slate-400">Acesse seus quizzes em qualquer dispositivo</p>
+          </div>
+        </div>
+        <button onclick="App.closeModals()" class="text-slate-400 hover:text-white p-1">
+          <i class="ph ph-x text-lg"></i>
+        </button>
+      </div>
+
+      <!-- Abas de Alternância (Entrar / Criar Conta) -->
+      <div class="grid grid-cols-2 p-1 bg-slate-950 rounded-xl border border-slate-800 text-xs font-semibold">
+        <button type="button" id="tab-auth-login" onclick="App.setAuthMode('login')" class="py-2 rounded-lg bg-indigo-600 text-white transition">
+          Já tenho conta (Entrar)
+        </button>
+        <button type="button" id="tab-auth-register" onclick="App.setAuthMode('register')" class="py-2 rounded-lg text-slate-400 hover:text-white transition">
+          Criar Nova Conta
+        </button>
+      </div>
+
+      <!-- Mensagem de Alerta (Erro ou Sucesso) -->
+      <div id="auth-alert" class="hidden p-3 rounded-xl text-xs font-medium border flex items-start gap-2"></div>
+
+      <!-- Formulário de Login / Cadastro -->
+      <form id="form-auth" onsubmit="App.handleAuthSubmit(event)" class="space-y-3.5">
+        <div>
+          <label class="block text-xs font-bold text-slate-300 mb-1.5">Seu E-mail</label>
+          <div class="relative">
+            <i class="ph ph-envelope absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500 text-base"></i>
+            <input type="email" id="auth-email" required placeholder="seu@email.com" class="w-full bg-slate-950 border border-slate-800 focus:border-indigo-500 rounded-xl pl-10 pr-4 py-2.5 text-xs text-white placeholder-slate-500 outline-none transition">
+          </div>
+        </div>
+
+        <div id="auth-password-container">
+          <div class="flex items-center justify-between mb-1.5">
+            <label class="text-xs font-bold text-slate-300">Sua Senha</label>
+            <button type="button" id="btn-auth-forgot" onclick="App.setAuthMode('reset')" class="text-[11px] text-indigo-400 hover:underline">
+              Esqueci a senha
+            </button>
+          </div>
+          <div class="relative">
+            <i class="ph ph-lock absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500 text-base"></i>
+            <input type="password" id="auth-password" placeholder="Mínimo 6 caracteres" class="w-full bg-slate-950 border border-slate-800 focus:border-indigo-500 rounded-xl pl-10 pr-4 py-2.5 text-xs text-white placeholder-slate-500 outline-none transition">
+          </div>
+        </div>
+
+        <button type="submit" id="btn-auth-submit" class="w-full py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold shadow-lg shadow-indigo-500/25 transition flex items-center justify-center gap-2">
+          <span>Entrar na Conta</span>
+        </button>
+      </form>
+
+      <!-- Rodapé do Modal -->
+      <div class="pt-2 border-t border-slate-800 flex items-center justify-between text-[11px] text-slate-400">
+        <span class="flex items-center gap-1.5">
+          <i class="ph ph-shield-check text-emerald-400 text-sm"></i>
+          Segurança Firebase Google
+        </span>
+        <button type="button" onclick="App.closeModals()" class="text-slate-400 hover:text-white">
+          Continuar offline
+        </button>
+      </div>
+    </div>
+  </div>
+
   <!-- Scripts do Construtor (Com cache-buster para atualização imediata na hospedagem) -->
-  <script src="template-engine.js?v=3.7.3"></script>
-  <script src="app.js?v=3.7.3"></script>
+  <script src="template-engine.js?v=3.8.0"></script>
+  <script src="app.js?v=3.8.0"></script>
 </body>
 </html>
