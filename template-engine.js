@@ -432,7 +432,6 @@ const QuizTemplateEngine = {
     const bgColor = theme.bgColor || '#0f172a';
     const cardBg = theme.cardBg || '#1e293b';
     const textColor = theme.textColor || '#f8fafc';
-    const textMuted = theme.textMuted || '#94a3b8';
     const accentColor = theme.accentColor || '#10b981';
     const borderRadius = theme.borderRadius || '16px';
     const borderWidth = theme.borderWidth || '1px';
@@ -460,6 +459,7 @@ const QuizTemplateEngine = {
     const cardRgb = hexToRgb(cardBg);
     const isLightCard = (0.299 * cardRgb.r + 0.587 * cardRgb.g + 0.114 * cardRgb.b) > 150;
     const primRgb = hexToRgb(primaryColor);
+    const textMuted = theme.textMuted || (isLightCard ? '#475569' : '#94a3b8');
 
     return `
     ${rootTarget} {
@@ -1287,8 +1287,8 @@ const QuizTemplateEngine = {
     }
 
     ${scope} .product-box {
-      background: rgba(255, 255, 255, 0.03);
-      border: 1px solid rgba(255, 255, 255, 0.08);
+      background: ${isLightCard ? 'var(--opt-bg, #f8fafc)' : 'rgba(255, 255, 255, 0.03)'};
+      border: 1px solid ${isLightCard ? 'var(--opt-border, #cbd5e1)' : 'rgba(255, 255, 255, 0.08)'};
       border-radius: calc(var(--radius) - 4px);
       padding: 16px;
       margin: 8px 0;
@@ -1324,8 +1324,8 @@ const QuizTemplateEngine = {
     }
 
     ${scope} .pricing-plan-card {
-      background: rgba(255, 255, 255, 0.03);
-      border: 1px solid rgba(255, 255, 255, 0.08);
+      background: ${isLightCard ? 'var(--opt-bg, #f8fafc)' : 'rgba(255, 255, 255, 0.03)'};
+      border: 1.5px solid ${isLightCard ? 'var(--opt-border, #cbd5e1)' : 'rgba(255, 255, 255, 0.08)'};
       border-radius: calc(var(--radius) + 2px);
       padding: 24px 18px;
       text-align: center;
@@ -1335,18 +1335,19 @@ const QuizTemplateEngine = {
       justify-content: space-between;
       transition: all 0.3s ease;
       box-sizing: border-box;
+      box-shadow: ${isLightCard ? '0 2px 6px rgba(0, 0, 0, 0.04)' : 'none'};
     }
 
     ${scope} .pricing-plan-card:hover {
-      border-color: rgba(255, 255, 255, 0.18);
+      border-color: ${isLightCard ? 'var(--primary)' : 'rgba(255, 255, 255, 0.18)'};
       transform: translateY(-2px);
     }
 
     /* Cartão Destacado / Destaque de Alta Conversão */
     ${scope} .pricing-plan-card.featured {
-      background: rgba(0, 212, 170, 0.04);
-      border: 2px solid var(--accent, #00d4aa);
-      box-shadow: 0 0 35px rgba(0, 212, 170, 0.16), 0 8px 30px rgba(0, 0, 0, 0.35);
+      background: ${isLightCard ? 'rgba(5, 150, 105, 0.05)' : 'rgba(0, 212, 170, 0.04)'};
+      border: 2px solid ${isLightCard ? 'var(--accent, #059669)' : 'var(--accent, #00d4aa)'};
+      box-shadow: ${isLightCard ? '0 8px 25px -4px rgba(5, 150, 105, 0.2), 0 2px 8px rgba(0, 0, 0, 0.06)' : '0 0 35px rgba(0, 212, 170, 0.16), 0 8px 30px rgba(0, 0, 0, 0.35)'};
       position: relative;
       z-index: 2;
     }
@@ -1366,8 +1367,8 @@ const QuizTemplateEngine = {
       top: -12px;
       left: 50%;
       transform: translateX(-50%);
-      background: linear-gradient(135deg, var(--accent, #00d4aa), #00b890);
-      color: #002a20;
+      background: linear-gradient(135deg, ${isLightCard ? '#059669, #047857' : 'var(--accent, #00d4aa), #00b890'});
+      color: #ffffff;
       font-size: 10px;
       font-weight: 900;
       letter-spacing: 0.08em;
@@ -1375,7 +1376,7 @@ const QuizTemplateEngine = {
       padding: 4px 14px;
       border-radius: 9999px;
       white-space: nowrap;
-      box-shadow: 0 4px 12px rgba(0, 212, 170, 0.35);
+      box-shadow: 0 4px 12px ${isLightCard ? 'rgba(5, 150, 105, 0.35)' : 'rgba(0, 212, 170, 0.35)'};
       z-index: 3;
     }
 
@@ -1391,7 +1392,7 @@ const QuizTemplateEngine = {
     }
 
     ${scope} .pricing-plan-card.featured .plan-title {
-      color: var(--accent, #00d4aa);
+      color: ${isLightCard ? '#059669' : 'var(--accent, #00d4aa)'};
     }
 
     /* Preço Rasurado de Ancoragem */
@@ -1458,7 +1459,7 @@ const QuizTemplateEngine = {
     /* Divisor */
     ${scope} .plan-divider {
       height: 1px;
-      background: rgba(255, 255, 255, 0.08);
+      background: ${isLightCard ? 'rgba(0, 0, 0, 0.08)' : 'rgba(255, 255, 255, 0.08)'};
       margin: 12px 0 16px 0;
     }
 
@@ -1497,8 +1498,8 @@ const QuizTemplateEngine = {
 
     /* Box de Bônus dentro do Cartão */
     ${scope} .plan-bonus-box {
-      background: rgba(0, 212, 170, 0.06);
-      border: 1px solid rgba(0, 212, 170, 0.22);
+      background: ${isLightCard ? 'rgba(5, 150, 105, 0.08)' : 'rgba(0, 212, 170, 0.06)'};
+      border: 1.5px solid ${isLightCard ? 'rgba(5, 150, 105, 0.3)' : 'rgba(0, 212, 170, 0.22)'};
       border-radius: 10px;
       padding: 10px 12px;
       margin: 8px 0 14px 0;
@@ -1516,7 +1517,7 @@ const QuizTemplateEngine = {
     ${scope} .plan-bonus-title {
       font-size: 12px;
       font-weight: 800;
-      color: #fff;
+      color: var(--text, #ffffff);
     }
 
     ${scope} .plan-bonus-tag {
@@ -1524,15 +1525,16 @@ const QuizTemplateEngine = {
       font-weight: 800;
       letter-spacing: 0.06em;
       text-transform: uppercase;
-      background: rgba(0, 212, 170, 0.2);
-      color: var(--accent, #00d4aa);
+      background: ${isLightCard ? 'rgba(5, 150, 105, 0.16)' : 'rgba(0, 212, 170, 0.2)'};
+      color: ${isLightCard ? '#047857' : 'var(--accent, #00d4aa)'};
       padding: 2px 6px;
       border-radius: 4px;
     }
 
     ${scope} .plan-bonus-desc {
       font-size: 11px;
-      color: var(--text-muted);
+      color: var(--text);
+      opacity: 0.85;
       line-height: 1.35;
     }
 
@@ -1547,8 +1549,8 @@ const QuizTemplateEngine = {
       text-align: center;
       text-decoration: none;
       cursor: pointer;
-      border: 1px solid rgba(255, 255, 255, 0.12);
-      background: #192030;
+      border: 1px solid ${isLightCard ? 'rgba(0, 0, 0, 0.12)' : 'rgba(255, 255, 255, 0.12)'};
+      background: ${isLightCard ? '#0f172a' : '#192030'};
       color: #ffffff;
       transition: all 0.25s ease;
       box-sizing: border-box;
@@ -1580,8 +1582,8 @@ const QuizTemplateEngine = {
 
     /* Bloco de Garantia Incondicional (Imagem 2) */
     ${scope} .guarantee-card {
-      background: rgba(255, 255, 255, 0.02);
-      border: 1px solid rgba(255, 255, 255, 0.07);
+      background: ${isLightCard ? 'rgba(0, 0, 0, 0.02)' : 'rgba(255, 255, 255, 0.02)'};
+      border: 1.5px solid ${isLightCard ? 'rgba(0, 0, 0, 0.08)' : 'rgba(255, 255, 255, 0.07)'};
       border-radius: var(--radius);
       padding: 32px 20px;
       text-align: center;
@@ -1622,7 +1624,7 @@ const QuizTemplateEngine = {
     ${scope} .guarantee-title {
       font-size: 26px;
       font-weight: 900;
-      color: #ffffff;
+      color: var(--text, #ffffff);
       letter-spacing: -0.01em;
       line-height: 1.25;
       margin: 4px 0;
@@ -1631,7 +1633,8 @@ const QuizTemplateEngine = {
 
     ${scope} .guarantee-desc {
       font-size: 14px;
-      color: var(--text-muted);
+      color: var(--text);
+      opacity: 0.88;
       line-height: 1.65;
       max-width: 620px;
       margin: 0 auto;
@@ -1641,8 +1644,9 @@ const QuizTemplateEngine = {
 
     ${scope} .guarantee-desc strong,
     ${scope} .guarantee-desc b {
-      color: #ffffff;
-      font-weight: 700;
+      color: var(--text, #ffffff);
+      font-weight: 800;
+      opacity: 1;
     }
 
     /* Botão Voltar */

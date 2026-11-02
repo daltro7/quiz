@@ -1824,6 +1824,7 @@ const App = {
         bgColor: '#f1f5f9',
         cardBg: '#ffffff',
         textColor: '#0f172a',
+        textMuted: '#475569',
         borderColor: '#cbd5e1',
         borderRadius: '16px',
         shadow: 'subtle'
