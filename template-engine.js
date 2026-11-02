@@ -228,9 +228,9 @@ const QuizTemplateEngine = {
       <polygon points="64,1 66,7 72,7 67,11 69,17 64,13 59,17 61,11 56,7 62,7"/>
       <polygon points="82,1 84,7 90,7 85,11 87,17 82,13 77,17 79,11 74,7 80,7"/>
     </g>
-    <text x="80" y="66" font-family="'Plus Jakarta Sans', sans-serif" font-weight="900" font-size="20" fill="url(#qfGoldRing)" text-anchor="middle" letter-spacing="1">100%</text>
-    <text x="80" y="80" font-family="'Plus Jakarta Sans', sans-serif" font-weight="800" font-size="9" fill="#f8fafc" text-anchor="middle" letter-spacing="2">GARANTIA</text>
-    <text x="80" y="91" font-family="'Plus Jakarta Sans', sans-serif" font-weight="700" font-size="7.5" fill="#fef08a" text-anchor="middle" letter-spacing="1.5">DE SATISFAÇÃO</text>
+    <text x="80" y="66" font-family="Plus Jakarta Sans, sans-serif" font-weight="900" font-size="20" fill="url(#qfGoldRing)" text-anchor="middle" letter-spacing="1">100%</text>
+    <text x="80" y="80" font-family="Plus Jakarta Sans, sans-serif" font-weight="800" font-size="9" fill="#f8fafc" text-anchor="middle" letter-spacing="2">GARANTIA</text>
+    <text x="80" y="91" font-family="Plus Jakarta Sans, sans-serif" font-weight="700" font-size="7.5" fill="#fef08a" text-anchor="middle" letter-spacing="1.5">DE SATISFAÇÃO</text>
   </g>
   <g>
     <path d="M 22 124 L 38 108 L 38 128 Z" fill="#991b1b"/>
@@ -238,7 +238,7 @@ const QuizTemplateEngine = {
     <path d="M 28 112 L 18 120 L 28 132 L 38 126 L 38 114 Z" fill="#b91c1c"/>
     <path d="M 132 112 L 142 120 L 132 132 L 122 126 L 122 114 Z" fill="#b91c1c"/>
     <rect x="30" y="104" width="100" height="24" rx="4" fill="url(#qfRibbonGrad)" stroke="#fef08a" stroke-width="1"/>
-    <text x="80" y="120" font-family="'Plus Jakarta Sans', sans-serif" font-weight="800" font-size="9.5" fill="#ffffff" text-anchor="middle" letter-spacing="1.5">RISCO ZERO</text>
+    <text x="80" y="120" font-family="Plus Jakarta Sans, sans-serif" font-weight="800" font-size="9.5" fill="#ffffff" text-anchor="middle" letter-spacing="1.5">RISCO ZERO</text>
   </g>
 </svg>`;
   },
@@ -2789,9 +2789,9 @@ const QuizTemplateEngine = {
       '<polygon points="64,1 66,7 72,7 67,11 69,17 64,13 59,17 61,11 56,7 62,7"/>' +
       '<polygon points="82,1 84,7 90,7 85,11 87,17 82,13 77,17 79,11 74,7 80,7"/>' +
     '</g>' +
-    '<text x="80" y="66" font-family="\'Plus Jakarta Sans\', sans-serif" font-weight="900" font-size="20" fill="url(#qfGoldRingApp)" text-anchor="middle" letter-spacing="1">100%</text>' +
-    '<text x="80" y="80" font-family="\'Plus Jakarta Sans\', sans-serif" font-weight="800" font-size="9" fill="#f8fafc" text-anchor="middle" letter-spacing="2">GARANTIA</text>' +
-    '<text x="80" y="91" font-family="\'Plus Jakarta Sans\', sans-serif" font-weight="700" font-size="7.5" fill="#fef08a" text-anchor="middle" letter-spacing="1.5">DE SATISFAÇÃO</text>' +
+    '<text x="80" y="66" font-family="Plus Jakarta Sans, sans-serif" font-weight="900" font-size="20" fill="url(#qfGoldRingApp)" text-anchor="middle" letter-spacing="1">100%</text>' +
+    '<text x="80" y="80" font-family="Plus Jakarta Sans, sans-serif" font-weight="800" font-size="9" fill="#f8fafc" text-anchor="middle" letter-spacing="2">GARANTIA</text>' +
+    '<text x="80" y="91" font-family="Plus Jakarta Sans, sans-serif" font-weight="700" font-size="7.5" fill="#fef08a" text-anchor="middle" letter-spacing="1.5">DE SATISFAÇÃO</text>' +
   '</g>' +
   '<g>' +
     '<path d="M 22 124 L 38 108 L 38 128 Z" fill="#991b1b"/>' +
@@ -2799,7 +2799,7 @@ const QuizTemplateEngine = {
     '<path d="M 28 112 L 18 120 L 28 132 L 38 126 L 38 114 Z" fill="#b91c1c"/>' +
     '<path d="M 132 112 L 142 120 L 132 132 L 122 126 L 122 114 Z" fill="#b91c1c"/>' +
     '<rect x="30" y="104" width="100" height="24" rx="4" fill="url(#qfRibbonGradApp)" stroke="#fef08a" stroke-width="1"/>' +
-    '<text x="80" y="120" font-family="\'Plus Jakarta Sans\', sans-serif" font-weight="800" font-size="9.5" fill="#ffffff" text-anchor="middle" letter-spacing="1.5">RISCO ZERO</text>' +
+    '<text x="80" y="120" font-family="Plus Jakarta Sans, sans-serif" font-weight="800" font-size="9.5" fill="#ffffff" text-anchor="middle" letter-spacing="1.5">RISCO ZERO</text>' +
   '</g>' +
 '</svg>';
       },
