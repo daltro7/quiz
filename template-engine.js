@@ -770,7 +770,6 @@ const QuizTemplateEngine = {
       border: 0;
       display: block;
       margin: 0 auto;
-      overflow: hidden;
       transition: height 0.2s ease;
     }
 
@@ -784,8 +783,7 @@ const QuizTemplateEngine = {
       background: transparent !important;
       border: none !important;
       box-shadow: none !important;
-      padding-left: 0 !important;
-      padding-right: 0 !important;
+      padding: 0 !important;
     }
 
     /* Opções de Resposta */
@@ -1792,13 +1790,13 @@ const QuizTemplateEngine = {
 
         if (block.iframeUrl && block.iframeUrl.trim() !== '') {
           blockHtml += `<div class="custom-html-container ${fullClass}">`;
-          blockHtml += `<iframe src="${this.escapeHtml(block.iframeUrl)}" scrolling="no" style="width:100%; height:${height}; border:none; border-radius:12px; display:block; background:#fff; overflow:hidden;" sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-modals" loading="lazy"></iframe>`;
+          blockHtml += `<iframe src="${this.escapeHtml(block.iframeUrl)}" style="width:100%; min-height:${height}; border:none; border-radius:12px; display:block; background:transparent;" sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-modals" loading="lazy"></iframe>`;
           blockHtml += '</div>';
         } else if (block.customHtml && block.customHtml.trim() !== '') {
           if (isIframe) {
             const frameId = (isPreview ? 'preview-html-frame-' : 'quiz-html-frame-') + bIdx;
             blockHtml += `<div class="custom-html-container ${fullClass}">`;
-            blockHtml += `<iframe id="${frameId}" srcdoc="${this.escapeSrcdoc(block.customHtml)}" scrolling="no" style="width:100%; height:${height}; border:none; border-radius:12px; display:block; background:#fff; overflow:hidden;" sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-modals" loading="lazy"></iframe>`;
+            blockHtml += `<iframe id="${frameId}" srcdoc="${this.escapeSrcdoc(block.customHtml)}" style="width:100%; min-height:${height}; border:none; border-radius:12px; display:block; background:transparent;" sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-modals" loading="lazy"></iframe>`;
             blockHtml += '</div>';
           } else {
             blockHtml += `<div class="custom-html-container ${fullClass}">${block.customHtml}</div>`;
@@ -2179,52 +2177,87 @@ const QuizTemplateEngine = {
 
       setupIframeAutoResize(iframe) {
         if (!iframe) return;
-        iframe.setAttribute('scrolling', 'no');
-        iframe.style.overflow = 'hidden';
 
         const updateHeight = () => {
           try {
             const doc = iframe.contentDocument || (iframe.contentWindow && iframe.contentWindow.document);
             if (!doc) return;
-            if (doc.body) {
-              doc.body.style.overflow = 'hidden';
-              doc.body.style.margin = '0';
+            const body = doc.body;
+            const html = doc.documentElement;
+            if (!body && !html) return;
+
+            if (body) {
+              body.style.margin = '0';
             }
-            if (doc.documentElement) {
-              doc.documentElement.style.overflow = 'hidden';
+
+            const measured = [
+              body ? body.scrollHeight : 0,
+              body ? body.offsetHeight : 0,
+              html ? html.scrollHeight : 0,
+              html ? html.offsetHeight : 0
+            ];
+
+            if (body && body.children) {
+              for (let i = 0; i < body.children.length; i++) {
+                const el = body.children[i];
+                if (el && el.offsetHeight) {
+                  measured.push(el.offsetTop + el.offsetHeight);
+                }
+              }
             }
-            const scrollHeight = Math.max(
-              doc.body ? doc.body.scrollHeight : 0,
-              doc.body ? doc.body.offsetHeight : 0,
-              doc.documentElement ? doc.documentElement.scrollHeight : 0,
-              doc.documentElement ? doc.documentElement.offsetHeight : 0
-            );
-            if (scrollHeight > 50) {
-              iframe.style.height = (scrollHeight + 15) + 'px';
+
+            const maxH = Math.max(...measured);
+            if (maxH > 40) {
+              iframe.style.height = (maxH + 25) + 'px';
             }
           } catch (err) {}
         };
 
+        const attach = () => {
+          try {
+            const doc = iframe.contentDocument || (iframe.contentWindow && iframe.contentWindow.document);
+            if (!doc) return;
+
+            updateHeight();
+
+            if (window.ResizeObserver) {
+              const ro = new ResizeObserver(() => updateHeight());
+              if (doc.body) ro.observe(doc.body);
+              if (doc.documentElement) ro.observe(doc.documentElement);
+            }
+
+            if (window.MutationObserver && doc.body) {
+              const mo = new MutationObserver(() => updateHeight());
+              mo.observe(doc.body, { childList: true, subtree: true, attributes: true });
+            }
+
+            const imgs = doc.querySelectorAll('img');
+            imgs.forEach(img => {
+              if (!img.complete) {
+                img.addEventListener('load', updateHeight);
+                img.addEventListener('error', updateHeight);
+              }
+            });
+          } catch(e) {}
+        };
+
         try {
           iframe.addEventListener('load', () => {
-            updateHeight();
-            setTimeout(updateHeight, 150);
+            attach();
+            setTimeout(updateHeight, 50);
+            setTimeout(updateHeight, 200);
             setTimeout(updateHeight, 500);
-            setTimeout(updateHeight, 1200);
-            setTimeout(updateHeight, 2500);
-            try {
-              const doc = iframe.contentDocument || (iframe.contentWindow && iframe.contentWindow.document);
-              if (doc && window.ResizeObserver) {
-                const ro = new ResizeObserver(() => updateHeight());
-                if (doc.body) ro.observe(doc.body);
-              }
-            } catch(e) {}
+            setTimeout(updateHeight, 1000);
+            setTimeout(updateHeight, 2000);
+            setTimeout(updateHeight, 3500);
           });
         } catch(e) {}
 
-        updateHeight();
+        attach();
+        setTimeout(updateHeight, 50);
         setTimeout(updateHeight, 200);
         setTimeout(updateHeight, 600);
+        setTimeout(updateHeight, 1500);
       },
 
       bindTrackableLink(link, isInsideIframe = false) {
@@ -2537,12 +2570,12 @@ const QuizTemplateEngine = {
 
             if (block.iframeUrl && block.iframeUrl.trim() !== '') {
               bHtml += '<div class=\"custom-html-container ' + fullClass + '\">';
-              bHtml += '<iframe src=\"' + this.escapeHtml(block.iframeUrl.trim()) + '\" scrolling=\"no\" style=\"width:100%; height:' + height + '; border:none; border-radius:12px; display:block; background:#fff; overflow:hidden;\" sandbox=\"allow-scripts allow-same-origin allow-forms allow-popups allow-modals\" loading=\"lazy\"></iframe>';
+              bHtml += '<iframe src=\"' + this.escapeHtml(block.iframeUrl.trim()) + '\" style=\"width:100%; min-height:' + height + '; border:none; border-radius:12px; display:block; background:transparent;\" sandbox=\"allow-scripts allow-same-origin allow-forms allow-popups allow-modals\" loading=\"lazy\"></iframe>';
               bHtml += '</div>';
             } else if (block.customHtml && block.customHtml.trim() !== '') {
               if (isIframe) {
                 bHtml += '<div class=\"custom-html-container ' + fullClass + '\">';
-                bHtml += '<iframe id=\"quiz-html-frame-' + bIdx + '\" srcdoc=\"' + this.escapeSrcdoc(block.customHtml) + '\" scrolling=\"no\" style=\"width:100%; height:' + height + '; border:none; border-radius:12px; display:block; background:#fff; overflow:hidden;\" sandbox=\"allow-scripts allow-same-origin allow-forms allow-popups allow-modals\" loading=\"lazy\"></iframe>';
+                bHtml += '<iframe id=\"quiz-html-frame-' + bIdx + '\" srcdoc=\"' + this.escapeSrcdoc(block.customHtml) + '\" style=\"width:100%; min-height:' + height + '; border:none; border-radius:12px; display:block; background:transparent;\" sandbox=\"allow-scripts allow-same-origin allow-forms allow-popups allow-modals\" loading=\"lazy\"></iframe>';
                 bHtml += '</div>';
               } else {
                 bHtml += '<div class=\"custom-html-container ' + fullClass + '\">' + block.customHtml + '</div>';

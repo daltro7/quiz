@@ -2035,14 +2035,9 @@ const App = {
         else cardEl.classList.remove('card-borderless');
       }
 
-      // Garante que iframes de blocos HTML recebam o conteúdo completo no preview e ajustem a altura automaticamente
-      const htmlFrames = contentEl.querySelectorAll('iframe[data-block-idx]');
+      // Garante que iframes de blocos HTML ajustem a altura automaticamente e abram como página completa
+      const htmlFrames = contentEl.querySelectorAll('.custom-html-container iframe');
       htmlFrames.forEach(frame => {
-        const bIdx = parseInt(frame.getAttribute('data-block-idx'), 10);
-        const b = (blocks || [])[bIdx];
-        if (b && b.customHtml) {
-          frame.srcdoc = b.customHtml;
-        }
         this.setupIframeAutoResize(frame);
       });
 
@@ -2301,52 +2296,87 @@ const App = {
 
   setupIframeAutoResize(iframe) {
     if (!iframe) return;
-    iframe.setAttribute('scrolling', 'no');
-    iframe.style.overflow = 'hidden';
 
     const updateHeight = () => {
       try {
         const doc = iframe.contentDocument || (iframe.contentWindow && iframe.contentWindow.document);
         if (!doc) return;
-        if (doc.body) {
-          doc.body.style.overflow = 'hidden';
-          doc.body.style.margin = '0';
+        const body = doc.body;
+        const html = doc.documentElement;
+        if (!body && !html) return;
+
+        if (body) {
+          body.style.margin = '0';
         }
-        if (doc.documentElement) {
-          doc.documentElement.style.overflow = 'hidden';
+
+        const measured = [
+          body ? body.scrollHeight : 0,
+          body ? body.offsetHeight : 0,
+          html ? html.scrollHeight : 0,
+          html ? html.offsetHeight : 0
+        ];
+
+        if (body && body.children) {
+          for (let i = 0; i < body.children.length; i++) {
+            const el = body.children[i];
+            if (el && el.offsetHeight) {
+              measured.push(el.offsetTop + el.offsetHeight);
+            }
+          }
         }
-        const scrollHeight = Math.max(
-          doc.body ? doc.body.scrollHeight : 0,
-          doc.body ? doc.body.offsetHeight : 0,
-          doc.documentElement ? doc.documentElement.scrollHeight : 0,
-          doc.documentElement ? doc.documentElement.offsetHeight : 0
-        );
-        if (scrollHeight > 50) {
-          iframe.style.height = (scrollHeight + 15) + 'px';
+
+        const maxH = Math.max(...measured);
+        if (maxH > 40) {
+          iframe.style.height = (maxH + 25) + 'px';
         }
       } catch (err) {}
     };
 
+    const attach = () => {
+      try {
+        const doc = iframe.contentDocument || (iframe.contentWindow && iframe.contentWindow.document);
+        if (!doc) return;
+
+        updateHeight();
+
+        if (window.ResizeObserver) {
+          const ro = new ResizeObserver(() => updateHeight());
+          if (doc.body) ro.observe(doc.body);
+          if (doc.documentElement) ro.observe(doc.documentElement);
+        }
+
+        if (window.MutationObserver && doc.body) {
+          const mo = new MutationObserver(() => updateHeight());
+          mo.observe(doc.body, { childList: true, subtree: true, attributes: true });
+        }
+
+        const imgs = doc.querySelectorAll('img');
+        imgs.forEach(img => {
+          if (!img.complete) {
+            img.addEventListener('load', updateHeight);
+            img.addEventListener('error', updateHeight);
+          }
+        });
+      } catch(e) {}
+    };
+
     try {
       iframe.addEventListener('load', () => {
-        updateHeight();
-        setTimeout(updateHeight, 150);
+        attach();
+        setTimeout(updateHeight, 50);
+        setTimeout(updateHeight, 200);
         setTimeout(updateHeight, 500);
-        setTimeout(updateHeight, 1200);
-        setTimeout(updateHeight, 2500);
-        try {
-          const doc = iframe.contentDocument || (iframe.contentWindow && iframe.contentWindow.document);
-          if (doc && window.ResizeObserver) {
-            const ro = new ResizeObserver(() => updateHeight());
-            if (doc.body) ro.observe(doc.body);
-          }
-        } catch(e) {}
+        setTimeout(updateHeight, 1000);
+        setTimeout(updateHeight, 2000);
+        setTimeout(updateHeight, 3500);
       });
     } catch(e) {}
 
-    updateHeight();
+    attach();
+    setTimeout(updateHeight, 50);
     setTimeout(updateHeight, 200);
     setTimeout(updateHeight, 600);
+    setTimeout(updateHeight, 1500);
   },
 
   preloadVideos(steps) {
