@@ -108,6 +108,83 @@ function sendMetaCapiPurchase(params) {
   }
 }
 
+// ==========================================
+// FUNÇÕES DE TESTE E MENU NA PLANILHA
+// ==========================================
+function onOpen() {
+  try {
+    SpreadsheetApp.getUi()
+      .createMenu('🚀 QuizForge')
+      .addItem('🧪 Testar Conexão com Meta CAPI', 'testarEnvioMetaCapi')
+      .addItem('📤 Enviar Linha Selecionada para a Meta', 'enviarLinhaSelecionadaParaMeta')
+      .addToUi();
+  } catch(e) {}
+}
+
+// Executar esta função no Apps Script para validar o Token da Meta na hora!
+function testarEnvioMetaCapi() {
+  var res = sendMetaCapiPurchase({
+    orderId: 'teste_' + Date.now(),
+    amount: 47.90,
+    productName: 'Teste QuizForge',
+    name: 'Cliente Teste',
+    email: 'cliente.teste@exemplo.com',
+    phone: '11999999999'
+  });
+  Logger.log(JSON.stringify(res));
+  try {
+    SpreadsheetApp.getUi().alert('Resultado do Envio para a Meta:\n\n' + JSON.stringify(res, null, 2));
+  } catch(e) {}
+  return res;
+}
+
+// Permite que qualquer venda colocada manualmente na planilha seja enviada para a Meta!
+function enviarLinhaSelecionadaParaMeta() {
+  var ui = SpreadsheetApp.getUi();
+  var sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
+  var rowIdx = sheet.getActiveCell().getRow();
+  if (rowIdx <= 1) {
+    ui.alert('Selecione uma linha de venda (linha 2 em diante) para enviar à Meta.');
+    return;
+  }
+  var lastCol = sheet.getLastColumn();
+  var headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
+  var rowVals = sheet.getRange(rowIdx, 1, 1, lastCol).getValues()[0];
+  var colMap = {};
+  for (var c = 0; c < headers.length; c++) colMap[String(headers[c] || '').trim().toLowerCase()] = c;
+  function getV(keys) {
+    for (var k = 0; k < keys.length; k++) {
+      var idx = colMap[keys[k].toLowerCase()];
+      if (idx !== undefined && rowVals[idx] !== undefined) return rowVals[idx];
+    }
+    return '';
+  }
+
+  var orderId = String(getV(['sessão (id)', 'sessão', 'sessao']) || ('manual_' + rowIdx));
+  var amount = parseFloat(String(getV(['valor (r$)', 'valor'])).replace(/[^\d,\.]/g, '').replace(',', '.')) || 0;
+  var prodName = String(getV(['quiz / produto', 'produto']) || 'Oferta');
+  var name = String(getV(['nome', 'cliente']) || 'Cliente');
+  var email = String(getV(['email', 'e-mail']) || '');
+  var phone = String(getV(['whatsapp', 'telefone', 'phone']) || '');
+
+  var res = sendMetaCapiPurchase({
+    orderId: orderId,
+    amount: amount,
+    productName: prodName,
+    name: name,
+    email: email,
+    phone: phone
+  });
+
+  // Atualiza a coluna Meta CAPI na planilha
+  var capiColIdx = colMap['meta capi'] || colMap['capi'];
+  if (capiColIdx !== undefined) {
+    sheet.getRange(rowIdx, capiColIdx + 1).setValue(res.success ? 'Enviado (Purchase)' : ('Erro: ' + (res.error || res.code || res.reason)));
+  }
+
+  ui.alert('Status do Envio para Meta:\n\n' + JSON.stringify(res, null, 2));
+}
+
 // 1. LEITURA DOS DADOS (QuizForge ➔ Planilha: Funil, Leads e Vendas)
 function doGet(e) {
   try {
@@ -368,6 +445,7 @@ function doPost(e) {
           sheet.getRange(1, lastCol).setValue(hName).setFontWeight('bold').setBackground('#e2e8f0');
         }
       }
+      SpreadsheetApp.flush();
     }
 
     var raw = (e.postData && e.postData.contents) ? e.postData.contents : '';

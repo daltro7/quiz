@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
@@ -1009,6 +1009,83 @@ function sendMetaCapiPurchase(params) {
   }
 }
 
+// ==========================================
+// FUNÇÕES DE TESTE E MENU NA PLANILHA
+// ==========================================
+function onOpen() {
+  try {
+    SpreadsheetApp.getUi()
+      .createMenu(&apos;🚀 QuizForge&apos;)
+      .addItem(&apos;🧪 Testar Conexão com Meta CAPI&apos;, &apos;testarEnvioMetaCapi&apos;)
+      .addItem(&apos;📤 Enviar Linha Selecionada para a Meta&apos;, &apos;enviarLinhaSelecionadaParaMeta&apos;)
+      .addToUi();
+  } catch(e) {}
+}
+
+// Executar esta função no Apps Script para validar o Token da Meta na hora!
+function testarEnvioMetaCapi() {
+  var res = sendMetaCapiPurchase({
+    orderId: &apos;teste_&apos; + Date.now(),
+    amount: 47.90,
+    productName: &apos;Teste QuizForge&apos;,
+    name: &apos;Cliente Teste&apos;,
+    email: &apos;cliente.teste@exemplo.com&apos;,
+    phone: &apos;11999999999&apos;
+  });
+  Logger.log(JSON.stringify(res));
+  try {
+    SpreadsheetApp.getUi().alert(&apos;Resultado do Envio para a Meta:\n\n&apos; + JSON.stringify(res, null, 2));
+  } catch(e) {}
+  return res;
+}
+
+// Permite que qualquer venda colocada manualmente na planilha seja enviada para a Meta!
+function enviarLinhaSelecionadaParaMeta() {
+  var ui = SpreadsheetApp.getUi();
+  var sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
+  var rowIdx = sheet.getActiveCell().getRow();
+  if (rowIdx &lt;= 1) {
+    ui.alert(&apos;Selecione uma linha de venda (linha 2 em diante) para enviar à Meta.&apos;);
+    return;
+  }
+  var lastCol = sheet.getLastColumn();
+  var headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
+  var rowVals = sheet.getRange(rowIdx, 1, 1, lastCol).getValues()[0];
+  var colMap = {};
+  for (var c = 0; c &lt; headers.length; c++) colMap[String(headers[c] || &apos;&apos;).trim().toLowerCase()] = c;
+  function getV(keys) {
+    for (var k = 0; k &lt; keys.length; k++) {
+      var idx = colMap[keys[k].toLowerCase()];
+      if (idx !== undefined &amp;&amp; rowVals[idx] !== undefined) return rowVals[idx];
+    }
+    return &apos;&apos;;
+  }
+
+  var orderId = String(getV([&apos;sessão (id)&apos;, &apos;sessão&apos;, &apos;sessao&apos;]) || (&apos;manual_&apos; + rowIdx));
+  var amount = parseFloat(String(getV([&apos;valor (r$)&apos;, &apos;valor&apos;])).replace(/[^\d,\.]/g, &apos;&apos;).replace(&apos;,&apos;, &apos;.&apos;)) || 0;
+  var prodName = String(getV([&apos;quiz / produto&apos;, &apos;produto&apos;]) || &apos;Oferta&apos;);
+  var name = String(getV([&apos;nome&apos;, &apos;cliente&apos;]) || &apos;Cliente&apos;);
+  var email = String(getV([&apos;email&apos;, &apos;e-mail&apos;]) || &apos;&apos;);
+  var phone = String(getV([&apos;whatsapp&apos;, &apos;telefone&apos;, &apos;phone&apos;]) || &apos;&apos;);
+
+  var res = sendMetaCapiPurchase({
+    orderId: orderId,
+    amount: amount,
+    productName: prodName,
+    name: name,
+    email: email,
+    phone: phone
+  });
+
+  // Atualiza a coluna Meta CAPI na planilha
+  var capiColIdx = colMap[&apos;meta capi&apos;] || colMap[&apos;capi&apos;];
+  if (capiColIdx !== undefined) {
+    sheet.getRange(rowIdx, capiColIdx + 1).setValue(res.success ? &apos;Enviado (Purchase)&apos; : (&apos;Erro: &apos; + (res.error || res.code || res.reason)));
+  }
+
+  ui.alert(&apos;Status do Envio para Meta:\n\n&apos; + JSON.stringify(res, null, 2));
+}
+
 // 1. LEITURA DOS DADOS (QuizForge ➔ Planilha: Funil, Leads e Vendas)
 function doGet(e) {
   try {
@@ -1269,6 +1346,7 @@ function doPost(e) {
           sheet.getRange(1, lastCol).setValue(hName).setFontWeight(&apos;bold&apos;).setBackground(&apos;#e2e8f0&apos;);
         }
       }
+      SpreadsheetApp.flush();
     }
 
     var raw = (e.postData &amp;&amp; e.postData.contents) ? e.postData.contents : &apos;&apos;;
