@@ -109,8 +109,15 @@ function sendMetaCapiPurchase(params) {
 }
 
 // ==========================================
-// FUNÇÕES DE TESTE E MENU NA PLANILHA
+// FUNÇÕES DE AUTORIZAÇÃO E TESTE NO APPS SCRIPT
 // ==========================================
+
+// Execute esta função UMA VEZ no Apps Script se o Google pedir permissão de rede (script.external_request)
+function autorizarPermissoes() {
+  SpreadsheetApp.getActiveSpreadsheet();
+  UrlFetchApp.fetch("https://graph.facebook.com");
+}
+
 function onOpen() {
   try {
     SpreadsheetApp.getUi()
