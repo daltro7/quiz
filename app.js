@@ -570,6 +570,31 @@ const App = {
       blockBadge = '<span class="text-sky-400 font-bold text-xs flex items-center gap-1.5"><span>🖼️</span> Imagem / Banner</span>';
       blockBody = `
         <div class="space-y-3 pt-1">
+          <!-- Título Opcional da Imagem -->
+          <div>
+            <label class="block text-[10px] font-bold text-slate-400 mb-1">Título da Imagem (Opcional)</label>
+            <input type="text" value="${this.escape(block.title || '')}" oninput="App.updateBlockProp(${stepIdx}, ${bIdx}, 'title', this.value)" placeholder="Ex: Veja o resultado abaixo..." class="w-full bg-slate-900 border border-slate-700 px-2.5 py-1.5 rounded-lg text-xs text-white">
+          </div>
+
+          <!-- Opções do Título: Escala de Tamanho e Cor -->
+          <div class="flex flex-wrap items-center gap-3 bg-slate-900/80 p-2.5 rounded-xl border border-slate-800 text-xs">
+            <div class="flex items-center gap-1.5">
+              <span class="text-[10px] font-bold text-slate-400">Tam. Título:</span>
+              <select onchange="App.updateBlockProp(${stepIdx}, ${bIdx}, 'titleSize', this.value)" class="bg-slate-800 border border-slate-700 px-2 py-1 rounded text-xs text-white">
+                <option value="sm" ${block.titleSize === 'sm' ? 'selected' : ''}>Pequeno (16px)</option>
+                <option value="md" ${!block.titleSize || block.titleSize === 'md' ? 'selected' : ''}>Médio (20px)</option>
+                <option value="lg" ${block.titleSize === 'lg' ? 'selected' : ''}>Grande (24px)</option>
+                <option value="xl" ${block.titleSize === 'xl' ? 'selected' : ''}>Extra (28px)</option>
+              </select>
+            </div>
+
+            <div class="flex items-center gap-1.5">
+              <span class="text-[10px] font-bold text-slate-400">Cor do Título:</span>
+              <input type="color" value="${block.titleColor || block.textColor || '#ffffff'}" onchange="App.updateBlockProp(${stepIdx}, ${bIdx}, 'titleColor', this.value)" class="w-6 h-6 rounded cursor-pointer bg-transparent border-0" title="Cor individual deste título">
+              ${(block.titleColor || block.textColor) ? `<button type="button" onclick="App.updateBlockProp(${stepIdx}, ${bIdx}, 'titleColor', ''); App.updateBlockProp(${stepIdx}, ${bIdx}, 'textColor', '');" class="text-[10px] text-red-400 hover:underline" title="Restaurar cor padrão">reset</button>` : ''}
+            </div>
+          </div>
+
           <div>
             <label class="block text-[10px] font-bold text-slate-400 mb-1">URL da Imagem (Link Externo HTTPS)</label>
             <input type="url" value="${this.escape(block.imageUrl || '')}" oninput="App.updateBlockProp(${stepIdx}, ${bIdx}, 'imageUrl', this.value)" placeholder="https://exemplo.com/foto.jpg ou .png, .webp" class="w-full bg-slate-900 border border-slate-700 px-2.5 py-1.5 rounded-lg text-xs text-white">
@@ -1189,6 +1214,9 @@ const App = {
       newBlock.titleSize = 'md';
       newBlock.subtitleSize = 'sm';
     } else if (blockType === 'image') {
+      newBlock.title = '';
+      newBlock.titleSize = 'md';
+      newBlock.titleColor = '';
       newBlock.imageUrl = 'https://images.unsplash.com/photo-1579546929518-9e396f3cc809?w=600&auto=format&fit=crop&q=80';
       newBlock.altText = 'Imagem Ilustrativa';
       newBlock.caption = '';
@@ -1284,6 +1312,10 @@ const App = {
     if (!this.currentQuiz || !this.currentQuiz.steps[stepIdx]) return;
     const step = this.currentQuiz.steps[stepIdx];
     if (!step.blocks || !step.blocks[bIdx]) return;
+
+    if (prop === 'customHtml' && typeof value === 'string' && typeof QuizTemplateEngine !== 'undefined') {
+      value = QuizTemplateEngine.sanitizeCustomHtml(value);
+    }
 
     step.blocks[bIdx][prop] = value;
     this.currentQuiz.updatedAt = new Date().toISOString();

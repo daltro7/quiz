@@ -5,13 +5,51 @@
  */
 
 const QuizTemplateEngine = {
+  // Sanitiza HTML customizado para remover snippets do Pixel (evitando PageView duplicado no iframe)
+  // e neutralizar disparos de InitiateCheckout (que já são geridos pela plataforma/gateway)
+  sanitizeCustomHtml(rawHtml) {
+    if (!rawHtml || typeof rawHtml !== 'string') return rawHtml;
+    let html = rawHtml;
+
+    // 1. Remove tags <script> com o snippet ou carregamento do Facebook/Meta Pixel
+    html = html.replace(/<script\b[^>]*>([\s\S]*?)<\/script>/gi, (match, body) => {
+      if (/connect\.facebook\.net/i.test(match) || /fbq\s*\(\s*['"]init['"]/i.test(body)) {
+        return '<!-- [QuizForge] Meta Pixel snippet removido para evitar duplicidade de PageView -->';
+      }
+      return match;
+    });
+
+    // 2. Remove tags <noscript> de rastreamento do Pixel
+    html = html.replace(/<noscript\b[^>]*>[\s\S]*?facebook\.com\/tr[\s\S]*?<\/noscript>/gi, '<!-- [QuizForge] Meta Pixel noscript removido -->');
+
+    // 3. Neutraliza chamadas diretas de fbq('init', ...)
+    html = html.replace(/fbq\s*\(\s*['"]init['"][^)]*\);?/gi, '/* [QuizForge] fbq init bloqueado */');
+
+    // 4. Neutraliza chamadas de PageView dentro do HTML customizado / iframe
+    html = html.replace(/fbq\s*\(\s*['"]track['"]\s*,\s*['"]PageView['"][^)]*\);?/gi, '/* [QuizForge] PageView duplicado bloqueado */');
+
+    // 5. Neutraliza disparos de InitiateCheckout dentro do HTML customizado / iframe
+    html = html.replace(/fbq\s*\(\s*['"]track['"]\s*,\s*['"]InitiateCheckout['"][^)]*\);?/gi, '/* [QuizForge] InitiateCheckout bloqueado */');
+
+    return html;
+  },
+
   // Converte etapa antiga para a nova estrutura de blocos se necessário
   normalizeStep(step) {
     if (!step) return { id: 'step_' + Date.now(), title: 'Nova Etapa', blocks: [] };
+    if (step.customHtml) {
+      step.customHtml = this.sanitizeCustomHtml(step.customHtml);
+    }
     if (Array.isArray(step.blocks)) {
       // Garante que cada bloco tenha propriedades consistentes
       step.blocks.forEach(b => {
         if (b.delaySeconds === undefined) b.delaySeconds = 0;
+        if (b.type === 'html' && b.customHtml) {
+          b.customHtml = this.sanitizeCustomHtml(b.customHtml);
+        }
+        if (b.type === 'image') {
+          if (!b.titleSize) b.titleSize = 'md';
+        }
         if (b.type === 'fake_loader') {
           if (!b.duration) b.duration = 4;
           if (!b.messages) b.messages = 'Analisando suas respostas...\nCruzando com nosso banco de dados...\nCalculando seu perfil ideal...\nDiagnóstico pronto!';
@@ -349,6 +387,14 @@ const QuizTemplateEngine = {
     ${scope} .quiz-image-small img { max-width: 180px; }
     ${scope} .quiz-image-medium img { max-width: 360px; }
     ${scope} .quiz-image-full img { width: 100%; }
+
+    ${scope} .quiz-image-title {
+      margin-bottom: 8px;
+      font-weight: 700;
+      line-height: 1.3;
+      width: 100%;
+      word-break: break-word;
+    }
 
     ${scope} .quiz-image-caption {
       margin-top: 6px;
@@ -1116,9 +1162,15 @@ const QuizTemplateEngine = {
       else if (block.type === 'image') {
         const align = block.align || 'center';
         const size = block.imageSize || 'medium';
+        const titleSize = block.titleSize || 'md';
+        const titleColor = block.titleColor || block.textColor || '';
+        const titleStyle = titleColor ? `style="color: ${titleColor};"` : '';
         blockHtml += `<div class="quiz-image-card align-${align} quiz-image-${size}">`;
+        if (block.title) {
+          blockHtml += `<h3 class="quiz-image-title title-${titleSize}" ${titleStyle}>${this.escapeHtml(block.title)}</h3>`;
+        }
         if (block.imageUrl) {
-          blockHtml += `<img src="${this.escapeHtml(block.imageUrl)}" alt="${this.escapeHtml(block.altText || '')}" loading="lazy">`;
+          blockHtml += `<img src="${this.escapeHtml(block.imageUrl)}" alt="${this.escapeHtml(block.altText || block.title || '')}" loading="lazy">`;
         }
         if (block.caption) {
           blockHtml += `<p class="quiz-image-caption">${this.escapeHtml(block.caption)}</p>`;
@@ -1173,13 +1225,14 @@ const QuizTemplateEngine = {
           blockHtml += `<iframe src="${this.escapeHtml(block.iframeUrl)}" scrolling="no" style="width:100%; height:${height}; border:none; border-radius:12px; display:block; background:#fff; overflow:hidden;" sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-modals" loading="lazy"></iframe>`;
           blockHtml += '</div>';
         } else if (block.customHtml && block.customHtml.trim() !== '') {
+          const safeHtml = this.sanitizeCustomHtml(block.customHtml);
           if (isIframe) {
             const frameId = (isPreview ? 'preview-html-frame-' : 'quiz-html-frame-') + bIdx;
             blockHtml += `<div class="custom-html-container ${fullClass}">`;
-            blockHtml += `<iframe id="${frameId}" data-block-idx="${bIdx}" srcdoc="${this.escapeSrcdoc(block.customHtml)}" scrolling="no" style="width:100%; height:${height}; border:none; border-radius:12px; display:block; background:#fff; overflow:hidden;" sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-modals" loading="lazy"></iframe>`;
+            blockHtml += `<iframe id="${frameId}" data-block-idx="${bIdx}" srcdoc="${this.escapeSrcdoc(safeHtml)}" scrolling="no" style="width:100%; height:${height}; border:none; border-radius:12px; display:block; background:#fff; overflow:hidden;" sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-modals" loading="lazy"></iframe>`;
             blockHtml += '</div>';
           } else {
-            blockHtml += `<div class="custom-html-container ${fullClass}">${block.customHtml}</div>`;
+            blockHtml += `<div class="custom-html-container ${fullClass}">${safeHtml}</div>`;
           }
         }
       }
@@ -1548,16 +1601,27 @@ const QuizTemplateEngine = {
 
       injectUtmsIntoHtmlString(rawHtml) {
         if (!rawHtml || typeof rawHtml !== 'string') return rawHtml;
-        // Neutraliza disparos de InitiateCheckout dentro do HTML customizado para evitar duplicidade na Meta
-        let cleaned = rawHtml.replace(/fbq\s*\(\s*['"]track['"]\s*,\s*['"]InitiateCheckout['"]\s*\)/gi, '/* InitiateCheckout bloqueado */');
+
+        // Neutraliza snippets e eventos duplicados do Facebook/Meta Pixel (PageView e InitiateCheckout)
+        let cleaned = rawHtml
+          .replace(/<script\\b[^>]*>([\\s\\S]*?)<\\/script>/gi, function(match, body) {
+            if (/connect\\.facebook\\.net/i.test(match) || /fbq\\s*\\(\\s*['"]init['"]/i.test(body)) {
+              return '<!-- [QuizForge] Meta Pixel snippet removido para evitar duplicidade de PageView -->';
+            }
+            return match;
+          })
+          .replace(/<noscript\\b[^>]*>[\\s\\S]*?facebook\\.com\\/tr[\\s\\S]*?<\\/noscript>/gi, '<!-- [QuizForge] Meta Pixel noscript removido -->')
+          .replace(/fbq\\s*\\(\\s*['"]init['"][^)]*\\);?/gi, '/* [QuizForge] fbq init bloqueado */')
+          .replace(/fbq\\s*\\(\\s*['"]track['"]\\s*,\\s*['"]PageView['"][^)]*\\);?/gi, '/* [QuizForge] PageView duplicado bloqueado */')
+          .replace(/fbq\\s*\\(\\s*['"]track['"]\\s*,\\s*['"]InitiateCheckout['"][^)]*\\);?/gi, '/* [QuizForge] InitiateCheckout bloqueado */');
 
         const utms = this.utmParams || {};
         if (Object.keys(utms).length === 0) return cleaned;
         try {
-          const aRegex = new RegExp('href=[\\x22\\x27](https?:\\/\\/[^\\x22\\x27]+)[\\x22\\x27]', 'gi');
+          const aRegex = /href=["'](https?:\\/\\/[^"']+)["']/gi;
           return cleaned.replace(aRegex, (match, url) => {
             const updated = this.appendUtmsToUrl(url);
-            return 'href=' + String.fromCharCode(34) + updated + String.fromCharCode(34);
+            return 'href=\"' + updated + '\"';
           });
         } catch(e) {
           return cleaned;
@@ -1920,9 +1984,15 @@ const QuizTemplateEngine = {
           else if (block.type === 'image') {
             const align = block.align || 'center';
             const size = block.imageSize || 'medium';
+            const titleSize = block.titleSize || 'md';
+            const titleColor = block.titleColor || block.textColor || '';
+            const titleStyle = titleColor ? 'style=\"color: ' + titleColor + ';\"' : '';
             bHtml += '<div class=\"quiz-image-card align-' + align + ' quiz-image-' + size + '\">';
+            if (block.title) {
+              bHtml += '<h3 class=\"quiz-image-title title-' + titleSize + '\" ' + titleStyle + '>' + this.escapeHtml(block.title) + '</h3>';
+            }
             if (block.imageUrl) {
-              bHtml += '<img src=\"' + this.escapeHtml(block.imageUrl) + '\" alt=\"' + this.escapeHtml(block.altText || '') + '\" loading=\"lazy\">';
+              bHtml += '<img src=\"' + this.escapeHtml(block.imageUrl) + '\" alt=\"' + this.escapeHtml(block.altText || block.title || '') + '\" loading=\"lazy\">';
             }
             if (block.caption) {
               bHtml += '<p class=\"quiz-image-caption\">' + this.escapeHtml(block.caption) + '</p>';
