@@ -1510,10 +1510,6 @@ const App = {
     const step = this.currentQuiz.steps[stepIdx];
     if (!step.blocks || !step.blocks[bIdx]) return;
 
-    if (prop === 'customHtml' && typeof value === 'string' && typeof QuizTemplateEngine !== 'undefined') {
-      value = QuizTemplateEngine.sanitizeCustomHtml(value);
-    }
-
     step.blocks[bIdx][prop] = value;
     this.currentQuiz.updatedAt = new Date().toISOString();
     this.saveQuizzesToStorage();

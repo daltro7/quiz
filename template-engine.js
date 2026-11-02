@@ -5,53 +5,18 @@
  */
 
 const QuizTemplateEngine = {
-  // Sanitiza HTML customizado para remover snippets do Pixel (evitando PageView duplicado no iframe)
-  // e neutralizar disparos de InitiateCheckout (que já são geridos pela plataforma/gateway)
+  // Retorna o HTML customizado sem alterações
   sanitizeCustomHtml(rawHtml) {
-    if (!rawHtml || typeof rawHtml !== 'string') return rawHtml;
-    let html = rawHtml;
-
-    // 1. Remove tags <script> com o snippet ou carregamento do Facebook/Meta Pixel
-    html = html.replace(/<script\b[^>]*>([\s\S]*?)<\/script>/gi, (match, body) => {
-      if (/connect\.facebook\.net/i.test(match) || /fbq\s*\(\s*['"]init['"]/i.test(body)) {
-        return '<!-- [QuizForge] Meta Pixel snippet removido para evitar duplicidade de PageView -->';
-      }
-      return match;
-    });
-
-    // 2. Remove apenas a tag <noscript> específica do Pixel da Meta (sem apagar outras como fontes ou estilos)
-    html = html.replace(/<noscript\b[^>]*>([\s\S]*?)<\/noscript>/gi, (match, body) => {
-      if (/facebook\.com\/tr/i.test(body) || /fbq/i.test(body)) {
-        return '<!-- [QuizForge] Meta Pixel noscript removido -->';
-      }
-      return match;
-    });
-
-    // 3. Neutraliza chamadas diretas de fbq('init', ...)
-    html = html.replace(/fbq\s*\(\s*['"]init['"][^)]*\);?/gi, '/* [QuizForge] fbq init bloqueado */');
-
-    // 4. Neutraliza chamadas de PageView dentro do HTML customizado / iframe
-    html = html.replace(/fbq\s*\(\s*['"]track['"]\s*,\s*['"]PageView['"][^)]*\);?/gi, '/* [QuizForge] PageView duplicado bloqueado */');
-
-    // 5. Neutraliza disparos de InitiateCheckout dentro do HTML customizado / iframe
-    html = html.replace(/fbq\s*\(\s*['"]track['"]\s*,\s*['"]InitiateCheckout['"][^)]*\);?/gi, '/* [QuizForge] InitiateCheckout bloqueado */');
-
-    return html;
+    return rawHtml;
   },
 
   // Converte etapa antiga para a nova estrutura de blocos se necessário
   normalizeStep(step) {
     if (!step) return { id: 'step_' + Date.now(), title: 'Nova Etapa', blocks: [] };
-    if (step.customHtml) {
-      step.customHtml = this.sanitizeCustomHtml(step.customHtml);
-    }
     if (Array.isArray(step.blocks)) {
       // Garante que cada bloco tenha propriedades consistentes
       step.blocks.forEach(b => {
         if (b.delaySeconds === undefined) b.delaySeconds = 0;
-        if (b.type === 'html' && b.customHtml) {
-          b.customHtml = this.sanitizeCustomHtml(b.customHtml);
-        }
         if (b.type === 'image') {
           if (!b.titleSize) b.titleSize = 'md';
         }
@@ -1830,14 +1795,13 @@ const QuizTemplateEngine = {
           blockHtml += `<iframe src="${this.escapeHtml(block.iframeUrl)}" scrolling="no" style="width:100%; height:${height}; border:none; border-radius:12px; display:block; background:#fff; overflow:hidden;" sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-modals" loading="lazy"></iframe>`;
           blockHtml += '</div>';
         } else if (block.customHtml && block.customHtml.trim() !== '') {
-          const safeHtml = this.sanitizeCustomHtml(block.customHtml);
           if (isIframe) {
             const frameId = (isPreview ? 'preview-html-frame-' : 'quiz-html-frame-') + bIdx;
             blockHtml += `<div class="custom-html-container ${fullClass}">`;
-            blockHtml += `<iframe id="${frameId}" data-block-idx="${bIdx}" srcdoc="${this.escapeSrcdoc(safeHtml)}" scrolling="no" style="width:100%; height:${height}; border:none; border-radius:12px; display:block; background:#fff; overflow:hidden;" sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-modals" loading="lazy"></iframe>`;
+            blockHtml += `<iframe id="${frameId}" srcdoc="${this.escapeSrcdoc(block.customHtml)}" scrolling="no" style="width:100%; height:${height}; border:none; border-radius:12px; display:block; background:#fff; overflow:hidden;" sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-modals" loading="lazy"></iframe>`;
             blockHtml += '</div>';
           } else {
-            blockHtml += `<div class="custom-html-container ${fullClass}">${safeHtml}</div>`;
+            blockHtml += `<div class="custom-html-container ${fullClass}">${block.customHtml}</div>`;
           }
         }
       }
@@ -2182,37 +2146,7 @@ const QuizTemplateEngine = {
       },
 
       injectUtmsIntoHtmlString(rawHtml) {
-        if (!rawHtml || typeof rawHtml !== 'string') return rawHtml;
-
-        // Neutraliza snippets e eventos duplicados do Facebook/Meta Pixel (PageView e InitiateCheckout)
-        let cleaned = rawHtml
-          .replace(/<script\\b[^>]*>([\\s\\S]*?)<\\/script>/gi, function(match, body) {
-            if (/connect\\.facebook\\.net/i.test(match) || /fbq\\s*\\(\\s*['"]init['"]/i.test(body)) {
-              return '<!-- [QuizForge] Meta Pixel snippet removido para evitar duplicidade de PageView -->';
-            }
-            return match;
-          })
-          .replace(/<noscript\\b[^>]*>([\\s\\S]*?)<\\/noscript>/gi, function(match, body) {
-            if (/facebook\\.com\\/tr/i.test(body) || /fbq/i.test(body)) {
-              return '<!-- [QuizForge] Meta Pixel noscript removido -->';
-            }
-            return match;
-          })
-          .replace(/fbq\\s*\\(\\s*['"]init['"][^)]*\\);?/gi, '/* [QuizForge] fbq init bloqueado */')
-          .replace(/fbq\\s*\\(\\s*['"]track['"]\\s*,\\s*['"]PageView['"][^)]*\\);?/gi, '/* [QuizForge] PageView duplicado bloqueado */')
-          .replace(/fbq\\s*\\(\\s*['"]track['"]\\s*,\\s*['"]InitiateCheckout['"][^)]*\\);?/gi, '/* [QuizForge] InitiateCheckout bloqueado */');
-
-        const utms = this.utmParams || {};
-        if (Object.keys(utms).length === 0) return cleaned;
-        try {
-          const aRegex = /href=["'](https?:\\/\\/[^"']+)["']/gi;
-          return cleaned.replace(aRegex, (match, url) => {
-            const updated = this.appendUtmsToUrl(url);
-            return 'href=\"' + updated + '\"';
-          });
-        } catch(e) {
-          return cleaned;
-        }
+        return rawHtml;
       },
 
       applyUtmsToLinks() {
@@ -2222,7 +2156,6 @@ const QuizTemplateEngine = {
           '.plan-cta-btn[href]',
           '.pricing-plans-grid a[href]',
           '.offer-container a[href]',
-          '.custom-html-container a[href]',
           'a[href*="kirvano.com"]',
           'a[href*="perfectpay.com.br"]',
           'a[href*="kiwify.com.br"]',
@@ -2237,23 +2170,10 @@ const QuizTemplateEngine = {
           this.bindTrackableLink(link);
         });
 
-        // Inspeciona e ajusta iframes na página (auto-resize para evitar rolagem interna dupla e injetar UTMs)
+        // Inspeciona e ajusta iframes na página (apenas auto-resize de altura, sem alterar links nem capturar cliques internos)
         const iframes = document.querySelectorAll('.custom-html-container iframe');
         iframes.forEach(iframe => {
           this.setupIframeAutoResize(iframe);
-          const bindFrame = () => {
-            try {
-              const doc = iframe.contentDocument || (iframe.contentWindow && iframe.contentWindow.document);
-              if (doc) {
-                const fLinks = doc.querySelectorAll('a[href]');
-                fLinks.forEach(fLink => {
-                  this.bindTrackableLink(fLink, true);
-                });
-              }
-            } catch(e) {}
-          };
-          bindFrame();
-          try { iframe.addEventListener('load', bindFrame); } catch(e) {}
         });
       },
 
@@ -2433,14 +2353,9 @@ const QuizTemplateEngine = {
         // Renderiza conteúdo
         container.innerHTML = this.renderStepHtml(step);
 
-        // Garante que iframes de blocos HTML carreguem seu documento isolado e ajustem a altura
-        const htmlFrames = container.querySelectorAll('iframe[data-block-idx]');
+        // Ajusta a altura dos iframes na etapa
+        const htmlFrames = container.querySelectorAll('.custom-html-container iframe');
         htmlFrames.forEach(frame => {
-          const bIdx = parseInt(frame.getAttribute('data-block-idx'), 10);
-          const b = (step.blocks || [])[bIdx];
-          if (b && b.customHtml) {
-            frame.srcdoc = this.injectUtmsIntoHtmlString(b.customHtml);
-          }
           this.setupIframeAutoResize(frame);
         });
 
@@ -2621,18 +2536,16 @@ const QuizTemplateEngine = {
             const isIframe = block.iframeUrl || block.htmlMode === 'iframe' || (block.htmlMode !== 'inline' && this.isFullHtmlDoc(block.customHtml));
 
             if (block.iframeUrl && block.iframeUrl.trim() !== '') {
-              const finalIframeUrl = this.appendUtmsToUrl(block.iframeUrl.trim());
               bHtml += '<div class=\"custom-html-container ' + fullClass + '\">';
-              bHtml += '<iframe src=\"' + this.escapeHtml(finalIframeUrl) + '\" scrolling=\"no\" style=\"width:100%; height:' + height + '; border:none; border-radius:12px; display:block; background:#fff; overflow:hidden;\" sandbox=\"allow-scripts allow-same-origin allow-forms allow-popups allow-modals\" loading=\"lazy\"></iframe>';
+              bHtml += '<iframe src=\"' + this.escapeHtml(block.iframeUrl.trim()) + '\" scrolling=\"no\" style=\"width:100%; height:' + height + '; border:none; border-radius:12px; display:block; background:#fff; overflow:hidden;\" sandbox=\"allow-scripts allow-same-origin allow-forms allow-popups allow-modals\" loading=\"lazy\"></iframe>';
               bHtml += '</div>';
             } else if (block.customHtml && block.customHtml.trim() !== '') {
-              const processedHtml = this.injectUtmsIntoHtmlString(block.customHtml);
               if (isIframe) {
                 bHtml += '<div class=\"custom-html-container ' + fullClass + '\">';
-                bHtml += '<iframe id=\"quiz-html-frame-' + bIdx + '\" data-block-idx=\"' + bIdx + '\" srcdoc=\"' + this.escapeSrcdoc(processedHtml) + '\" scrolling=\"no\" style=\"width:100%; height:' + height + '; border:none; border-radius:12px; display:block; background:#fff; overflow:hidden;\" sandbox=\"allow-scripts allow-same-origin allow-forms allow-popups allow-modals\" loading=\"lazy\"></iframe>';
+                bHtml += '<iframe id=\"quiz-html-frame-' + bIdx + '\" srcdoc=\"' + this.escapeSrcdoc(block.customHtml) + '\" scrolling=\"no\" style=\"width:100%; height:' + height + '; border:none; border-radius:12px; display:block; background:#fff; overflow:hidden;\" sandbox=\"allow-scripts allow-same-origin allow-forms allow-popups allow-modals\" loading=\"lazy\"></iframe>';
                 bHtml += '</div>';
               } else {
-                bHtml += '<div class=\"custom-html-container ' + fullClass + '\">' + processedHtml + '</div>';
+                bHtml += '<div class=\"custom-html-container ' + fullClass + '\">' + block.customHtml + '</div>';
               }
             }
           }
