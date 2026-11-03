@@ -297,4 +297,50 @@ textarea.quiz-textarea {
   animation: qfStepHighlight 1.4s ease-out forwards;
 }
 
+/* ========================================================
+   BARRA FLUTUANTE DE NAVEGAÇÃO ENTRE ETAPAS (DOCK ISLAND)
+   Permanece 100% visível e acessível em qualquer rolagem
+   ======================================================== */
+.qf-floating-dock {
+  position: fixed !important;
+  bottom: 1.25rem !important;
+  left: 1rem !important;
+  z-index: 45 !important;
+  max-width: calc(100vw - 2rem) !important;
+  background: rgba(15, 23, 42, 0.94) !important;
+  backdrop-filter: blur(16px) !important;
+  -webkit-backdrop-filter: blur(16px) !important;
+  border: 1px solid rgba(99, 102, 241, 0.45) !important;
+  box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.85), 0 0 0 1px rgba(255, 255, 255, 0.08) !important;
+  border-radius: 1.125rem !important;
+  padding: 0.45rem 0.65rem !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 0.5rem !important;
+  transition: all 0.25s ease-out !important;
+}
+
+@media (min-width: 768px) {
+  .qf-floating-dock {
+    left: 1.75rem !important;
+    max-width: 53vw !important;
+  }
+}
+
+@media (min-width: 1024px) {
+  .qf-floating-dock {
+    max-width: 55vw !important;
+  }
+}
+
+.qf-floating-dock .qf-steps-scroll {
+  scrollbar-width: none !important;
+  -ms-overflow-style: none !important;
+}
+
+.qf-floating-dock .qf-steps-scroll::-webkit-scrollbar {
+  display: none !important;
+}
+
+
 

@@ -52,7 +52,7 @@
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
   
   <!-- Estilos Customizados -->
-  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="styles.css?v=3.9.4">
 
   <style>
     body {
@@ -271,8 +271,8 @@
               </div>
             </div>
 
-            <!-- Menu Sticky de Navegação Rápida entre Etapas -->
-            <div id="quick-steps-nav" class="sticky top-[68px] z-20 bg-slate-900/95 backdrop-blur-md p-2.5 rounded-2xl border border-slate-700/80 shadow-xl shadow-black/40 flex items-center gap-2 overflow-x-auto">
+            <!-- Menu Flutuante Fixo (Dock) de Navegação Rápida entre Etapas -->
+            <div id="quick-steps-nav" class="qf-floating-dock">
               <!-- Renderizado dinamicamente via App.renderStepsQuickNav() -->
             </div>
 
@@ -1729,7 +1729,7 @@ function doPost(e) {
   </div>
 
   <!-- Scripts do Construtor (Com cache-buster para atualização imediata na hospedagem) -->
-  <script src="template-engine.js?v=3.9.3"></script>
-  <script src="app.js?v=3.9.3"></script>
+  <script src="template-engine.js?v=3.9.4"></script>
+  <script src="app.js?v=3.9.4"></script>
 </body>
 </html>

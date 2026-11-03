@@ -332,6 +332,8 @@ const App = {
 
   backToDashboard() {
     this.currentQuiz = null;
+    const navContainer = document.getElementById('quick-steps-nav');
+    if (navContainer) navContainer.classList.add('hidden');
     this.renderDashboard();
   },
 
@@ -381,6 +383,15 @@ const App = {
         leftPanel.classList.add('md:w-[56%]', 'lg:w-[58%]', 'border-r');
       }
       this.updatePreview();
+    }
+
+    const navDock = document.getElementById('quick-steps-nav');
+    if (navDock) {
+      if (tabName === 'steps') {
+        this.renderStepsQuickNav();
+      } else {
+        navDock.classList.add('hidden');
+      }
     }
   },
 
@@ -1959,6 +1970,7 @@ const App = {
     const right = document.getElementById('panel-editor-right');
     const btnEditor = document.getElementById('btn-mview-editor');
     const btnPreview = document.getElementById('btn-mview-preview');
+    const navDock = document.getElementById('quick-steps-nav');
 
     if (screen === 'preview') {
       if (left) left.classList.add('hidden');
@@ -1966,6 +1978,7 @@ const App = {
         right.classList.remove('hidden');
         right.classList.add('flex');
       }
+      if (navDock) navDock.classList.add('hidden');
       if (btnEditor) {
         btnEditor.className = 'flex-1 py-2 rounded-xl text-xs font-bold bg-slate-800 text-slate-300 hover:text-white flex items-center justify-center gap-1.5 border border-slate-700 transition';
       }
@@ -1979,6 +1992,7 @@ const App = {
         right.classList.add('hidden');
         right.classList.remove('flex');
       }
+      if (navDock && this.activeTab === 'steps') navDock.classList.remove('hidden');
       if (btnEditor) {
         btnEditor.className = 'flex-1 py-2 rounded-xl text-xs font-bold bg-indigo-600 text-white flex items-center justify-center gap-1.5 transition';
       }
@@ -2012,6 +2026,22 @@ const App = {
     this.renderStepsQuickNav();
   },
 
+  goToPrevStep() {
+    if (!this.currentQuiz || !this.currentQuiz.steps) return;
+    const currentIdx = (this.preview && typeof this.preview.currentStepIndex === 'number') ? this.preview.currentStepIndex : 0;
+    if (currentIdx > 0) {
+      this.goToStep(currentIdx - 1);
+    }
+  },
+
+  goToNextStep() {
+    if (!this.currentQuiz || !this.currentQuiz.steps) return;
+    const currentIdx = (this.preview && typeof this.preview.currentStepIndex === 'number') ? this.preview.currentStepIndex : 0;
+    if (currentIdx < this.currentQuiz.steps.length - 1) {
+      this.goToStep(currentIdx + 1);
+    }
+  },
+
   renderStepsQuickNav() {
     const navContainer = document.getElementById('quick-steps-nav');
     const previewSelect = document.getElementById('preview-step-select');
@@ -2019,21 +2049,17 @@ const App = {
     const steps = this.currentQuiz.steps || [];
     const currentIdx = (this.preview && typeof this.preview.currentStepIndex === 'number') ? this.preview.currentStepIndex : 0;
 
-    // 1. Atualiza a Barra Sticky no Editor da Esquerda
+    // 1. Atualiza a Barra Flutuante Fixa no Editor da Esquerda
     if (navContainer) {
-      if (steps.length === 0) {
+      if (steps.length === 0 || this.activeTab !== 'steps') {
         navContainer.innerHTML = '';
         navContainer.classList.add('hidden');
       } else {
         navContainer.classList.remove('hidden');
-        let pillsHtml = `
-          <div class="flex items-center gap-1.5 shrink-0 text-slate-400 text-xs font-bold mr-1">
-            <i class="ph ph-lightning text-amber-400 text-base"></i>
-            <span class="hidden sm:inline">Pular:</span>
-          </div>
-          <div class="flex items-center gap-1.5 overflow-x-auto py-0.5 scrollbar-none flex-1">
-        `;
+        const canPrev = currentIdx > 0;
+        const canNext = currentIdx < steps.length - 1;
 
+        let pillsHtml = '';
         steps.forEach((step, idx) => {
           const isActive = idx === currentIdx;
           const blocks = step.blocks || [];
@@ -2042,25 +2068,66 @@ const App = {
           const hasForm = blocks.some(b => b.type === 'lead_form');
           
           let icon = '';
-          if (hasOffer) icon = '🏷️ ';
-          else if (hasVideo) icon = '🎬 ';
-          else if (hasForm) icon = '📋 ';
+          if (hasOffer) icon = '🏷️';
+          else if (hasVideo) icon = '🎬';
+          else if (hasForm) icon = '📋';
 
           const stepTitle = step.title || `Etapa ${idx + 1}`;
+          const cleanTitle = step.title ? step.title.replace(/^Etapa\s*\d+\s*:?/i, '').trim() : '';
+          
           const activeClass = isActive
-            ? 'bg-indigo-600 text-white font-extrabold shadow-md shadow-indigo-500/40 ring-2 ring-indigo-400 scale-105'
-            : 'bg-slate-800/90 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700/80 font-semibold';
+            ? 'bg-gradient-to-r from-indigo-600 to-indigo-500 text-white font-black shadow-lg shadow-indigo-500/50 ring-2 ring-indigo-400 scale-105'
+            : 'bg-slate-800/90 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700/80 font-bold hover:border-slate-600';
 
           pillsHtml += `
-            <button type="button" onclick="App.goToStep(${idx})" class="shrink-0 px-2.5 py-1.5 rounded-xl text-xs flex items-center gap-1 transition-all ${activeClass}" title="${this.escape(stepTitle)}">
-              <span>${icon}<b>${idx + 1}</b></span>
-              <span class="hidden md:inline max-w-[85px] truncate text-[11px] opacity-90">${this.escape(step.title ? step.title.replace(/^Etapa\s*\d+\s*:?/i, '').trim() : '')}</span>
+            <button type="button" id="quick-step-pill-${idx}" onclick="App.goToStep(${idx})" class="shrink-0 px-2.5 py-1.5 rounded-xl text-xs flex items-center gap-1 transition-all ${activeClass}" title="${this.escape(stepTitle)}">
+              <span>${icon ? icon + ' ' : ''}<b>${idx + 1}</b></span>
+              ${cleanTitle ? `<span class="hidden xl:inline max-w-[80px] truncate text-[10.5px] opacity-90">${this.escape(cleanTitle)}</span>` : ''}
             </button>
           `;
         });
 
-        pillsHtml += `</div>`;
-        navContainer.innerHTML = pillsHtml;
+        navContainer.innerHTML = `
+          <!-- Indicador & Setas de Navegação -->
+          <div class="flex items-center gap-1 shrink-0 text-slate-300 text-xs font-bold mr-1">
+            <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+            <span class="hidden sm:inline text-indigo-300 text-[11px] font-bold">Etapa</span>
+            <span class="bg-indigo-600/30 text-indigo-300 text-[11px] px-1.5 py-0.5 rounded-md font-mono border border-indigo-500/30 font-bold">
+              ${currentIdx + 1}/${steps.length}
+            </span>
+            <button type="button" onclick="App.goToPrevStep()" ${!canPrev ? 'disabled' : ''} class="w-6 h-6 rounded-lg flex items-center justify-center transition ml-1 ${canPrev ? 'bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white border border-slate-700' : 'bg-slate-900/50 text-slate-600 cursor-not-allowed border border-slate-800'}" title="Etapa anterior (←)">
+              <i class="ph ph-caret-left text-xs font-bold"></i>
+            </button>
+            <button type="button" onclick="App.goToNextStep()" ${!canNext ? 'disabled' : ''} class="w-6 h-6 rounded-lg flex items-center justify-center transition ${canNext ? 'bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white border border-slate-700' : 'bg-slate-900/50 text-slate-600 cursor-not-allowed border border-slate-800'}" title="Próxima etapa (→)">
+              <i class="ph ph-caret-right text-xs font-bold"></i>
+            </button>
+          </div>
+
+          <!-- Pílulas de Etapas Roláveis Horizontalmente -->
+          <div class="flex items-center gap-1.5 overflow-x-auto py-1 px-0.5 scrollbar-none qf-steps-scroll flex-1">
+            ${pillsHtml}
+          </div>
+
+          <!-- Ações Rápidas no Dock Flutuante -->
+          <div class="flex items-center gap-1.5 shrink-0 pl-1 border-l border-slate-700/80">
+            <button type="button" onclick="App.scrollEditor('top')" class="px-2 py-1.5 rounded-xl bg-slate-800/90 hover:bg-slate-700 text-slate-300 hover:text-white text-xs font-semibold border border-slate-700 transition flex items-center gap-1" title="Rolar tela até o topo">
+              <i class="ph ph-arrow-up text-xs"></i>
+              <span class="hidden sm:inline text-[11px]">Topo</span>
+            </button>
+            <button type="button" onclick="App.addNewStep()" class="px-2.5 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold transition flex items-center gap-1 shadow-md shadow-indigo-500/20" title="Criar nova etapa no funil">
+              <i class="ph ph-plus font-bold text-xs"></i>
+              <span class="hidden sm:inline text-[11px]">Etapa</span>
+            </button>
+          </div>
+        `;
+
+        // Mantém a pílula ativa sempre visível no dock
+        setTimeout(() => {
+          const activePill = document.getElementById(`quick-step-pill-${currentIdx}`);
+          if (activePill) {
+            activePill.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+          }
+        }, 50);
       }
     }
 
