@@ -421,6 +421,7 @@ const App = {
     `;
 
     container.innerHTML = cardsHtml + addStepBottomButton;
+    this.renderStepsQuickNav();
   },
 
   renderStepCardHtml(step, stepIdx, totalSteps) {
@@ -1990,15 +1991,95 @@ const App = {
   // ==========================================
   // PREVIEW INTERATIVO EM TEMPO REAL (NATIVO & INSTANTÂNEO)
   // ==========================================
-  focusStep(stepIndex) {
+  goToStep(stepIndex) {
+    if (!this.currentQuiz || !this.currentQuiz.steps || !this.currentQuiz.steps[stepIndex]) return;
     this.currentEditingStepIndex = stepIndex;
     this.preview.currentStepIndex = stepIndex;
-    this.renderSteps(); // Atualiza destaque visual na lista de etapas
+    
+    // Atualiza preview no celular imediatamente
     this.refreshPreview(stepIndex);
+
+    // Rola suavemente até o card da etapa no editor da esquerda
     const card = document.getElementById(`step-card-${stepIndex}`);
     if (card) {
-      card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      card.classList.remove('step-card-jump-active');
+      void card.offsetWidth; // Dispara reflow para reiniciar animação
+      card.classList.add('step-card-jump-active');
     }
+
+    // Sincroniza visual das pílulas e dropdown
+    this.renderStepsQuickNav();
+  },
+
+  renderStepsQuickNav() {
+    const navContainer = document.getElementById('quick-steps-nav');
+    const previewSelect = document.getElementById('preview-step-select');
+    if (!this.currentQuiz) return;
+    const steps = this.currentQuiz.steps || [];
+    const currentIdx = (this.preview && typeof this.preview.currentStepIndex === 'number') ? this.preview.currentStepIndex : 0;
+
+    // 1. Atualiza a Barra Sticky no Editor da Esquerda
+    if (navContainer) {
+      if (steps.length === 0) {
+        navContainer.innerHTML = '';
+        navContainer.classList.add('hidden');
+      } else {
+        navContainer.classList.remove('hidden');
+        let pillsHtml = `
+          <div class="flex items-center gap-1.5 shrink-0 text-slate-400 text-xs font-bold mr-1">
+            <i class="ph ph-lightning text-amber-400 text-base"></i>
+            <span class="hidden sm:inline">Pular:</span>
+          </div>
+          <div class="flex items-center gap-1.5 overflow-x-auto py-0.5 scrollbar-none flex-1">
+        `;
+
+        steps.forEach((step, idx) => {
+          const isActive = idx === currentIdx;
+          const blocks = step.blocks || [];
+          const hasOffer = blocks.some(b => b.type === 'offer');
+          const hasVideo = blocks.some(b => b.type === 'video');
+          const hasForm = blocks.some(b => b.type === 'lead_form');
+          
+          let icon = '';
+          if (hasOffer) icon = '🏷️ ';
+          else if (hasVideo) icon = '🎬 ';
+          else if (hasForm) icon = '📋 ';
+
+          const stepTitle = step.title || `Etapa ${idx + 1}`;
+          const activeClass = isActive
+            ? 'bg-indigo-600 text-white font-extrabold shadow-md shadow-indigo-500/40 ring-2 ring-indigo-400 scale-105'
+            : 'bg-slate-800/90 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700/80 font-semibold';
+
+          pillsHtml += `
+            <button type="button" onclick="App.goToStep(${idx})" class="shrink-0 px-2.5 py-1.5 rounded-xl text-xs flex items-center gap-1 transition-all ${activeClass}" title="${this.escape(stepTitle)}">
+              <span>${icon}<b>${idx + 1}</b></span>
+              <span class="hidden md:inline max-w-[85px] truncate text-[11px] opacity-90">${this.escape(step.title ? step.title.replace(/^Etapa\s*\d+\s*:?/i, '').trim() : '')}</span>
+            </button>
+          `;
+        });
+
+        pillsHtml += `</div>`;
+        navContainer.innerHTML = pillsHtml;
+      }
+    }
+
+    // 2. Atualiza o seletor no topo do Celular Preview
+    if (previewSelect) {
+      let optionsHtml = '';
+      steps.forEach((step, idx) => {
+        const blocks = step.blocks || [];
+        const hasOffer = blocks.some(b => b.type === 'offer');
+        const tag = hasOffer ? ' (🏷️ Oferta)' : '';
+        const title = step.title || `Etapa ${idx + 1}`;
+        optionsHtml += `<option value="${idx}" ${idx === currentIdx ? 'selected' : ''}>Etapa ${idx + 1}: ${this.escape(title)}${tag}</option>`;
+      });
+      previewSelect.innerHTML = optionsHtml;
+    }
+  },
+
+  focusStep(stepIndex) {
+    this.goToStep(stepIndex);
   },
 
   clearPreviewTimers() {
@@ -2132,6 +2213,7 @@ const App = {
         this.runPreviewFakeLoader(loaderBlock);
       }
     }
+    this.renderStepsQuickNav();
   },
 
   runPreviewFakeLoader(block) {

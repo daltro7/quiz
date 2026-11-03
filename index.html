@@ -271,6 +271,11 @@
               </div>
             </div>
 
+            <!-- Menu Sticky de Navegação Rápida entre Etapas -->
+            <div id="quick-steps-nav" class="sticky top-[68px] z-20 bg-slate-900/95 backdrop-blur-md p-2.5 rounded-2xl border border-slate-700/80 shadow-xl shadow-black/40 flex items-center gap-2 overflow-x-auto">
+              <!-- Renderizado dinamicamente via App.renderStepsQuickNav() -->
+            </div>
+
             <!-- Seção de Psicologia da Barra de Progresso (No topo da lista de etapas) -->
             <div class="bg-slate-800/80 p-5 rounded-2xl border border-slate-700 space-y-4 shadow-lg shadow-black/20">
               <div class="flex items-center justify-between flex-wrap gap-2">
@@ -822,6 +827,16 @@
               <i class="ph ph-arrow-counter-clockwise"></i> Reiniciar
             </button>
           </div>
+        </div>
+
+        <!-- Seletor Rápido de Etapas no Celular -->
+        <div class="mb-2 px-2 flex items-center gap-2 text-xs">
+          <span class="text-slate-400 text-[11px] font-bold shrink-0 flex items-center gap-1">
+            <i class="ph ph-eye text-indigo-400 text-sm"></i> Ver Etapa:
+          </span>
+          <select id="preview-step-select" onchange="App.goToStep(parseInt(this.value, 10))" class="flex-1 bg-slate-900 border border-slate-700 hover:border-indigo-500 text-white rounded-xl px-2.5 py-1.5 text-xs font-semibold outline-none transition cursor-pointer">
+            <!-- Opções geradas dinamicamente -->
+          </select>
         </div>
 
         <!-- Moldura do Dispositivo -->
@@ -1714,7 +1729,7 @@ function doPost(e) {
   </div>
 
   <!-- Scripts do Construtor (Com cache-buster para atualização imediata na hospedagem) -->
-  <script src="template-engine.js?v=3.9.2"></script>
-  <script src="app.js?v=3.9.2"></script>
+  <script src="template-engine.js?v=3.9.3"></script>
+  <script src="app.js?v=3.9.3"></script>
 </body>
 </html>
