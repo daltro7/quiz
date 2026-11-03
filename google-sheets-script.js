@@ -115,7 +115,8 @@ function sendMetaCapiPurchase(params) {
 // Execute esta função UMA VEZ no Apps Script se o Google pedir permissão de rede (script.external_request)
 function autorizarPermissoes() {
   SpreadsheetApp.getActiveSpreadsheet();
-  UrlFetchApp.fetch("https://graph.facebook.com");
+  UrlFetchApp.fetch("https://graph.facebook.com", { muteHttpExceptions: true });
+  Logger.log("Permissão concedida com sucesso!");
 }
 
 function onOpen() {

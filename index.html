@@ -34,9 +34,14 @@
   <!-- Otimização de Performance e Pré-carregamento do YouTube -->
   <link rel="preconnect" href="https://www.youtube-nocookie.com">
   <link rel="preconnect" href="https://www.youtube.com">
+  <link rel="preconnect" href="https://i.ytimg.com">
+  <link rel="preconnect" href="https://img.youtube.com">
   <link rel="preconnect" href="https://googlevideo.com">
   <link rel="dns-prefetch" href="https://googlevideo.com">
+  <link rel="dns-prefetch" href="https://www.youtube.com">
   <link rel="dns-prefetch" href="https://www.youtube-nocookie.com">
+  <link rel="dns-prefetch" href="https://i.ytimg.com">
+  <link rel="dns-prefetch" href="https://img.youtube.com">
   
   <!-- Ícones Phosphor -->
   <script src="https://unpkg.com/@phosphor-icons/web"></script>
@@ -1016,7 +1021,8 @@ function sendMetaCapiPurchase(params) {
 // Execute esta função UMA VEZ no Apps Script se o Google pedir permissão de rede (script.external_request)
 function autorizarPermissoes() {
   SpreadsheetApp.getActiveSpreadsheet();
-  UrlFetchApp.fetch(&quot;https://graph.facebook.com&quot;);
+  UrlFetchApp.fetch(&quot;https://graph.facebook.com&quot;, { muteHttpExceptions: true });
+  Logger.log(&quot;Permissão concedida com sucesso!&quot;);
 }
 
 function onOpen() {
@@ -1708,7 +1714,7 @@ function doPost(e) {
   </div>
 
   <!-- Scripts do Construtor (Com cache-buster para atualização imediata na hospedagem) -->
-  <script src="template-engine.js?v=3.9.1"></script>
-  <script src="app.js?v=3.9.1"></script>
+  <script src="template-engine.js?v=3.9.2"></script>
+  <script src="app.js?v=3.9.2"></script>
 </body>
 </html>

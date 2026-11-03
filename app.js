@@ -2331,6 +2331,18 @@ const App = {
     this.refreshPreview(0);
   },
 
+  onVideoIframeLoad(posterId, frameId) {
+    setTimeout(() => {
+      const poster = document.getElementById(posterId);
+      if (poster) {
+        poster.classList.add('poster-fade-out');
+        setTimeout(() => {
+          if (poster && poster.parentNode) poster.style.display = 'none';
+        }, 450);
+      }
+    }, 700);
+  },
+
   unmuteVideo(frameId, overlayId) {
     const frame = document.getElementById(frameId);
     if (frame && frame.contentWindow) {
@@ -2355,6 +2367,13 @@ const App = {
       overlay.style.opacity = '0';
       overlay.style.pointerEvents = 'none';
       setTimeout(() => { overlay.style.display = 'none'; }, 300);
+      if (overlay.parentNode) {
+        const poster = overlay.parentNode.querySelector('.video-poster-layer');
+        if (poster) {
+          poster.classList.add('poster-fade-out');
+          setTimeout(() => { poster.style.display = 'none'; }, 300);
+        }
+      }
     }
   },
 

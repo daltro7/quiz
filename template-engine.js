@@ -693,6 +693,75 @@ const QuizTemplateEngine = {
       height: calc(100% + 46px);
     }
 
+    /* Poster Instantâneo Anti-Tela Preta do YouTube */
+    ${scope} .video-poster-layer {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 10;
+      background: #000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      transition: opacity 0.45s cubic-bezier(0.4, 0, 0.2, 1), visibility 0.45s ease;
+      pointer-events: none;
+    }
+
+    ${scope} .video-poster-layer.poster-fade-out {
+      opacity: 0;
+      visibility: hidden;
+    }
+
+    ${scope} .video-poster-img {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      filter: brightness(0.72);
+      transform: scale(1.03);
+    }
+
+    ${scope} .video-poster-spinner-wrap {
+      position: relative;
+      z-index: 2;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 7px;
+      background: rgba(15, 23, 42, 0.78);
+      padding: 9px 16px;
+      border-radius: 9999px;
+      backdrop-filter: blur(5px);
+      border: 1px solid rgba(255, 255, 255, 0.16);
+      box-shadow: 0 4px 18px rgba(0, 0, 0, 0.45);
+    }
+
+    ${scope} .video-poster-spinner {
+      width: 22px;
+      height: 22px;
+      border: 2.5px solid rgba(255, 255, 255, 0.2);
+      border-top-color: #ef4444;
+      border-radius: 50%;
+      animation: qfVideoSpin 0.75s linear infinite;
+    }
+
+    ${scope} .video-poster-loading-text {
+      font-size: 10px;
+      font-weight: 800;
+      color: #ffffff;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+
+    @keyframes qfVideoSpin {
+      to { transform: rotate(360deg); }
+    }
+
     /* Botão Flutuante de Ativar Som (Estilo VSL / TikTok) */
     ${scope} .video-unmute-overlay {
       position: absolute;
@@ -1762,12 +1831,29 @@ const QuizTemplateEngine = {
           if (videoId) {
             const frameId = (isPreview ? 'preview-video-frame-' : 'quiz-video-frame-') + bIdx;
             const overlayId = (isPreview ? 'preview-unmute-overlay-' : 'quiz-unmute-overlay-') + bIdx;
+            const posterId = (isPreview ? 'preview-video-poster-' : 'quiz-video-poster-') + bIdx;
             const unmuteCall = isPreview
               ? `App.unmuteVideo('${frameId}', '${overlayId}')`
               : `QuizApp.unmuteVideo('${frameId}', '${overlayId}')`;
+            const onloadCall = isPreview
+              ? `App.onVideoIframeLoad('${posterId}', '${frameId}')`
+              : `QuizApp.onVideoIframeLoad('${posterId}', '${frameId}')`;
+            const thumbUrl = `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
 
             blockHtml += `<div class="video-wrapper ${isVertical ? 'vertical' : 'horizontal'} ${cleanMask ? 'clean-mask' : ''}">`;
-            blockHtml += `<iframe id="${frameId}" src="${embedUrl}" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>`;
+
+            // Poster Instantâneo Anti-Tela Preta com Capa e Spinner
+            blockHtml += `
+              <div class="video-poster-layer" id="${posterId}">
+                <img src="${thumbUrl}" alt="Capa do Vídeo" class="video-poster-img" loading="eager">
+                <div class="video-poster-spinner-wrap">
+                  <div class="video-poster-spinner"></div>
+                  <span class="video-poster-loading-text">Carregando vídeo...</span>
+                </div>
+              </div>
+            `;
+
+            blockHtml += `<iframe id="${frameId}" src="${embedUrl}" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen onload="${onloadCall}"></iframe>`;
 
             if (autoplayMode === 'muted_button') {
               const buttonText = block.unmuteButtonText || '🔊 Toque para Ativar o Áudio';
@@ -2039,9 +2125,13 @@ const QuizTemplateEngine = {
   <!-- Otimização de Performance e Pré-carregamento do YouTube -->
   <link rel="preconnect" href="https://www.youtube-nocookie.com">
   <link rel="preconnect" href="https://www.youtube.com">
+  <link rel="preconnect" href="https://i.ytimg.com">
+  <link rel="preconnect" href="https://img.youtube.com">
   <link rel="preconnect" href="https://googlevideo.com">
   <link rel="dns-prefetch" href="https://googlevideo.com">
   <link rel="dns-prefetch" href="https://www.youtube-nocookie.com">
+  <link rel="dns-prefetch" href="https://i.ytimg.com">
+  <link rel="dns-prefetch" href="https://img.youtube.com">
 
   ${this.generateTrackingHead(tracking)}
   ${tracking.customHeadScripts || ''}
@@ -2551,9 +2641,17 @@ const QuizTemplateEngine = {
               if (videoId) {
                 const frameId = 'quiz-video-frame-' + bIdx;
                 const overlayId = 'quiz-unmute-overlay-' + bIdx;
+                const posterId = 'quiz-video-poster-' + bIdx;
+                const thumbUrl = 'https://img.youtube.com/vi/' + videoId + '/hqdefault.jpg';
 
                 bHtml += '<div class=\"video-wrapper ' + (isVertical ? 'vertical' : 'horizontal') + ' ' + (cleanMask ? 'clean-mask' : '') + '\">';
-                bHtml += '<iframe id=\"' + frameId + '\" src=\"' + embedUrl + '\" allow=\"accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture\" allowfullscreen></iframe>';
+
+                bHtml += '<div class=\"video-poster-layer\" id=\"' + posterId + '\">';
+                bHtml += '<img src=\"' + thumbUrl + '\" alt=\"Capa do Vídeo\" class=\"video-poster-img\" loading=\"eager\">';
+                bHtml += '<div class=\"video-poster-spinner-wrap\"><div class=\"video-poster-spinner\"></div><span class=\"video-poster-loading-text\">Carregando vídeo...</span></div>';
+                bHtml += '</div>';
+
+                bHtml += '<iframe id=\"' + frameId + '\" src=\"' + embedUrl + '\" allow=\"accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture\" allowfullscreen onload=\"QuizApp.onVideoIframeLoad(\\\'' + posterId + '\\\', \\\'' + frameId + '\\\')\"></iframe>';
 
                 if (autoplayMode === 'muted_button') {
                   const buttonText = block.unmuteButtonText || '🔊 Toque para Ativar o Áudio';
@@ -2953,6 +3051,18 @@ const QuizTemplateEngine = {
         return 'https://www.youtube-nocookie.com/embed/' + videoId + '?' + params.toString();
       },
 
+      onVideoIframeLoad(posterId, frameId) {
+        setTimeout(() => {
+          const poster = document.getElementById(posterId);
+          if (poster) {
+            poster.classList.add('poster-fade-out');
+            setTimeout(() => {
+              if (poster && poster.parentNode) poster.style.display = 'none';
+            }, 450);
+          }
+        }, 700);
+      },
+
       unmuteVideo(frameId, overlayId) {
         const frame = document.getElementById(frameId);
         if (frame && frame.contentWindow) {
@@ -2977,6 +3087,13 @@ const QuizTemplateEngine = {
           overlay.style.opacity = '0';
           overlay.style.pointerEvents = 'none';
           setTimeout(() => { overlay.style.display = 'none'; }, 300);
+          if (overlay.parentNode) {
+            const poster = overlay.parentNode.querySelector('.video-poster-layer');
+            if (poster) {
+              poster.classList.add('poster-fade-out');
+              setTimeout(() => { poster.style.display = 'none'; }, 300);
+            }
+          }
         }
       },
 
