@@ -702,9 +702,10 @@ const App = {
       `;
     }
 
-    // 2. BLOCO DE VÍDEO DO YOUTUBE (Autoplay, Comandos, Máscara e Preload)
+    // 2. BLOCO DE VÍDEO (YouTube ou Arquivo Direto .mp4 Hospedado)
     else if (block.type === 'video') {
-      blockBadge = '<span class="text-red-400 font-bold text-xs flex items-center gap-1.5"><span>🎬</span> Vídeo do YouTube</span>';
+      const isDirectMp4 = (block.youtubeUrl || '').toLowerCase().includes('.mp4');
+      blockBadge = `<span class="${isDirectMp4 ? 'text-emerald-400' : 'text-red-400'} font-bold text-xs flex items-center gap-1.5"><span>${isDirectMp4 ? '📹' : '🎬'}</span> ${isDirectMp4 ? 'Vídeo Direto (.mp4 Hospedado)' : 'Vídeo do YouTube'}</span>`;
       const autoplayMode = block.autoplayMode || 'none';
       const hideControls = block.hideControls !== false;
       const hideRecommendations = block.hideRecommendations !== false;
@@ -717,8 +718,8 @@ const App = {
           <!-- Linha 1: URL e Formato -->
           <div class="flex items-center justify-between gap-3">
             <div class="flex-1">
-              <label class="block text-[10px] font-bold text-slate-400 mb-1">Link do Vídeo no YouTube</label>
-              <input type="url" value="${this.escape(block.youtubeUrl || '')}" oninput="App.updateBlockProp(${stepIdx}, ${bIdx}, 'youtubeUrl', this.value)" placeholder="Ex: https://youtube.com/watch?v=... ou shorts/..." class="w-full bg-slate-900 border border-slate-700 px-2.5 py-1.5 rounded-lg text-xs text-white">
+              <label class="block text-[10px] font-bold text-slate-400 mb-1">Link do Vídeo (YouTube ou Arquivo Direto .mp4)</label>
+              <input type="url" value="${this.escape(block.youtubeUrl || '')}" oninput="App.updateBlockProp(${stepIdx}, ${bIdx}, 'youtubeUrl', this.value)" placeholder="Ex: https://financeiropro.site/demonstrativo.mp4 OU YouTube" class="w-full bg-slate-900 border border-slate-700 px-2.5 py-1.5 rounded-lg text-xs text-white">
             </div>
             <div class="w-36">
               <label class="block text-[10px] font-bold text-slate-400 mb-1">Formato</label>
@@ -2832,23 +2833,29 @@ const App = {
   },
 
   unmuteVideo(frameId, overlayId) {
-    const frame = document.getElementById(frameId);
-    if (frame && frame.contentWindow) {
-      frame.contentWindow.postMessage(JSON.stringify({
-        event: 'command',
-        func: 'unMute',
-        args: ''
-      }), '*');
-      frame.contentWindow.postMessage(JSON.stringify({
-        event: 'command',
-        func: 'setVolume',
-        args: [100]
-      }), '*');
-      frame.contentWindow.postMessage(JSON.stringify({
-        event: 'command',
-        func: 'playVideo',
-        args: ''
-      }), '*');
+    const el = document.getElementById(frameId);
+    if (el) {
+      if (el.tagName && el.tagName.toLowerCase() === 'video') {
+        el.muted = false;
+        el.volume = 1.0;
+        el.play().catch(e => console.log('Video play error:', e));
+      } else if (el.contentWindow) {
+        el.contentWindow.postMessage(JSON.stringify({
+          event: 'command',
+          func: 'unMute',
+          args: ''
+        }), '*');
+        el.contentWindow.postMessage(JSON.stringify({
+          event: 'command',
+          func: 'setVolume',
+          args: [100]
+        }), '*');
+        el.contentWindow.postMessage(JSON.stringify({
+          event: 'command',
+          func: 'playVideo',
+          args: ''
+        }), '*');
+      }
     }
     const overlay = document.getElementById(overlayId);
     if (overlay) {

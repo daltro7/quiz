@@ -2358,25 +2358,27 @@ const QuizTemplateEngine = {
         blockHtml += '</div>';
       }
 
-      // 2. Bloco de Vídeo do YouTube (Autoplay, Máscara e Botão Flutuante)
+      // 2. Bloco de Vídeo (YouTube OU Vídeo Direto .mp4 Hospedado)
       else if (block.type === 'video') {
-        if (block.youtubeUrl) {
-          const videoId = this.extractYouTubeId(block.youtubeUrl);
+        const videoUrl = (block.youtubeUrl || block.videoUrl || '').trim();
+        if (videoUrl) {
+          const videoId = this.extractYouTubeId(videoUrl);
           const isVertical = block.orientation === 'vertical' || block.videoOrientation === 'vertical';
           const cleanMask = block.cleanTopMask !== false;
           const autoplayMode = block.autoplayMode || 'none';
-          const embedUrl = this.buildYouTubeEmbedUrl(block);
+          const frameId = (isPreview ? 'preview-video-frame-' : 'quiz-video-frame-') + bIdx;
+          const overlayId = (isPreview ? 'preview-unmute-overlay-' : 'quiz-unmute-overlay-') + bIdx;
+          const posterId = (isPreview ? 'preview-video-poster-' : 'quiz-video-poster-') + bIdx;
+          const unmuteCall = isPreview
+            ? `App.unmuteVideo('${frameId}', '${overlayId}')`
+            : `QuizApp.unmuteVideo('${frameId}', '${overlayId}')`;
+          const onloadCall = isPreview
+            ? `App.onVideoIframeLoad('${posterId}', '${frameId}')`
+            : `QuizApp.onVideoIframeLoad('${posterId}', '${frameId}')`;
 
+          // CASO A: VÍDEO DO YOUTUBE
           if (videoId) {
-            const frameId = (isPreview ? 'preview-video-frame-' : 'quiz-video-frame-') + bIdx;
-            const overlayId = (isPreview ? 'preview-unmute-overlay-' : 'quiz-unmute-overlay-') + bIdx;
-            const posterId = (isPreview ? 'preview-video-poster-' : 'quiz-video-poster-') + bIdx;
-            const unmuteCall = isPreview
-              ? `App.unmuteVideo('${frameId}', '${overlayId}')`
-              : `QuizApp.unmuteVideo('${frameId}', '${overlayId}')`;
-            const onloadCall = isPreview
-              ? `App.onVideoIframeLoad('${posterId}', '${frameId}')`
-              : `QuizApp.onVideoIframeLoad('${posterId}', '${frameId}')`;
+            const embedUrl = this.buildYouTubeEmbedUrl(block);
             const thumbUrl = `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
 
             blockHtml += `<div class="video-wrapper ${isVertical ? 'vertical' : 'horizontal'} ${cleanMask ? 'clean-mask' : ''}">`;
@@ -2393,6 +2395,42 @@ const QuizTemplateEngine = {
             `;
 
             blockHtml += `<iframe id="${frameId}" src="${embedUrl}" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen onload="${onloadCall}"></iframe>`;
+
+            if (autoplayMode === 'muted_button') {
+              const buttonText = block.unmuteButtonText || '🔊 Toque para Ativar o Áudio';
+              blockHtml += `
+                <div class="video-unmute-overlay" id="${overlayId}" onclick="${unmuteCall}">
+                  <button type="button" class="video-unmute-btn">
+                    <span>${this.escapeHtml(buttonText)}</span>
+                  </button>
+                </div>
+              `;
+            }
+
+            blockHtml += '</div>';
+          }
+          // CASO B: VÍDEO DIRETO .MP4 / HOSPEDAGEM PRÓPRIA (HostGator, Cloudflare, etc.)
+          else {
+            const isMuted = autoplayMode !== 'none';
+            const isAutoplay = autoplayMode !== 'none';
+            const showControls = block.hideControls === false;
+            const posterAttr = block.posterUrl ? `poster="${this.escapeHtml(block.posterUrl)}"` : '';
+
+            blockHtml += `<div class="video-wrapper ${isVertical ? 'vertical' : 'horizontal'}" style="position:relative; background:#000; border-radius:12px; overflow:hidden;">`;
+
+            blockHtml += `
+              <video id="${frameId}" 
+                src="${this.escapeHtml(videoUrl)}" 
+                ${isAutoplay ? 'autoplay' : ''} 
+                ${isMuted ? 'muted' : ''} 
+                ${showControls ? 'controls' : ''} 
+                playsinline 
+                preload="auto" 
+                loop 
+                ${posterAttr} 
+                style="width:100%; height:100%; object-fit:contain; display:block; background:#000;">
+              </video>
+            `;
 
             if (autoplayMode === 'muted_button') {
               const buttonText = block.unmuteButtonText || '🔊 Toque para Ativar o Áudio';
@@ -3180,17 +3218,19 @@ const QuizTemplateEngine = {
             bHtml += '</div>';
           }
           else if (block.type === 'video') {
-            if (block.youtubeUrl) {
-              const videoId = this.extractYouTubeId(block.youtubeUrl);
+            const videoUrl = (block.youtubeUrl || block.videoUrl || '').trim();
+            if (videoUrl) {
+              const videoId = this.extractYouTubeId(videoUrl);
               const isVertical = block.orientation === 'vertical' || block.videoOrientation === 'vertical';
               const cleanMask = block.cleanTopMask !== false;
               const autoplayMode = block.autoplayMode || 'none';
-              const embedUrl = this.buildYouTubeEmbedUrl(block);
+              const frameId = 'quiz-video-frame-' + bIdx;
+              const overlayId = 'quiz-unmute-overlay-' + bIdx;
+              const posterId = 'quiz-video-poster-' + bIdx;
 
+              // CASO A: VÍDEO DO YOUTUBE
               if (videoId) {
-                const frameId = 'quiz-video-frame-' + bIdx;
-                const overlayId = 'quiz-unmute-overlay-' + bIdx;
-                const posterId = 'quiz-video-poster-' + bIdx;
+                const embedUrl = this.buildYouTubeEmbedUrl(block);
                 const thumbUrl = 'https://img.youtube.com/vi/' + videoId + '/hqdefault.jpg';
 
                 bHtml += '<div class=\"video-wrapper ' + (isVertical ? 'vertical' : 'horizontal') + ' ' + (cleanMask ? 'clean-mask' : '') + '\">';
@@ -3201,6 +3241,25 @@ const QuizTemplateEngine = {
                 bHtml += '</div>';
 
                 bHtml += '<iframe id=\"' + frameId + '\" src=\"' + embedUrl + '\" allow=\"accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture\" allowfullscreen onload=\"QuizApp.onVideoIframeLoad(\\\'' + posterId + '\\\', \\\'' + frameId + '\\\')\"></iframe>';
+
+                if (autoplayMode === 'muted_button') {
+                  const buttonText = block.unmuteButtonText || '🔊 Toque para Ativar o Áudio';
+                  bHtml += '<div class=\"video-unmute-overlay\" id=\"' + overlayId + '\" onclick=\"QuizApp.unmuteVideo(\\\'' + frameId + '\\\', \\\'' + overlayId + '\\\')\">';
+                  bHtml += '<button type=\"button\" class=\"video-unmute-btn\"><span>' + this.escapeHtml(buttonText) + '</span></button>';
+                  bHtml += '</div>';
+                }
+
+                bHtml += '</div>';
+              }
+              // CASO B: VÍDEO DIRETO .MP4 / HOSPEDAGEM PRÓPRIA (HostGator, Cloudflare, etc.)
+              else {
+                const isMuted = autoplayMode !== 'none';
+                const isAutoplay = autoplayMode !== 'none';
+                const showControls = block.hideControls === false;
+                const posterAttr = block.posterUrl ? ' poster=\"' + this.escapeHtml(block.posterUrl) + '\"' : '';
+
+                bHtml += '<div class=\"video-wrapper ' + (isVertical ? 'vertical' : 'horizontal') + '\" style=\"position:relative; background:#000; border-radius:12px; overflow:hidden;\">';
+                bHtml += '<video id=\"' + frameId + '\" src=\"' + this.escapeHtml(videoUrl) + '\" ' + (isAutoplay ? 'autoplay' : '') + ' ' + (isMuted ? 'muted' : '') + ' ' + (showControls ? 'controls' : '') + ' playsinline preload=\"auto\" loop ' + posterAttr + ' style=\"width:100%; height:100%; object-fit:contain; display:block; background:#000;\"></video>';
 
                 if (autoplayMode === 'muted_button') {
                   const buttonText = block.unmuteButtonText || '🔊 Toque para Ativar o Áudio';
@@ -3820,23 +3879,29 @@ const QuizTemplateEngine = {
       },
 
       unmuteVideo(frameId, overlayId) {
-        const frame = document.getElementById(frameId);
-        if (frame && frame.contentWindow) {
-          frame.contentWindow.postMessage(JSON.stringify({
-            event: 'command',
-            func: 'unMute',
-            args: ''
-          }), '*');
-          frame.contentWindow.postMessage(JSON.stringify({
-            event: 'command',
-            func: 'setVolume',
-            args: [100]
-          }), '*');
-          frame.contentWindow.postMessage(JSON.stringify({
-            event: 'command',
-            func: 'playVideo',
-            args: ''
-          }), '*');
+        const el = document.getElementById(frameId);
+        if (el) {
+          if (el.tagName && el.tagName.toLowerCase() === 'video') {
+            el.muted = false;
+            el.volume = 1.0;
+            el.play().catch(e => console.log('Video play error:', e));
+          } else if (el.contentWindow) {
+            el.contentWindow.postMessage(JSON.stringify({
+              event: 'command',
+              func: 'unMute',
+              args: ''
+            }), '*');
+            el.contentWindow.postMessage(JSON.stringify({
+              event: 'command',
+              func: 'setVolume',
+              args: [100]
+            }), '*');
+            el.contentWindow.postMessage(JSON.stringify({
+              event: 'command',
+              func: 'playVideo',
+              args: ''
+            }), '*');
+          }
         }
         const overlay = document.getElementById(overlayId);
         if (overlay) {
