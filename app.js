@@ -540,6 +540,12 @@ const App = {
         <button onclick="App.addBlockToStep(${stepIdx}, 'potential_chart')" class="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-rose-400 text-xs font-semibold border border-rose-500/30 transition flex items-center gap-1 shadow-sm">
           <span>📈</span> Gráfico de Potencial
         </button>
+        <button onclick="App.addBlockToStep(${stepIdx}, 'reviews')" class="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-yellow-400 text-xs font-semibold border border-yellow-500/30 transition flex items-center gap-1 shadow-sm">
+          <span>⭐</span> Avaliações / Depoimentos
+        </button>
+        <button onclick="App.addBlockToStep(${stepIdx}, 'faq')" class="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-sky-400 text-xs font-semibold border border-sky-500/30 transition flex items-center gap-1 shadow-sm">
+          <span>💬</span> Dúvidas Frequentes (FAQ)
+        </button>
       </div>
     `;
   },
@@ -1279,6 +1285,191 @@ const App = {
       `;
     }
 
+    // 10. BLOCO DE AVALIAÇÕES / DEPOIMENTOS (reviews)
+    else if (block.type === 'reviews') {
+      blockBadge = '<span class="text-yellow-400 font-bold text-xs flex items-center gap-1.5"><span>⭐</span> Avaliações & Depoimentos</span>';
+      const items = block.items || [];
+      const showRatingSummary = block.showRatingSummary !== false;
+
+      blockBody = `
+        <div class="space-y-3 pt-1">
+          <!-- Cabeçalho do Bloco de Avaliações -->
+          <div class="bg-slate-900/60 p-3 rounded-xl border border-slate-800 space-y-2.5">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+              <div>
+                <label class="block text-[10px] font-bold text-slate-400 mb-1">Tag Superior (Opcional)</label>
+                <input type="text" value="${this.escape(block.headerBadge || '')}" oninput="App.updateBlockProp(${stepIdx}, ${bIdx}, 'headerBadge', this.value)" placeholder="Ex: AVALIAÇÕES REAIS" class="w-full bg-slate-950 border border-slate-700 px-2.5 py-1.5 rounded-lg text-xs text-white">
+              </div>
+              <div>
+                <label class="block text-[10px] font-bold text-slate-400 mb-1">Título do Bloco</label>
+                <input type="text" value="${this.escape(block.headerTitle || '')}" oninput="App.updateBlockProp(${stepIdx}, ${bIdx}, 'headerTitle', this.value)" placeholder="Ex: O que nossos clientes dizem" class="w-full bg-slate-950 border border-slate-700 px-2.5 py-1.5 rounded-lg text-xs text-white font-semibold">
+              </div>
+            </div>
+
+            <div class="pt-1 border-t border-slate-800/80 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
+              <label class="inline-flex items-center gap-2 cursor-pointer text-xs text-slate-300">
+                <input type="checkbox" ${showRatingSummary ? 'checked' : ''} onchange="App.updateBlockProp(${stepIdx}, ${bIdx}, 'showRatingSummary', this.checked); App.renderSteps();" class="rounded bg-slate-800 border-slate-700 text-indigo-600 focus:ring-0">
+                <span>Exibir Média de Estrelas no Topo (Ex: ⭐ 4.9 de 5)</span>
+              </label>
+              ${showRatingSummary ? `
+                <input type="text" value="${this.escape(block.ratingSummary || '4.9 de 5 baseado em 1.480 avaliações')}" oninput="App.updateBlockProp(${stepIdx}, ${bIdx}, 'ratingSummary', this.value)" placeholder="Ex: 4.9 de 5 baseado em 1.480 avaliações" class="flex-1 max-w-xs bg-slate-950 border border-slate-700 px-2 py-1 rounded text-xs text-amber-400 font-medium">
+              ` : ''}
+            </div>
+          </div>
+
+          <!-- Lista de Depoimentos Individuais -->
+          <div class="space-y-3">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-bold text-slate-300 flex items-center gap-1.5">
+                <i class="ph ph-chat-circle-dots text-yellow-400"></i> Depoimentos Cadastrados (${items.length}):
+              </span>
+              <button type="button" onclick="App.addReviewItem(${stepIdx}, ${bIdx})" class="px-2.5 py-1 rounded-lg bg-indigo-600/30 hover:bg-indigo-600 text-indigo-300 hover:text-white text-xs font-bold border border-indigo-500/40 transition flex items-center gap-1 shadow-sm">
+                <i class="ph ph-plus-circle"></i> + Adicionar Avaliação
+              </button>
+            </div>
+
+            ${items.map((rev, revIdx) => {
+              const stars = parseInt(rev.stars, 10) || 5;
+              const isVerified = rev.verified !== false;
+              return `
+                <div class="bg-slate-900/90 border border-slate-800 rounded-xl p-3 space-y-2.5">
+                  <div class="flex items-center justify-between border-b border-slate-800 pb-2">
+                    <span class="text-xs font-bold text-slate-300 flex items-center gap-1.5">
+                      <span class="w-5 h-5 rounded-md bg-slate-800 text-yellow-400 flex items-center justify-center font-bold text-[11px] border border-slate-700">${revIdx + 1}</span>
+                      <span>${this.escape(rev.name || 'Nova Avaliação')}</span>
+                    </span>
+                    <div class="flex items-center gap-1">
+                      <button type="button" onclick="App.moveReviewItem(${stepIdx}, ${bIdx}, ${revIdx}, -1)" ${revIdx === 0 ? 'disabled class="opacity-20 cursor-not-allowed p-1 text-slate-500"' : 'class="p-1 text-slate-400 hover:text-white"'} title="Mover para cima">
+                        <i class="ph ph-arrow-up text-xs"></i>
+                      </button>
+                      <button type="button" onclick="App.moveReviewItem(${stepIdx}, ${bIdx}, ${revIdx}, 1)" ${revIdx === items.length - 1 ? 'disabled class="opacity-20 cursor-not-allowed p-1 text-slate-500"' : 'class="p-1 text-slate-400 hover:text-white"'} title="Mover para baixo">
+                        <i class="ph ph-arrow-down text-xs"></i>
+                      </button>
+                      <button type="button" onclick="App.deleteReviewItem(${stepIdx}, ${bIdx}, ${revIdx})" class="p-1 text-slate-500 hover:text-red-400 transition ml-1" title="Excluir avaliação">
+                        <i class="ph ph-trash text-xs"></i>
+                      </button>
+                    </div>
+                  </div>
+
+                  <!-- Linha 1: Estrelas, Nome e Cargo -->
+                  <div class="grid grid-cols-1 sm:grid-cols-4 gap-2">
+                    <div>
+                      <label class="block text-[10px] font-bold text-slate-400 mb-1">Classificação ⭐</label>
+                      <select onchange="App.updateReviewItem(${stepIdx}, ${bIdx}, ${revIdx}, 'stars', parseInt(this.value, 10))" class="w-full bg-slate-950 border border-slate-700 px-2 py-1.5 rounded-lg text-xs text-yellow-400 font-bold">
+                        <option value="5" ${stars === 5 ? 'selected' : ''}>⭐⭐⭐⭐⭐ (5.0)</option>
+                        <option value="4" ${stars === 4 ? 'selected' : ''}>⭐⭐⭐⭐ (4.0)</option>
+                        <option value="3" ${stars === 3 ? 'selected' : ''}>⭐⭐⭐ (3.0)</option>
+                        <option value="2" ${stars === 2 ? 'selected' : ''}>⭐⭐ (2.0)</option>
+                        <option value="1" ${stars === 1 ? 'selected' : ''}>⭐ (1.0)</option>
+                      </select>
+                    </div>
+                    <div class="sm:col-span-2">
+                      <label class="block text-[10px] font-bold text-slate-400 mb-1">Nome do Cliente</label>
+                      <input type="text" value="${this.escape(rev.name || '')}" oninput="App.updateReviewItem(${stepIdx}, ${bIdx}, ${revIdx}, 'name', this.value)" placeholder="Ex: Carlos M." class="w-full bg-slate-950 border border-slate-700 px-2.5 py-1.5 rounded-lg text-xs text-white font-semibold">
+                    </div>
+                    <div>
+                      <label class="block text-[10px] font-bold text-slate-400 mb-1">Cargo / Profissão</label>
+                      <input type="text" value="${this.escape(rev.role || '')}" oninput="App.updateReviewItem(${stepIdx}, ${bIdx}, ${revIdx}, 'role', this.value)" placeholder="Ex: Engenheiro" class="w-full bg-slate-950 border border-slate-700 px-2.5 py-1.5 rounded-lg text-xs text-slate-300">
+                    </div>
+                  </div>
+
+                  <!-- Linha 2: Foto (opcional), Tempo e Selo Verificado -->
+                  <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                    <div>
+                      <label class="block text-[10px] font-bold text-slate-400 mb-1">URL da Foto (Opcional)</label>
+                      <input type="text" value="${this.escape(rev.avatarUrl || '')}" oninput="App.updateReviewItem(${stepIdx}, ${bIdx}, ${revIdx}, 'avatarUrl', this.value)" placeholder="Vazio = Iniciais coloridas automáticas" class="w-full bg-slate-950 border border-slate-700 px-2 py-1 rounded text-xs text-slate-300">
+                    </div>
+                    <div>
+                      <label class="block text-[10px] font-bold text-slate-400 mb-1">Tempo / Data</label>
+                      <input type="text" value="${this.escape(rev.timeAgo || '')}" oninput="App.updateReviewItem(${stepIdx}, ${bIdx}, ${revIdx}, 'timeAgo', this.value)" placeholder="Ex: Postado há 2 dias" class="w-full bg-slate-950 border border-slate-700 px-2 py-1 rounded text-xs text-slate-300">
+                    </div>
+                    <div class="flex items-center pt-4">
+                      <label class="inline-flex items-center gap-1.5 cursor-pointer text-xs text-emerald-400 font-semibold">
+                        <input type="checkbox" ${isVerified ? 'checked' : ''} onchange="App.updateReviewItem(${stepIdx}, ${bIdx}, ${revIdx}, 'verified', this.checked)" class="rounded bg-slate-800 border-slate-700 text-emerald-500 focus:ring-0">
+                        <span>Compra Verificada ✓</span>
+                      </label>
+                    </div>
+                  </div>
+
+                  <!-- Linha 3: Texto do Comentário -->
+                  <div>
+                    <label class="block text-[10px] font-bold text-slate-400 mb-1">Comentário / Depoimento</label>
+                    <textarea rows="2" oninput="App.updateReviewItem(${stepIdx}, ${bIdx}, ${revIdx}, 'comment', this.value)" placeholder="Escreva a avaliação do cliente..." class="w-full bg-slate-950 border border-slate-700 px-2.5 py-1.5 rounded-lg text-xs text-white">${this.escape(rev.comment || '')}</textarea>
+                  </div>
+                </div>
+              `;
+            }).join('')}
+          </div>
+        </div>
+      `;
+    }
+
+    // 11. BLOCO DE DÚVIDAS FREQUENTES (FAQ)
+    else if (block.type === 'faq') {
+      blockBadge = '<span class="text-sky-400 font-bold text-xs flex items-center gap-1.5"><span>💬</span> Dúvidas Frequentes (FAQ)</span>';
+      const items = block.items || [];
+
+      blockBody = `
+        <div class="space-y-3 pt-1">
+          <!-- Título e Subtítulo do FAQ -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 bg-slate-900/60 p-3 rounded-xl border border-slate-800">
+            <div>
+              <label class="block text-[10px] font-bold text-slate-400 mb-1">Título da Seção de Dúvidas</label>
+              <input type="text" value="${this.escape(block.title || 'Perguntas Frequentes')}" oninput="App.updateBlockProp(${stepIdx}, ${bIdx}, 'title', this.value)" placeholder="Ex: Perguntas Frequentes" class="w-full bg-slate-950 border border-slate-700 px-2.5 py-1.5 rounded-lg text-xs text-white font-semibold">
+            </div>
+            <div>
+              <label class="block text-[10px] font-bold text-slate-400 mb-1">Subtítulo Explicativo (Opcional)</label>
+              <input type="text" value="${this.escape(block.subtitle || '')}" oninput="App.updateBlockProp(${stepIdx}, ${bIdx}, 'subtitle', this.value)" placeholder="Ex: Tire suas dúvidas antes de finalizar" class="w-full bg-slate-950 border border-slate-700 px-2.5 py-1.5 rounded-lg text-xs text-slate-300">
+            </div>
+          </div>
+
+          <!-- Lista de Perguntas & Respostas -->
+          <div class="space-y-2.5">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-bold text-slate-300 flex items-center gap-1.5">
+                <i class="ph ph-question text-sky-400"></i> Perguntas Cadastradas (${items.length}):
+              </span>
+              <button type="button" onclick="App.addFaqItem(${stepIdx}, ${bIdx})" class="px-2.5 py-1 rounded-lg bg-sky-600/30 hover:bg-sky-600 text-sky-300 hover:text-white text-xs font-bold border border-sky-500/40 transition flex items-center gap-1 shadow-sm">
+                <i class="ph ph-plus-circle"></i> + Adicionar Pergunta
+              </button>
+            </div>
+
+            ${items.map((item, itemIdx) => `
+              <div class="bg-slate-900/90 border border-slate-800 rounded-xl p-3 space-y-2">
+                <div class="flex items-center justify-between border-b border-slate-800 pb-2">
+                  <span class="text-xs font-bold text-sky-400 flex items-center gap-1.5">
+                    <span class="w-5 h-5 rounded-md bg-slate-800 text-sky-300 flex items-center justify-center font-bold text-[11px] border border-slate-700">${itemIdx + 1}</span>
+                    <span class="text-slate-300 truncate max-w-[260px] sm:max-w-[400px]">${this.escape(item.question || 'Nova Pergunta')}</span>
+                  </span>
+                  <div class="flex items-center gap-1">
+                    <button type="button" onclick="App.moveFaqItem(${stepIdx}, ${bIdx}, ${itemIdx}, -1)" ${itemIdx === 0 ? 'disabled class="opacity-20 cursor-not-allowed p-1 text-slate-500"' : 'class="p-1 text-slate-400 hover:text-white"'} title="Mover para cima">
+                      <i class="ph ph-arrow-up text-xs"></i>
+                    </button>
+                    <button type="button" onclick="App.moveFaqItem(${stepIdx}, ${bIdx}, ${itemIdx}, 1)" ${itemIdx === items.length - 1 ? 'disabled class="opacity-20 cursor-not-allowed p-1 text-slate-500"' : 'class="p-1 text-slate-400 hover:text-white"'} title="Mover para baixo">
+                      <i class="ph ph-arrow-down text-xs"></i>
+                    </button>
+                    <button type="button" onclick="App.deleteFaqItem(${stepIdx}, ${bIdx}, ${itemIdx})" class="p-1 text-slate-500 hover:text-red-400 transition ml-1" title="Excluir pergunta">
+                      <i class="ph ph-trash text-xs"></i>
+                    </button>
+                  </div>
+                </div>
+
+                <div>
+                  <label class="block text-[10px] font-bold text-slate-400 mb-1">❓ Pergunta</label>
+                  <input type="text" value="${this.escape(item.question || '')}" oninput="App.updateFaqItem(${stepIdx}, ${bIdx}, ${itemIdx}, 'question', this.value)" placeholder="Ex: Como recebo o acesso?" class="w-full bg-slate-950 border border-slate-700 px-2.5 py-1.5 rounded-lg text-xs text-white font-semibold">
+                </div>
+
+                <div>
+                  <label class="block text-[10px] font-bold text-slate-400 mb-1">💡 Resposta (Aceita **negrito** e quebra de linha)</label>
+                  <textarea rows="2" oninput="App.updateFaqItem(${stepIdx}, ${bIdx}, ${itemIdx}, 'answer', this.value)" placeholder="Explique a resposta detalhadamente..." class="w-full bg-slate-950 border border-slate-700 px-2.5 py-1.5 rounded-lg text-xs text-slate-200">${this.escape(item.answer || '')}</textarea>
+                </div>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      `;
+    }
+
     // Demanda 4: Delay Universal Programável em TODOS os componentes
     const universalDelayControl = `
       <div class="mt-3 pt-2.5 border-t border-slate-800/80 flex items-center justify-between text-xs">
@@ -1536,6 +1727,29 @@ const App = {
       newBlock.startColor = '#ef4444';
       newBlock.endColor = '#10b981';
       newBlock.animationDuration = 2.5;
+    } else if (blockType === 'reviews') {
+      newBlock.headerBadge = 'AVALIAÇÕES REAIS';
+      newBlock.headerTitle = 'O que nossos clientes dizem';
+      newBlock.showRatingSummary = true;
+      newBlock.ratingSummary = '4.9 de 5 baseado em 1.480 avaliações';
+      newBlock.items = (typeof QuizTemplateEngine !== 'undefined' && QuizTemplateEngine.getDefaultReviewItems)
+        ? QuizTemplateEngine.getDefaultReviewItems()
+        : [
+            { id: 'rev_1', name: 'Carlos Mendes', role: 'Engenheiro Civil', avatarUrl: '', stars: 5, comment: 'Superou todas as minhas expectativas! Consegui montar o orçamento em menos de 15 minutos e economizei horas de trabalho.', timeAgo: 'Postado há 2 dias', verified: true },
+            { id: 'rev_2', name: 'Mariana Silveira', role: 'Arquiteta', avatarUrl: '', stars: 5, comment: 'Didático, direto ao ponto e muito prático. Mudou a forma como apresento orçamentos e propostas para meus clientes.', timeAgo: 'Postado há 4 dias', verified: true },
+            { id: 'rev_3', name: 'Roberto Fontes', role: 'Empreiteiro', avatarUrl: '', stars: 5, comment: 'O suporte me atendeu na hora no WhatsApp e o material é completíssimo. Vale cada centavo investido.', timeAgo: 'Postado há 1 semana', verified: true }
+          ];
+    } else if (blockType === 'faq') {
+      newBlock.title = 'Perguntas Frequentes';
+      newBlock.subtitle = 'Tire suas dúvidas antes de garantir seu acesso';
+      newBlock.items = (typeof QuizTemplateEngine !== 'undefined' && QuizTemplateEngine.getDefaultFaqItems)
+        ? QuizTemplateEngine.getDefaultFaqItems()
+        : [
+            { id: 'faq_1', question: 'Como e quando recebo o meu acesso?', answer: 'O envio é imediato! Assim que seu pagamento for aprovado, você receberá seus dados de acesso diretamente no seu e-mail e no WhatsApp.' },
+            { id: 'faq_2', question: 'Funciona no celular e no computador?', answer: 'Sim! Você pode acessar de qualquer celular (Android ou iPhone), tablet ou computador, sem precisar instalar nada pesado.' },
+            { id: 'faq_3', question: 'E se eu tiver dúvidas ou precisar de ajuda?', answer: 'Você terá acesso ao nosso suporte exclusivo via WhatsApp para tirar qualquer dúvida sempre que precisar.' },
+            { id: 'faq_4', question: 'Tenho garantia se eu não gostar?', answer: 'Com certeza! Você tem garantia incondicional de 30 dias. Se por qualquer motivo não ficar satisfeito, devolvemos 100% do seu dinheiro sem burocracia.' }
+          ];
     }
 
     step.blocks.push(newBlock);
@@ -1644,6 +1858,131 @@ const App = {
     const sampleHtml = `<iframe src="https://example.com" style="width:100%;height:320px;border-radius:10px;border:none;"></iframe>`;
     this.updateBlockProp(stepIdx, bIdx, 'customHtml', sampleHtml);
     this.renderSteps();
+  },
+
+  // MÉTODOS PARA O BLOCO DE AVALIAÇÕES (REVIEWS)
+  addReviewItem(stepIdx, bIdx) {
+    if (!this.currentQuiz || !this.currentQuiz.steps[stepIdx]) return;
+    const block = this.currentQuiz.steps[stepIdx].blocks[bIdx];
+    if (!block.items) block.items = [];
+
+    block.items.push({
+      id: 'rev_' + Date.now(),
+      name: 'Novo Cliente',
+      role: 'Profissão / Cidade',
+      avatarUrl: '',
+      stars: 5,
+      comment: 'Excelente experiência! O conteúdo superou minhas expectativas e recomendo muito.',
+      timeAgo: 'Postado recentemente',
+      verified: true
+    });
+
+    this.currentQuiz.updatedAt = new Date().toISOString();
+    this.saveQuizzesToStorage();
+    this.renderSteps();
+    this.refreshPreview(stepIdx);
+  },
+
+  updateReviewItem(stepIdx, bIdx, itemIdx, prop, value) {
+    if (!this.currentQuiz || !this.currentQuiz.steps[stepIdx]) return;
+    const block = this.currentQuiz.steps[stepIdx].blocks[bIdx];
+    if (!block.items || !block.items[itemIdx]) return;
+
+    block.items[itemIdx][prop] = value;
+    this.currentQuiz.updatedAt = new Date().toISOString();
+    this.saveQuizzesToStorage();
+    this.refreshPreview(stepIdx);
+  },
+
+  deleteReviewItem(stepIdx, bIdx, itemIdx) {
+    if (!this.currentQuiz || !this.currentQuiz.steps[stepIdx]) return;
+    const block = this.currentQuiz.steps[stepIdx].blocks[bIdx];
+    if (!block.items || !block.items[itemIdx]) return;
+
+    if (confirm('Deseja excluir esta avaliação?')) {
+      block.items.splice(itemIdx, 1);
+      this.currentQuiz.updatedAt = new Date().toISOString();
+      this.saveQuizzesToStorage();
+      this.renderSteps();
+      this.refreshPreview(stepIdx);
+    }
+  },
+
+  moveReviewItem(stepIdx, bIdx, itemIdx, dir) {
+    if (!this.currentQuiz || !this.currentQuiz.steps[stepIdx]) return;
+    const block = this.currentQuiz.steps[stepIdx].blocks[bIdx];
+    if (!block.items) return;
+    const newIdx = itemIdx + dir;
+    if (newIdx < 0 || newIdx >= block.items.length) return;
+
+    const temp = block.items[itemIdx];
+    block.items[itemIdx] = block.items[newIdx];
+    block.items[newIdx] = temp;
+
+    this.currentQuiz.updatedAt = new Date().toISOString();
+    this.saveQuizzesToStorage();
+    this.renderSteps();
+    this.refreshPreview(stepIdx);
+  },
+
+  // MÉTODOS PARA O BLOCO DE FAQ / DÚVIDAS FREQUENTES
+  addFaqItem(stepIdx, bIdx) {
+    if (!this.currentQuiz || !this.currentQuiz.steps[stepIdx]) return;
+    const block = this.currentQuiz.steps[stepIdx].blocks[bIdx];
+    if (!block.items) block.items = [];
+
+    block.items.push({
+      id: 'faq_' + Date.now(),
+      question: 'Nova Pergunta Frequente?',
+      answer: 'Escreva a resposta detalhada aqui para tirar a dúvida do seu cliente.'
+    });
+
+    this.currentQuiz.updatedAt = new Date().toISOString();
+    this.saveQuizzesToStorage();
+    this.renderSteps();
+    this.refreshPreview(stepIdx);
+  },
+
+  updateFaqItem(stepIdx, bIdx, itemIdx, prop, value) {
+    if (!this.currentQuiz || !this.currentQuiz.steps[stepIdx]) return;
+    const block = this.currentQuiz.steps[stepIdx].blocks[bIdx];
+    if (!block.items || !block.items[itemIdx]) return;
+
+    block.items[itemIdx][prop] = value;
+    this.currentQuiz.updatedAt = new Date().toISOString();
+    this.saveQuizzesToStorage();
+    this.refreshPreview(stepIdx);
+  },
+
+  deleteFaqItem(stepIdx, bIdx, itemIdx) {
+    if (!this.currentQuiz || !this.currentQuiz.steps[stepIdx]) return;
+    const block = this.currentQuiz.steps[stepIdx].blocks[bIdx];
+    if (!block.items || !block.items[itemIdx]) return;
+
+    if (confirm('Deseja excluir esta pergunta do FAQ?')) {
+      block.items.splice(itemIdx, 1);
+      this.currentQuiz.updatedAt = new Date().toISOString();
+      this.saveQuizzesToStorage();
+      this.renderSteps();
+      this.refreshPreview(stepIdx);
+    }
+  },
+
+  moveFaqItem(stepIdx, bIdx, itemIdx, dir) {
+    if (!this.currentQuiz || !this.currentQuiz.steps[stepIdx]) return;
+    const block = this.currentQuiz.steps[stepIdx].blocks[bIdx];
+    if (!block.items) return;
+    const newIdx = itemIdx + dir;
+    if (newIdx < 0 || newIdx >= block.items.length) return;
+
+    const temp = block.items[itemIdx];
+    block.items[itemIdx] = block.items[newIdx];
+    block.items[newIdx] = temp;
+
+    this.currentQuiz.updatedAt = new Date().toISOString();
+    this.saveQuizzesToStorage();
+    this.renderSteps();
+    this.refreshPreview(stepIdx);
   },
 
   addPlanToOffer(stepIdx, bIdx) {

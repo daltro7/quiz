@@ -38,6 +38,21 @@ const QuizTemplateEngine = {
           if (b.autoAdvance === undefined) b.autoAdvance = true;
           if (!b.buttonText) b.buttonText = 'Ver Meu Diagnóstico →';
         }
+        if (b.type === 'reviews') {
+          if (!b.headerTitle && b.headerTitle !== '') b.headerTitle = 'O que nossos clientes dizem';
+          if (b.showRatingSummary === undefined) b.showRatingSummary = true;
+          if (!b.ratingSummary) b.ratingSummary = '4.9 de 5 baseado em 1.480 avaliações';
+          if (!Array.isArray(b.items) || b.items.length === 0) {
+            b.items = this.getDefaultReviewItems();
+          }
+        }
+        if (b.type === 'faq') {
+          if (!b.title && b.title !== '') b.title = 'Perguntas Frequentes';
+          if (!b.subtitle && b.subtitle !== '') b.subtitle = 'Tire suas dúvidas antes de garantir seu acesso';
+          if (!Array.isArray(b.items) || b.items.length === 0) {
+            b.items = this.getDefaultFaqItems();
+          }
+        }
       });
       return step;
     }
@@ -379,6 +394,214 @@ const QuizTemplateEngine = {
       blockHtml += `<div class="guarantee-desc">${this.formatMarkdown(desc)}</div>`;
     }
     blockHtml += `</div>`;
+    return blockHtml;
+  },
+
+  getDefaultReviewItems() {
+    return [
+      {
+        id: 'rev_1',
+        name: 'Carlos Mendes',
+        role: 'Engenheiro Civil',
+        avatarUrl: '',
+        stars: 5,
+        comment: 'Superou todas as minhas expectativas! Consegui montar o orçamento em menos de 15 minutos e economizei horas de trabalho.',
+        timeAgo: 'Postado há 2 dias',
+        verified: true
+      },
+      {
+        id: 'rev_2',
+        name: 'Mariana Silveira',
+        role: 'Arquiteta',
+        avatarUrl: '',
+        stars: 5,
+        comment: 'Didático, direto ao ponto e muito prático. Mudou a forma como apresento orçamentos e propostas para meus clientes.',
+        timeAgo: 'Postado há 4 dias',
+        verified: true
+      },
+      {
+        id: 'rev_3',
+        name: 'Roberto Fontes',
+        role: 'Empreiteiro',
+        avatarUrl: '',
+        stars: 5,
+        comment: 'O suporte me atendeu na hora no WhatsApp e o material é completíssimo. Vale cada centavo investido.',
+        timeAgo: 'Postado há 1 semana',
+        verified: true
+      }
+    ];
+  },
+
+  getDefaultFaqItems() {
+    return [
+      {
+        id: 'faq_1',
+        question: 'Como e quando recebo o meu acesso?',
+        answer: 'O envio é imediato! Assim que seu pagamento for aprovado, você receberá seus dados de acesso diretamente no seu e-mail e no WhatsApp.'
+      },
+      {
+        id: 'faq_2',
+        question: 'Funciona no celular e no computador?',
+        answer: 'Sim! Você pode acessar de qualquer celular (Android ou iPhone), tablet ou computador, sem precisar instalar nada pesado.'
+      },
+      {
+        id: 'faq_3',
+        question: 'E se eu tiver dúvidas ou precisar de ajuda?',
+        answer: 'Você terá acesso ao nosso suporte exclusivo via WhatsApp para tirar qualquer dúvida sempre que precisar.'
+      },
+      {
+        id: 'faq_4',
+        question: 'Tenho garantia se eu não gostar?',
+        answer: 'Com certeza! Você tem garantia incondicional de 30 dias. Se por qualquer motivo não ficar satisfeito, devolvemos 100% do seu dinheiro sem burocracia.'
+      }
+    ];
+  },
+
+  getInitials(name) {
+    if (!name || !name.trim()) return 'CL';
+    const parts = name.trim().split(/\s+/);
+    if (parts.length === 1) return parts[0].substring(0, 2).toUpperCase();
+    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+  },
+
+  getAvatarBg(name) {
+    const gradients = [
+      'linear-gradient(135deg, #6366f1, #8b5cf6)',
+      'linear-gradient(135deg, #ec4899, #f43f5e)',
+      'linear-gradient(135deg, #10b981, #059669)',
+      'linear-gradient(135deg, #f59e0b, #d97706)',
+      'linear-gradient(135deg, #06b6d4, #0284c7)',
+      'linear-gradient(135deg, #8b5cf6, #d946ef)'
+    ];
+    let hash = 0;
+    const str = name || 'Cliente';
+    for (let i = 0; i < str.length; i++) {
+      hash = str.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    return gradients[Math.abs(hash) % gradients.length];
+  },
+
+  renderStarsHtml(starsCount = 5) {
+    const count = Math.max(1, Math.min(5, parseInt(starsCount, 10) || 5));
+    let starsSvg = '';
+    for (let i = 1; i <= 5; i++) {
+      const isFilled = i <= count;
+      starsSvg += `<span class="review-star ${isFilled ? 'star-filled' : 'star-empty'}">★</span>`;
+    }
+    return `<span class="review-stars-wrap">${starsSvg} <strong class="review-stars-num">${count}.0</strong></span>`;
+  },
+
+  renderReviewsBlockHtml(block) {
+    const badge = block.headerBadge || '';
+    const title = block.headerTitle || '';
+    const showSummary = block.showRatingSummary !== false;
+    const summary = block.ratingSummary || '4.9 de 5 baseado em clientes satisfeitos';
+    const items = (Array.isArray(block.items) && block.items.length > 0)
+      ? block.items
+      : this.getDefaultReviewItems();
+
+    let blockHtml = '<div class="reviews-block-container">';
+
+    if (badge || title || showSummary) {
+      blockHtml += '<div class="reviews-header-summary">';
+      if (badge) {
+        blockHtml += `<span class="reviews-header-badge">${this.escapeHtml(badge)}</span>`;
+      }
+      if (title) {
+        blockHtml += `<div class="reviews-header-title">${this.escapeHtml(title)}</div>`;
+      }
+      if (showSummary) {
+        blockHtml += `<div class="reviews-header-rating"><span style="color:#f59e0b;">★★★★★</span> <span>${this.escapeHtml(summary)}</span></div>`;
+      }
+      blockHtml += '</div>';
+    }
+
+    blockHtml += '<div class="reviews-list">';
+    items.forEach(item => {
+      const name = item.name || 'Cliente Verificado';
+      const role = item.role || '';
+      const stars = parseInt(item.stars, 10) || 5;
+      const comment = item.comment || '';
+      const timeAgo = item.timeAgo || '';
+      const isVerified = item.verified !== false;
+      const avatarUrl = item.avatarUrl || '';
+      const initials = this.getInitials(name);
+      const avatarBg = this.getAvatarBg(name);
+
+      blockHtml += '<div class="review-card">';
+      blockHtml += '<div class="review-top-row">';
+      blockHtml += '<div class="review-author-wrap">';
+      if (avatarUrl && avatarUrl.trim()) {
+        blockHtml += `<div class="review-avatar"><img src="${this.escapeHtml(avatarUrl.trim())}" alt="${this.escapeHtml(name)}" loading="lazy"></div>`;
+      } else {
+        blockHtml += `<div class="review-avatar" style="background:${avatarBg};">${initials}</div>`;
+      }
+      blockHtml += '<div class="review-author-info">';
+      blockHtml += `<div class="review-author-name"><span>${this.escapeHtml(name)}</span> ${isVerified ? '<span class="review-verified-badge" title="Compra Verificada">✓ Verificado</span>' : ''}</div>`;
+      if (role) {
+        blockHtml += `<div class="review-author-role">${this.escapeHtml(role)}</div>`;
+      }
+      blockHtml += '</div>';
+      blockHtml += '</div>';
+
+      blockHtml += this.renderStarsHtml(stars);
+      blockHtml += '</div>';
+
+      if (comment) {
+        blockHtml += `<div class="review-text">${this.formatMarkdown(comment)}</div>`;
+      }
+
+      if (timeAgo) {
+        blockHtml += `<div class="review-footer-row"><span>${this.escapeHtml(timeAgo)}</span> <span style="color:#10b981; font-weight:600;">Avaliação confirmada</span></div>`;
+      }
+
+      blockHtml += '</div>';
+    });
+    blockHtml += '</div>';
+    blockHtml += '</div>';
+
+    return blockHtml;
+  },
+
+  renderFaqBlockHtml(block) {
+    const title = block.title || 'Perguntas Frequentes';
+    const subtitle = block.subtitle || '';
+    const items = (Array.isArray(block.items) && block.items.length > 0)
+      ? block.items
+      : this.getDefaultFaqItems();
+
+    let blockHtml = '<div class="faq-block-container">';
+
+    if (title || subtitle) {
+      blockHtml += '<div class="faq-header">';
+      if (title) {
+        blockHtml += `<div class="faq-header-title"><span>❓</span> ${this.escapeHtml(title)}</div>`;
+      }
+      if (subtitle) {
+        blockHtml += `<div class="faq-header-subtitle">${this.escapeHtml(subtitle)}</div>`;
+      }
+      blockHtml += '</div>';
+    }
+
+    blockHtml += '<div class="faq-accordion">';
+    items.forEach(item => {
+      const q = item.question || 'Dúvida';
+      const a = item.answer || '';
+      blockHtml += `
+        <div class="faq-item" onclick="this.classList.toggle('active')">
+          <div class="faq-question">
+            <span class="faq-q-text">${this.escapeHtml(q)}</span>
+            <span class="faq-toggle-icon">▾</span>
+          </div>
+          <div class="faq-answer">
+            <div class="faq-answer-inner">${this.formatMarkdown(a)}</div>
+          </div>
+        </div>
+      `;
+    });
+    blockHtml += '</div>';
+    blockHtml += '</div>';
+
     return blockHtml;
   },
 
@@ -1284,6 +1507,322 @@ const QuizTemplateEngine = {
       word-break: break-word;
     }
 
+    /* ========================================================
+       BLOCO DE AVALIAÇÕES / DEPOIMENTOS (PROVA SOCIAL)
+       ======================================================== */
+    ${scope} .reviews-block-container {
+      width: 100%;
+      margin: 18px 0;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      box-sizing: border-box;
+    }
+
+    ${scope} .reviews-header-summary {
+      text-align: center;
+      padding: 12px 14px;
+      background: var(--opt-bg);
+      border: 1px solid var(--opt-border);
+      border-radius: var(--radius);
+      box-shadow: var(--opt-shadow);
+      margin-bottom: 4px;
+    }
+
+    ${scope} .reviews-header-badge {
+      display: inline-block;
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #eab308;
+      background: rgba(234, 179, 8, 0.12);
+      border: 1px solid rgba(234, 179, 8, 0.25);
+      padding: 2px 8px;
+      border-radius: 9999px;
+      margin-bottom: 6px;
+    }
+
+    ${scope} .reviews-header-title {
+      font-size: 15px;
+      font-weight: 800;
+      color: var(--text);
+      margin-bottom: 4px;
+    }
+
+    ${scope} .reviews-header-rating {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
+    ${scope} .reviews-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    ${scope} .review-card {
+      background: var(--opt-bg);
+      border: 1.5px solid var(--opt-border);
+      border-radius: var(--radius);
+      box-shadow: var(--opt-shadow);
+      padding: 16px 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      text-align: left;
+      transition: transform 0.2s, border-color 0.2s;
+      box-sizing: border-box;
+    }
+
+    ${scope} .review-top-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    ${scope} .review-author-wrap {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 0;
+    }
+
+    ${scope} .review-avatar {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      flex-shrink: 0;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      font-size: 13px;
+      color: #fff;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+    }
+
+    ${scope} .review-avatar img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    ${scope} .review-author-info {
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+    }
+
+    ${scope} .review-author-name {
+      font-size: 13px;
+      font-weight: 800;
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    ${scope} .review-verified-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 2px;
+      font-size: 10px;
+      font-weight: 700;
+      color: #10b981;
+      background: rgba(16, 185, 129, 0.12);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      padding: 1px 5px;
+      border-radius: 4px;
+      flex-shrink: 0;
+    }
+
+    ${scope} .review-author-role {
+      font-size: 11px;
+      color: var(--text-muted);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    ${scope} .review-stars-wrap {
+      display: inline-flex;
+      align-items: center;
+      gap: 2px;
+      flex-shrink: 0;
+    }
+
+    ${scope} .review-star {
+      font-size: 14px;
+      line-height: 1;
+    }
+
+    ${scope} .review-star.star-filled {
+      color: #f59e0b;
+      filter: drop-shadow(0 1px 2px rgba(245, 158, 11, 0.4));
+    }
+
+    ${scope} .review-star.star-empty {
+      color: rgba(128, 128, 128, 0.3);
+    }
+
+    ${scope} .review-stars-num {
+      font-size: 11px;
+      font-weight: 800;
+      color: #f59e0b;
+      margin-left: 3px;
+      font-family: monospace;
+    }
+
+    ${scope} .review-text {
+      font-size: 12.5px;
+      line-height: 1.5;
+      color: var(--text);
+      opacity: 0.92;
+      font-style: normal;
+    }
+
+    ${scope} .review-footer-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 10.5px;
+      color: var(--text-muted);
+      opacity: 0.8;
+      border-top: 1px dashed var(--opt-border);
+      padding-top: 6px;
+      margin-top: 2px;
+    }
+
+    /* ========================================================
+       BLOCO DE DÚVIDAS FREQUENTES (FAQ ACCORDION)
+       ======================================================== */
+    ${scope} .faq-block-container {
+      width: 100%;
+      margin: 18px 0;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      box-sizing: border-box;
+    }
+
+    ${scope} .faq-header {
+      text-align: center;
+      margin-bottom: 6px;
+    }
+
+    ${scope} .faq-header-title {
+      font-size: 16px;
+      font-weight: 800;
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+
+    ${scope} .faq-header-subtitle {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+
+    ${scope} .faq-accordion {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    ${scope} .faq-item {
+      background: var(--opt-bg);
+      border: 1.5px solid var(--opt-border);
+      border-radius: var(--radius);
+      box-shadow: var(--opt-shadow);
+      overflow: hidden;
+      transition: all 0.25s ease;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    ${scope} .faq-item:hover {
+      border-color: rgba(99, 102, 241, 0.45);
+    }
+
+    ${scope} .faq-item.active {
+      border-color: #6366f1;
+      box-shadow: 0 4px 14px -2px rgba(99, 102, 241, 0.2);
+    }
+
+    ${scope} .faq-question {
+      padding: 13px 14px;
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    ${scope} .faq-q-text {
+      flex: 1;
+      text-align: left;
+    }
+
+    ${scope} .faq-toggle-icon {
+      width: 20px;
+      height: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 13px;
+      color: var(--text-muted);
+      transition: transform 0.25s ease, color 0.2s ease;
+      flex-shrink: 0;
+    }
+
+    ${scope} .faq-item.active .faq-toggle-icon {
+      transform: rotate(180deg);
+      color: #6366f1;
+    }
+
+    ${scope} .faq-answer {
+      max-height: 0;
+      opacity: 0;
+      overflow: hidden;
+      transition: max-height 0.3s cubic-bezier(0, 1, 0, 1), opacity 0.25s ease;
+    }
+
+    ${scope} .faq-item.active .faq-answer {
+      max-height: 1000px;
+      opacity: 1;
+      transition: max-height 0.35s ease-in, opacity 0.3s ease;
+    }
+
+    ${scope} .faq-answer-inner {
+      padding: 0 14px 14px 14px;
+      font-size: 12px;
+      line-height: 1.55;
+      color: var(--text);
+      opacity: 0.9;
+      text-align: left;
+      border-top: 1px dashed var(--opt-border);
+      padding-top: 10px;
+      margin-top: 2px;
+    }
+
     /* Formulário de Lead */
     ${scope} .lead-form {
       display: flex;
@@ -2090,6 +2629,16 @@ const QuizTemplateEngine = {
         blockHtml += '</div>';
       }
 
+      // 10. NOVO BLOCO: Avaliações & Depoimentos (reviews)
+      else if (block.type === 'reviews') {
+        blockHtml += this.renderReviewsBlockHtml(block);
+      }
+
+      // 11. NOVO BLOCO: Dúvidas Frequentes / FAQ (faq)
+      else if (block.type === 'faq') {
+        blockHtml += this.renderFaqBlockHtml(block);
+      }
+
       // Aplica suporte universal a Delay Programável
       const delay = parseInt(block.delaySeconds, 10) || 0;
       if (delay > 0) {
@@ -2843,6 +3392,12 @@ const QuizTemplateEngine = {
 
             bHtml += '</div>';
           }
+          else if (block.type === 'reviews') {
+            bHtml += this.renderReviewsHtml(block);
+          }
+          else if (block.type === 'faq') {
+            bHtml += this.renderFaqHtml(block);
+          }
 
           const delay = parseInt(block.delaySeconds, 10) || 0;
           if (delay > 0) {
@@ -3005,6 +3560,207 @@ const QuizTemplateEngine = {
         if (title) bHtml += '<h3 class=\"guarantee-title\">' + this.escapeHtml(title) + '</h3>';
         if (desc) bHtml += '<div class=\"guarantee-desc\">' + this.formatMarkdown(desc) + '</div>';
         bHtml += '</div>';
+        return bHtml;
+      },
+
+      getDefaultReviewItems() {
+        return [
+          {
+            id: 'rev_1',
+            name: 'Carlos Mendes',
+            role: 'Engenheiro Civil',
+            avatarUrl: '',
+            stars: 5,
+            comment: 'Superou todas as minhas expectativas! Consegui montar o orçamento em menos de 15 minutos e economizei horas de trabalho.',
+            timeAgo: 'Postado há 2 dias',
+            verified: true
+          },
+          {
+            id: 'rev_2',
+            name: 'Mariana Silveira',
+            role: 'Arquiteta',
+            avatarUrl: '',
+            stars: 5,
+            comment: 'Didático, direto ao ponto e muito prático. Mudou a forma como apresento orçamentos e propostas para meus clientes.',
+            timeAgo: 'Postado há 4 dias',
+            verified: true
+          },
+          {
+            id: 'rev_3',
+            name: 'Roberto Fontes',
+            role: 'Empreiteiro',
+            avatarUrl: '',
+            stars: 5,
+            comment: 'O suporte me atendeu na hora no WhatsApp e o material é completíssimo. Vale cada centavo investido.',
+            timeAgo: 'Postado há 1 semana',
+            verified: true
+          }
+        ];
+      },
+
+      getDefaultFaqItems() {
+        return [
+          {
+            id: 'faq_1',
+            question: 'Como e quando recebo o meu acesso?',
+            answer: 'O envio é imediato! Assim que seu pagamento for aprovado, você receberá seus dados de acesso diretamente no seu e-mail e no WhatsApp.'
+          },
+          {
+            id: 'faq_2',
+            question: 'Funciona no celular e no computador?',
+            answer: 'Sim! Você pode acessar de qualquer celular (Android ou iPhone), tablet ou computador, sem precisar instalar nada pesado.'
+          },
+          {
+            id: 'faq_3',
+            question: 'E se eu tiver dúvidas ou precisar de ajuda?',
+            answer: 'Você terá acesso ao nosso suporte exclusivo via WhatsApp para tirar qualquer dúvida sempre que precisar.'
+          },
+          {
+            id: 'faq_4',
+            question: 'Tenho garantia se eu não gostar?',
+            answer: 'Com certeza! Você tem garantia incondicional de 30 dias. Se por qualquer motivo não ficar satisfeito, devolvemos 100% do seu dinheiro sem burocracia.'
+          }
+        ];
+      },
+
+      getInitials(name) {
+        if (!name || !name.trim()) return 'CL';
+        const parts = name.trim().split(/\s+/);
+        if (parts.length === 1) return parts[0].substring(0, 2).toUpperCase();
+        return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+      },
+
+      getAvatarBg(name) {
+        const gradients = [
+          'linear-gradient(135deg, #6366f1, #8b5cf6)',
+          'linear-gradient(135deg, #ec4899, #f43f5e)',
+          'linear-gradient(135deg, #10b981, #059669)',
+          'linear-gradient(135deg, #f59e0b, #d97706)',
+          'linear-gradient(135deg, #06b6d4, #0284c7)',
+          'linear-gradient(135deg, #8b5cf6, #d946ef)'
+        ];
+        let hash = 0;
+        const str = name || 'Cliente';
+        for (let i = 0; i < str.length; i++) {
+          hash = str.charCodeAt(i) + ((hash << 5) - hash);
+        }
+        return gradients[Math.abs(hash) % gradients.length];
+      },
+
+      renderStarsHtml(starsCount = 5) {
+        const count = Math.max(1, Math.min(5, parseInt(starsCount, 10) || 5));
+        let starsSvg = '';
+        for (let i = 1; i <= 5; i++) {
+          const isFilled = i <= count;
+          starsSvg += '<span class=\"review-star ' + (isFilled ? 'star-filled' : 'star-empty') + '\">★</span>';
+        }
+        return '<span class=\"review-stars-wrap\">' + starsSvg + ' <strong class=\"review-stars-num\">' + count + '.0</strong></span>';
+      },
+
+      renderReviewsHtml(block) {
+        const badge = block.headerBadge || '';
+        const title = block.headerTitle || '';
+        const showSummary = block.showRatingSummary !== false;
+        const summary = block.ratingSummary || '4.9 de 5 baseado em clientes satisfeitos';
+        const items = (Array.isArray(block.items) && block.items.length > 0)
+          ? block.items
+          : this.getDefaultReviewItems();
+
+        let bHtml = '<div class=\"reviews-block-container\">';
+
+        if (badge || title || showSummary) {
+          bHtml += '<div class=\"reviews-header-summary\">';
+          if (badge) {
+            bHtml += '<span class=\"reviews-header-badge\">' + this.escapeHtml(badge) + '</span>';
+          }
+          if (title) {
+            bHtml += '<div class=\"reviews-header-title\">' + this.escapeHtml(title) + '</div>';
+          }
+          if (showSummary) {
+            bHtml += '<div class=\"reviews-header-rating\"><span style=\"color:#f59e0b;\">★★★★★</span> <span>' + this.escapeHtml(summary) + '</span></div>';
+          }
+          bHtml += '</div>';
+        }
+
+        bHtml += '<div class=\"reviews-list\">';
+        items.forEach(item => {
+          const name = item.name || 'Cliente Verificado';
+          const role = item.role || '';
+          const stars = parseInt(item.stars, 10) || 5;
+          const comment = item.comment || '';
+          const timeAgo = item.timeAgo || '';
+          const isVerified = item.verified !== false;
+          const avatarUrl = item.avatarUrl || '';
+          const initials = this.getInitials(name);
+          const avatarBg = this.getAvatarBg(name);
+
+          bHtml += '<div class=\"review-card\">';
+          bHtml += '<div class=\"review-top-row\">';
+          bHtml += '<div class=\"review-author-wrap\">';
+          if (avatarUrl && avatarUrl.trim()) {
+            bHtml += '<div class=\"review-avatar\"><img src=\"' + this.escapeHtml(avatarUrl.trim()) + '\" alt=\"' + this.escapeHtml(name) + '\" loading=\"lazy\"></div>';
+          } else {
+            bHtml += '<div class=\"review-avatar\" style=\"background:' + avatarBg + ';\">' + initials + '</div>';
+          }
+          bHtml += '<div class=\"review-author-info\">';
+          bHtml += '<div class=\"review-author-name\"><span>' + this.escapeHtml(name) + '</span> ' + (isVerified ? '<span class=\"review-verified-badge\" title=\"Compra Verificada\">✓ Verificado</span>' : '') + '</div>';
+          if (role) {
+            bHtml += '<div class=\"review-author-role\">' + this.escapeHtml(role) + '</div>';
+          }
+          bHtml += '</div>';
+          bHtml += '</div>';
+
+          bHtml += this.renderStarsHtml(stars);
+          bHtml += '</div>';
+
+          if (comment) {
+            bHtml += '<div class=\"review-text\">' + this.formatMarkdown(comment) + '</div>';
+          }
+
+          if (timeAgo) {
+            bHtml += '<div class=\"review-footer-row\"><span>' + this.escapeHtml(timeAgo) + '</span> <span style=\"color:#10b981; font-weight:600;\">Avaliação confirmada</span></div>';
+          }
+
+          bHtml += '</div>';
+        });
+        bHtml += '</div>';
+        bHtml += '</div>';
+
+        return bHtml;
+      },
+
+      renderFaqHtml(block) {
+        const title = block.title || 'Perguntas Frequentes';
+        const subtitle = block.subtitle || '';
+        const items = (Array.isArray(block.items) && block.items.length > 0)
+          ? block.items
+          : this.getDefaultFaqItems();
+
+        let bHtml = '<div class=\"faq-block-container\">';
+
+        if (title || subtitle) {
+          bHtml += '<div class=\"faq-header\">';
+          if (title) {
+            bHtml += '<div class=\"faq-header-title\"><span>❓</span> ' + this.escapeHtml(title) + '</div>';
+          }
+          if (subtitle) {
+            bHtml += '<div class=\"faq-header-subtitle\">' + this.escapeHtml(subtitle) + '</div>';
+          }
+          bHtml += '</div>';
+        }
+
+        bHtml += '<div class=\"faq-accordion\">';
+        items.forEach(item => {
+          const q = item.question || 'Dúvida';
+          const a = item.answer || '';
+          bHtml += '<div class=\"faq-item\" onclick=\"this.classList.toggle(\\\'active\\\')\">';
+          bHtml += '<div class=\"faq-question\"><span class=\"faq-q-text\">' + this.escapeHtml(q) + '</span><span class=\"faq-toggle-icon\">▾</span></div>';
+          bHtml += '<div class=\"faq-answer\"><div class=\"faq-answer-inner\">' + this.formatMarkdown(a) + '</div></div>';
+          bHtml += '</div>';
+        });
+        bHtml += '</div>';
+        bHtml += '</div>';
+
         return bHtml;
       },
 
