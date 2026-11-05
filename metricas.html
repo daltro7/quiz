@@ -11,6 +11,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Métricas">
+  <link rel="apple-touch-icon" href="icon-192.png">
   
   <!-- Fontes & Ícones -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -18,6 +19,11 @@
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <script src="https://unpkg.com/@phosphor-icons/web"></script>
   <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Firebase SDKs (Compat v10) -->
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
 
   <style>
     body {
@@ -44,10 +50,26 @@
 </head>
 <body class="bg-[#090d16] text-slate-100 min-h-screen flex flex-col antialiased selection:bg-indigo-500 selection:text-white pb-20">
 
+  <!-- BANNER DE INSTALAÇÃO PWA (QUANDO DISPONÍVEL NO ANDROID/DESKTOP) -->
+  <div id="pwa-install-banner" class="hidden bg-gradient-to-r from-indigo-900/90 to-violet-900/90 border-b border-indigo-500/30 px-4 py-2.5 flex items-center justify-between z-50">
+    <div class="flex items-center gap-2">
+      <i class="ph ph-device-mobile text-indigo-300 text-lg"></i>
+      <span class="text-xs font-semibold text-white">Instalar app no celular</span>
+    </div>
+    <div class="flex items-center gap-2">
+      <button onclick="app.installPwa()" class="px-3 py-1 bg-white text-indigo-950 font-extrabold text-xs rounded-lg shadow-sm active:scale-95 transition">
+        Instalar
+      </button>
+      <button onclick="document.getElementById('pwa-install-banner').classList.add('hidden')" class="text-indigo-300 hover:text-white text-sm p-1">
+        <i class="ph ph-x"></i>
+      </button>
+    </div>
+  </div>
+
   <!-- TOP BAR NAVEGAÇÃO -->
   <header class="sticky top-0 z-40 bg-[#090d16]/95 backdrop-blur-md border-b border-slate-800/80 px-4 py-3 flex items-center justify-between">
     <div class="flex items-center gap-2.5">
-      <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-indigo-600 to-violet-500 flex items-center justify-center shadow-lg shadow-indigo-500/25">
+      <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-indigo-600 to-violet-500 flex items-center justify-center shadow-lg shadow-indigo-500/25 shrink-0">
         <i class="ph ph-chart-line-up text-white text-lg font-bold"></i>
       </div>
       <div>
@@ -57,20 +79,44 @@
         </div>
         <p class="text-[11px] text-slate-400 font-medium flex items-center gap-1" id="sync-status-indicator">
           <span class="w-2 h-2 rounded-full bg-emerald-400 inline-block animate-pulse"></span>
-          <span id="sync-status-text">Pronto para atualizar</span>
+          <span id="sync-status-text">Pronto</span>
         </p>
       </div>
     </div>
 
+    <!-- BOTÕES DO TOPO (LOGIN / SINCRONIZAR / CONFIG) -->
     <div class="flex items-center gap-1.5">
-      <button onclick="app.refreshData()" id="btn-sync" class="w-9 h-9 rounded-xl bg-slate-800/90 border border-slate-700/80 text-slate-300 hover:text-white flex items-center justify-center transition active:scale-95">
+      <!-- Botão Autenticação Firebase -->
+      <button onclick="app.openAuthModal()" id="btn-auth-header" class="px-2.5 py-1.5 rounded-xl bg-slate-800/90 border border-slate-700/80 text-slate-300 hover:text-white flex items-center gap-1.5 text-xs font-bold transition active:scale-95">
+        <i class="ph ph-user-circle text-base text-indigo-400" id="auth-icon-header"></i>
+        <span id="auth-label-header">Login</span>
+      </button>
+
+      <button onclick="app.refreshData()" id="btn-sync" class="w-9 h-9 rounded-xl bg-slate-800/90 border border-slate-700/80 text-slate-300 hover:text-white flex items-center justify-center transition active:scale-95" title="Atualizar dados">
         <i class="ph ph-arrows-clockwise text-base" id="icon-sync"></i>
       </button>
-      <button onclick="app.openSettings()" class="w-9 h-9 rounded-xl bg-slate-800/90 border border-slate-700/80 text-slate-300 hover:text-white flex items-center justify-center transition active:scale-95">
+      
+      <button onclick="app.openSettings()" class="w-9 h-9 rounded-xl bg-slate-800/90 border border-slate-700/80 text-slate-300 hover:text-white flex items-center justify-center transition active:scale-95" title="Configurações">
         <i class="ph ph-gear text-base"></i>
       </button>
     </div>
   </header>
+
+  <!-- SELETOR DE FUNIL (DROPDOWN) -->
+  <div class="bg-slate-900/90 border-b border-slate-800 px-4 py-2.5 flex items-center justify-between gap-3">
+    <div class="flex items-center gap-2 flex-1 min-w-0">
+      <i class="ph ph-stack text-indigo-400 text-base shrink-0"></i>
+      <span class="text-[11px] font-bold text-slate-400 shrink-0 uppercase tracking-wider">Funil:</span>
+      <select id="funnel-selector" onchange="app.onSelectQuiz(this.value)" class="flex-1 bg-slate-950 border border-slate-800 text-white text-xs font-bold rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-indigo-500 truncate cursor-pointer">
+        <option value="demo">Modo Demonstração</option>
+      </select>
+    </div>
+
+    <!-- Badge se o funil tem planilha ativa -->
+    <span id="funnel-sheet-status" class="shrink-0 text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center gap-1">
+      <i class="ph ph-link"></i> Planilha OK
+    </span>
+  </div>
 
   <!-- CONTEÚDO PRINCIPAL -->
   <main class="flex-1 px-4 py-4 max-w-lg mx-auto w-full space-y-4">
@@ -195,6 +241,60 @@
 
   </main>
 
+  <!-- MODAL: LOGIN FIREBASE -->
+  <div id="modal-auth" class="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4 hidden">
+    <div class="bg-slate-900 border border-slate-800 w-full max-w-sm rounded-t-3xl sm:rounded-2xl p-5 space-y-4">
+      <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+        <div class="flex items-center gap-2">
+          <div class="w-8 h-8 rounded-lg bg-indigo-600/20 text-indigo-400 flex items-center justify-center font-bold">
+            <i class="ph ph-cloud-check text-base"></i>
+          </div>
+          <div>
+            <h3 class="text-sm font-extrabold text-white">Sua Conta Firebase</h3>
+            <p class="text-[10px] text-slate-400">Acesse seus funis reais da nuvem</p>
+          </div>
+        </div>
+        <button onclick="app.closeAuthModal()" class="w-8 h-8 rounded-full bg-slate-800 text-slate-400 hover:text-white flex items-center justify-center">
+          <i class="ph ph-x"></i>
+        </button>
+      </div>
+
+      <div id="auth-logged-in-view" class="hidden space-y-3">
+        <div class="p-3 bg-slate-950 rounded-xl border border-slate-800 flex items-center gap-3">
+          <div class="w-10 h-10 rounded-full bg-indigo-600 text-white font-bold flex items-center justify-center text-sm" id="auth-user-avatar">
+            U
+          </div>
+          <div class="flex-1 min-w-0">
+            <div class="text-xs font-bold text-white truncate" id="auth-user-email">email@exemplo.com</div>
+            <div class="text-[10px] text-emerald-400 flex items-center gap-1 font-medium">
+              <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span> Conectado na Nuvem
+            </div>
+          </div>
+        </div>
+        <button onclick="app.logoutFirebase()" class="w-full py-2.5 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/30 rounded-xl text-xs font-bold transition">
+          Desconectar Conta
+        </button>
+      </div>
+
+      <form id="auth-form" onsubmit="app.handleAuthSubmit(event)" class="space-y-3">
+        <div>
+          <label class="text-[11px] font-bold text-slate-400 block mb-1">E-mail:</label>
+          <input type="email" id="auth-email" required placeholder="seu@email.com" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500">
+        </div>
+        <div>
+          <label class="text-[11px] font-bold text-slate-400 block mb-1">Senha:</label>
+          <input type="password" id="auth-password" required placeholder="••••••••" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500">
+        </div>
+
+        <div id="auth-error-msg" class="hidden text-[11px] text-red-400 bg-red-500/10 p-2 rounded-lg border border-red-500/20 font-medium"></div>
+
+        <button type="submit" id="btn-auth-submit" class="w-full py-2.5 bg-indigo-600 hover:bg-indigo-500 active:scale-[0.98] text-white rounded-xl text-xs font-bold transition shadow-md shadow-indigo-600/30 flex items-center justify-center gap-1.5">
+          <i class="ph ph-sign-in text-sm"></i> Entrar e Carregar Meus Funis
+        </button>
+      </form>
+    </div>
+  </div>
+
   <!-- MODAL: CONFIGURAÇÕES -->
   <div id="modal-settings" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4 hidden">
     <div class="bg-slate-900 border border-slate-800 w-full max-w-md rounded-t-3xl sm:rounded-2xl p-5 space-y-4 max-h-[90vh] overflow-y-auto">
@@ -213,7 +313,7 @@
       <!-- URL Google Apps Script -->
       <div class="space-y-1.5">
         <label class="text-xs font-bold text-slate-300 flex items-center gap-1.5">
-          <i class="ph ph-table text-indigo-400"></i> URL do Google Apps Script
+          <i class="ph ph-table text-indigo-400"></i> URL do Google Apps Script (deste funil)
         </label>
         <p class="text-[11px] text-slate-400">Cole a URL WebApp da sua planilha onde as vendas e o funil são gravados:</p>
         <input type="text" id="setting-sheet-url" placeholder="https://script.google.com/macros/s/.../exec" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-xs text-white placeholder-slate-600 focus:outline-none focus:border-indigo-500 font-mono">
@@ -233,19 +333,9 @@
         </div>
       </div>
 
-      <!-- Dica PWA -->
-      <div class="p-3 bg-indigo-500/10 border border-indigo-500/20 rounded-xl text-[11px] text-indigo-300 flex items-start gap-2.5">
-        <i class="ph ph-device-mobile text-lg text-indigo-400 flex-shrink-0 mt-0.5"></i>
-        <div>
-          <strong class="font-bold text-white block mb-0.5">Instalar no seu celular:</strong>
-          No iPhone: toque no ícone de <strong>Compartilhar</strong> e selecione <strong>"Adicionar à Tela de Início"</strong>.<br>
-          No Android: toque nos 3 pontinhos e clique em <strong>"Instalar Aplicativo"</strong>.
-        </div>
-      </div>
-
       <!-- Botão Salvar -->
       <button onclick="app.saveSettings()" class="w-full py-3 bg-indigo-600 hover:bg-indigo-500 active:scale-[0.98] text-white rounded-xl text-xs font-bold transition shadow-lg shadow-indigo-600/30 flex items-center justify-center gap-1.5">
-        <i class="ph ph-check-bold"></i> Salvar e Atualizar
+        <i class="ph ph-check-bold"></i> Salvar Configurações
       </button>
     </div>
   </div>
@@ -281,18 +371,43 @@
 
   <!-- JAVASCRIPT PRINCIPAL DO APLICATIVO -->
   <script>
+    // Configuração oficial do Firebase Cloud
+    const firebaseConfig = {
+      apiKey: "AIzaSyBWmHeY4k7siSHZ2pvdq2RY1eyNLYtMmBs",
+      authDomain: "quizforge-b4253.firebaseapp.com",
+      projectId: "quizforge-b4253",
+      storageBucket: "quizforge-b4253.firebasestorage.app",
+      messagingSenderId: "726780728889",
+      appId: "1:726780728889:web:453d978c3fa9192b101fe8"
+    };
+
     // Registro do Service Worker PWA
+    let deferredPrompt = null;
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('./sw.js').catch(err => console.log('SW fail:', err));
     }
 
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      deferredPrompt = e;
+      const banner = document.getElementById('pwa-install-banner');
+      if (banner) banner.classList.remove('hidden');
+    });
+
     const app = {
-      // Estado
+      firebaseApp: null,
+      firebaseAuth: null,
+      firestore: null,
+      currentUser: null,
+      quizzes: [],
+      selectedQuizId: 'demo',
+
       filter: 'today',
       ordersFilter: 'approved',
       activeTab: 'orders',
       startDate: '',
       endDate: '',
+      
       data: {
         totalStarts: 0,
         totalCompletions: 0,
@@ -305,22 +420,210 @@
         orders: [],
         recentLeads: []
       },
+
       settings: {
         sheetUrl: '',
         whatsappTemplate: 'Oi {nome}, tudo bem? Preciso falar com você sobre o seu pedido do OrçaObra!'
       },
 
-      init() {
-        this.loadSettings();
+      async init() {
         this.initDates();
-        
-        // Se já tiver uma URL de planilha salva, busca os dados reais automaticamente
-        if (this.settings.sheetUrl) {
-          this.refreshData();
+        this.initFirebase();
+      },
+
+      initFirebase() {
+        try {
+          if (!firebase.apps.length) {
+            this.firebaseApp = firebase.initializeApp(firebaseConfig);
+          } else {
+            this.firebaseApp = firebase.app();
+          }
+          this.firebaseAuth = firebase.auth();
+          this.firestore = firebase.firestore();
+
+          this.firebaseAuth.onAuthStateChanged(async (user) => {
+            this.currentUser = user;
+            this.updateAuthUi();
+            if (user) {
+              await this.loadQuizzesFromFirestore(user.uid);
+            } else {
+              this.loadQuizzesFromLocalStorage();
+            }
+          });
+        } catch (e) {
+          console.error('Erro ao inicializar Firebase:', e);
+          this.loadQuizzesFromLocalStorage();
+        }
+      },
+
+      updateAuthUi() {
+        const authLabel = document.getElementById('auth-label-header');
+        const authIcon = document.getElementById('auth-icon-header');
+        const loggedInView = document.getElementById('auth-logged-in-view');
+        const authForm = document.getElementById('auth-form');
+
+        if (this.currentUser) {
+          const email = this.currentUser.email || 'Usuário';
+          authLabel.innerText = email.split('@')[0];
+          authIcon.className = 'ph ph-check-circle text-emerald-400 text-base';
+          
+          if (loggedInView) {
+            loggedInView.classList.remove('hidden');
+            document.getElementById('auth-user-email').innerText = email;
+            document.getElementById('auth-user-avatar').innerText = (email[0] || 'U').toUpperCase();
+          }
+          if (authForm) authForm.classList.add('hidden');
         } else {
-          // Exibe dados de demonstração iniciais e convida a preencher nas configurações
+          authLabel.innerText = 'Login';
+          authIcon.className = 'ph ph-user-circle text-indigo-400 text-base';
+          if (loggedInView) loggedInView.classList.add('hidden');
+          if (authForm) authForm.classList.remove('hidden');
+        }
+      },
+
+      async loadQuizzesFromFirestore(uid) {
+        const syncStatus = document.getElementById('sync-status-text');
+        if (syncStatus) syncStatus.innerText = 'Buscando funis da nuvem...';
+
+        try {
+          const snap = await this.firestore.collection('users').doc(uid).collection('quizzes').get();
+          if (!snap.empty) {
+            this.quizzes = [];
+            snap.forEach(doc => {
+              const q = doc.data();
+              if (q && q.id) this.quizzes.push(q);
+            });
+            this.populateQuizSelector();
+          } else {
+            this.loadQuizzesFromLocalStorage();
+          }
+        } catch (err) {
+          console.error('Erro ao buscar do Firestore:', err);
+          this.loadQuizzesFromLocalStorage();
+        }
+      },
+
+      loadQuizzesFromLocalStorage() {
+        try {
+          const raw = localStorage.getItem('quizforge_quizzes');
+          if (raw) {
+            this.quizzes = JSON.parse(raw);
+          }
+        } catch (e) {
+          console.warn('Erro ao ler local:', e);
+        }
+        this.populateQuizSelector();
+      },
+
+      populateQuizSelector() {
+        const selector = document.getElementById('funnel-selector');
+        if (!selector) return;
+
+        if (this.quizzes && this.quizzes.length > 0) {
+          selector.innerHTML = this.quizzes.map(q => {
+            return `<option value="${q.id}">${q.title || 'Funil sem nome'}</option>`;
+          }).join('');
+
+          // Seleciona o primeiro funil real por padrão
+          this.onSelectQuiz(this.quizzes[0].id);
+        } else {
+          selector.innerHTML = `<option value="demo">Modo Demonstração</option>`;
+          this.onSelectQuiz('demo');
+        }
+      },
+
+      onSelectQuiz(quizId) {
+        this.selectedQuizId = quizId;
+        const sheetStatus = document.getElementById('funnel-sheet-status');
+
+        if (quizId === 'demo') {
+          this.settings.sheetUrl = '';
+          if (sheetStatus) {
+            sheetStatus.className = 'shrink-0 text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-800 text-slate-400 border border-slate-700 flex items-center gap-1';
+            sheetStatus.innerHTML = '<i class="ph ph-info"></i> Demonstração';
+          }
           this.loadDemoData();
           this.renderUI();
+          return;
+        }
+
+        const quiz = this.quizzes.find(q => q.id === quizId);
+        if (quiz && quiz.tracking && (quiz.tracking.sheetUrl || quiz.tracking.webhookUrl)) {
+          this.settings.sheetUrl = (quiz.tracking.sheetUrl || quiz.tracking.webhookUrl).trim();
+          if (sheetStatus) {
+            sheetStatus.className = 'shrink-0 text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center gap-1';
+            sheetStatus.innerHTML = '<i class="ph ph-link"></i> Planilha OK';
+          }
+          this.refreshData();
+        } else {
+          this.settings.sheetUrl = '';
+          if (sheetStatus) {
+            sheetStatus.className = 'shrink-0 text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20 flex items-center gap-1';
+            sheetStatus.innerHTML = '<i class="ph ph-warning"></i> Sem Planilha';
+          }
+          this.data = { totalStarts: 0, totalCompletions: 0, totalCheckouts: 0, totalSalesApproved: 0, revenueApproved: 0, totalSalesPending: 0, revenuePending: 0, stepViews: {}, orders: [] };
+          this.renderUI();
+          const syncStatus = document.getElementById('sync-status-text');
+          if (syncStatus) syncStatus.innerText = 'Funil sem planilha conectada';
+        }
+
+        const inputUrl = document.getElementById('setting-sheet-url');
+        if (inputUrl) inputUrl.value = this.settings.sheetUrl;
+      },
+
+      openAuthModal() {
+        document.getElementById('modal-auth').classList.remove('hidden');
+      },
+
+      closeAuthModal() {
+        document.getElementById('modal-auth').classList.add('hidden');
+      },
+
+      async handleAuthSubmit(e) {
+        e.preventDefault();
+        const email = (document.getElementById('auth-email').value || '').trim();
+        const pass = (document.getElementById('auth-password').value || '').trim();
+        const btn = document.getElementById('btn-auth-submit');
+        const errBox = document.getElementById('auth-error-msg');
+
+        btn.disabled = true;
+        btn.innerHTML = '<i class="ph ph-arrows-clockwise animate-spin text-sm"></i> Conectando...';
+        errBox.classList.add('hidden');
+
+        try {
+          await this.firebaseAuth.signInWithEmailAndPassword(email, pass);
+          this.closeAuthModal();
+        } catch (err) {
+          console.error(err);
+          errBox.innerText = 'E-mail ou senha incorretos, ou erro de conexão.';
+          errBox.classList.remove('hidden');
+        } finally {
+          btn.disabled = false;
+          btn.innerHTML = '<i class="ph ph-sign-in text-sm"></i> Entrar e Carregar Meus Funis';
+        }
+      },
+
+      async logoutFirebase() {
+        if (confirm('Deseja desconectar sua conta?')) {
+          await this.firebaseAuth.signOut();
+          this.closeAuthModal();
+          this.quizzes = [];
+          this.populateQuizSelector();
+        }
+      },
+
+      installPwa() {
+        if (deferredPrompt) {
+          deferredPrompt.prompt();
+          deferredPrompt.userChoice.then((choice) => {
+            if (choice.outcome === 'accepted') {
+              console.log('App instalado!');
+            }
+            deferredPrompt = null;
+            document.getElementById('pwa-install-banner').classList.add('hidden');
+          });
+        } else {
+          alert('Para instalar no iPhone:\nToque no botão de Compartilhar do Safari e escolha "Adicionar à Tela de Início".');
         }
       },
 
@@ -338,43 +641,33 @@
         if (eInput) eInput.value = this.endDate;
       },
 
-      loadSettings() {
-        try {
-          const s = localStorage.getItem('qf_mobile_settings');
-          if (s) {
-            this.settings = Object.assign(this.settings, JSON.parse(s));
-          } else {
-            // Tenta puxar a URL salva no construtor principal se estiver no mesmo domínio
-            const quizList = localStorage.getItem('quizforge_quizzes');
-            if (quizList) {
-              const list = JSON.parse(quizList);
-              if (list && list[0] && list[0].tracking && (list[0].tracking.sheetUrl || list[0].tracking.webhookUrl)) {
-                this.settings.sheetUrl = (list[0].tracking.sheetUrl || list[0].tracking.webhookUrl).trim();
-              }
-            }
-          }
-        } catch (e) {
-          console.warn('Erro ao carregar configurações:', e);
-        }
-
-        const inputUrl = document.getElementById('setting-sheet-url');
-        const inputTpl = document.getElementById('setting-whatsapp-template');
-        if (inputUrl) inputUrl.value = this.settings.sheetUrl;
-        if (inputTpl) inputTpl.value = this.settings.whatsappTemplate;
-      },
-
       saveSettings() {
         const inputUrl = document.getElementById('setting-sheet-url');
         const inputTpl = document.getElementById('setting-whatsapp-template');
         if (inputUrl) this.settings.sheetUrl = inputUrl.value.trim();
         if (inputTpl) this.settings.whatsappTemplate = inputTpl.value.trim() || 'Oi {nome}, tudo bem? Preciso falar com você!';
         
-        localStorage.setItem('qf_mobile_settings', JSON.stringify(this.settings));
+        // Se estiver num quiz específico, salva também no quiz
+        if (this.selectedQuizId && this.selectedQuizId !== 'demo') {
+          const q = this.quizzes.find(item => item.id === this.selectedQuizId);
+          if (q) {
+            if (!q.tracking) q.tracking = {};
+            q.tracking.sheetUrl = this.settings.sheetUrl;
+            if (this.currentUser && this.firestore) {
+              this.firestore.collection('users').doc(this.currentUser.uid).collection('quizzes').doc(q.id).set(q, { merge: true });
+            }
+          }
+        }
+
         this.closeSettings();
         this.refreshData();
       },
 
       openSettings() {
+        const inputUrl = document.getElementById('setting-sheet-url');
+        const inputTpl = document.getElementById('setting-whatsapp-template');
+        if (inputUrl) inputUrl.value = this.settings.sheetUrl;
+        if (inputTpl) inputTpl.value = this.settings.whatsappTemplate;
         document.getElementById('modal-settings').classList.remove('hidden');
       },
 
@@ -401,7 +694,6 @@
       setFilter(filterName) {
         this.filter = filterName;
 
-        // Atualiza estilo dos botões de filtro
         document.querySelectorAll('.filter-chip').forEach(btn => {
           btn.className = 'filter-chip px-3.5 py-1.5 rounded-xl text-xs font-bold transition bg-slate-800/80 border border-slate-700/80 text-slate-300 flex-shrink-0';
         });
@@ -456,14 +748,18 @@
         const statusText = document.getElementById('sync-status-text');
 
         if (syncIcon) syncIcon.classList.add('animate-spin-fast');
-        if (statusText) statusText.innerText = 'Sincronizando dados...';
+        if (statusText) statusText.innerText = 'Sincronizando...';
 
         if (!this.settings.sheetUrl) {
           setTimeout(() => {
             if (syncIcon) syncIcon.classList.remove('animate-spin-fast');
-            if (statusText) statusText.innerText = 'Configure o link da planilha';
-            this.openSettings();
-          }, 400);
+            if (this.selectedQuizId === 'demo') {
+              if (statusText) statusText.innerText = 'Modo Demonstração';
+            } else {
+              if (statusText) statusText.innerText = 'Cole o link da planilha';
+              this.openSettings();
+            }
+          }, 300);
           return;
         }
 
@@ -479,13 +775,13 @@
           if (json.status === 'success') {
             this.data = json;
             this.renderUI();
-            if (statusText) statusText.innerText = `Sincronizado ${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+            if (statusText) statusText.innerText = `Atualizado ${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
           } else {
             throw new Error(json.message || 'Erro retornado pela planilha');
           }
         } catch (err) {
           console.error('Erro na sincronização:', err);
-          if (statusText) statusText.innerText = 'Erro ao conectar. Tentando novamente';
+          if (statusText) statusText.innerText = 'Falha ao atualizar';
           alert('Não foi possível conectar com a planilha:\n' + err.message + '\n\nVerifique se o link foi implantado como "Qualquer pessoa".');
         } finally {
           if (syncIcon) syncIcon.classList.remove('animate-spin-fast');
@@ -551,16 +847,13 @@
       },
 
       renderUI() {
-        // Formatação de Valores
         const formatBRL = (val) => Number(val || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
-        // Cards principais
         document.getElementById('card-approved-revenue').innerText = formatBRL(this.data.revenueApproved);
         document.getElementById('card-approved-count').innerText = this.data.totalSalesApproved || 0;
         document.getElementById('card-pending-revenue').innerText = formatBRL(this.data.revenuePending);
         document.getElementById('card-pending-count').innerText = this.data.totalSalesPending || 0;
 
-        // Métricas de funil
         document.getElementById('metric-starts').innerText = this.data.totalStarts || 0;
         document.getElementById('metric-completions').innerText = this.data.totalCompletions || 0;
         document.getElementById('metric-checkouts').innerText = this.data.totalCheckouts || 0;
@@ -578,7 +871,6 @@
         const container = document.getElementById('orders-list-container');
         const orders = this.data.orders || [];
 
-        // Filtra aprovados vs pendentes
         const isApproved = this.ordersFilter === 'approved';
         const filtered = orders.filter(o => {
           const st = String(o.status || '').toLowerCase();
@@ -589,7 +881,6 @@
           }
         });
 
-        // Contadores das abas
         const appCount = orders.filter(o => ['approved', 'aprovado', 'paid'].includes(String(o.status || '').toLowerCase())).length;
         const pendCount = orders.filter(o => ['waiting_payment', 'pending', 'pendente'].includes(String(o.status || '').toLowerCase())).length;
         document.getElementById('count-tab-approved').innerText = appCount;
@@ -606,18 +897,15 @@
         }
 
         container.innerHTML = filtered.map(order => {
-          // Extrai primeiro nome
           const rawName = (order.name || 'Cliente').trim();
           const firstName = rawName.split(/\s+/)[0];
           const initials = rawName.slice(0, 2).toUpperCase();
 
-          // Formata telefone para WhatsApp
           let cleanPhone = String(order.whatsapp || order.phone || '').replace(/\D/g, '');
           if (cleanPhone && cleanPhone.indexOf('55') !== 0 && cleanPhone.length >= 10) {
             cleanPhone = '55' + cleanPhone;
           }
 
-          // Prepara mensagem de WhatsApp pré-escrita
           const msg = this.settings.whatsappTemplate
             .replace(/{nome}/g, firstName)
             .replace(/{produto}/g, order.product || 'OrçaObra Pro');
@@ -650,7 +938,6 @@
                 </div>
               </div>
 
-              <!-- Informações adicionais e Botão de Ação -->
               <div class="pt-2 border-t border-slate-800/80 flex items-center justify-between">
                 <span class="text-[10px] text-slate-500 font-medium">
                   <i class="ph ph-clock text-[11px]"></i> ${order.date || 'Hoje'}
@@ -702,7 +989,6 @@
       }
     };
 
-    // Inicialização ao carregar
     window.addEventListener('DOMContentLoaded', () => app.init());
   </script>
 </body>
