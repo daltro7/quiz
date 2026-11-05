@@ -1,0 +1,709 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>QuizForge Métricas</title>
+  
+  <!-- PWA Meta Tags -->
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#090d16">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Métricas">
+  
+  <!-- Fontes & Ícones -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/@phosphor-icons/web"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <style>
+    body {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      -webkit-tap-highlight-color: transparent;
+      padding-top: env(safe-area-inset-top);
+      padding-bottom: env(safe-area-inset-bottom);
+    }
+    .custom-scrollbar::-webkit-scrollbar {
+      display: none;
+    }
+    .custom-scrollbar {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+    .animate-spin-fast {
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+<body class="bg-[#090d16] text-slate-100 min-h-screen flex flex-col antialiased selection:bg-indigo-500 selection:text-white pb-20">
+
+  <!-- TOP BAR NAVEGAÇÃO -->
+  <header class="sticky top-0 z-40 bg-[#090d16]/95 backdrop-blur-md border-b border-slate-800/80 px-4 py-3 flex items-center justify-between">
+    <div class="flex items-center gap-2.5">
+      <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-indigo-600 to-violet-500 flex items-center justify-center shadow-lg shadow-indigo-500/25">
+        <i class="ph ph-chart-line-up text-white text-lg font-bold"></i>
+      </div>
+      <div>
+        <div class="flex items-center gap-1.5">
+          <h1 class="text-sm font-extrabold tracking-tight text-white">QuizForge</h1>
+          <span class="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-indigo-500/15 text-indigo-400 border border-indigo-500/20">PRO</span>
+        </div>
+        <p class="text-[11px] text-slate-400 font-medium flex items-center gap-1" id="sync-status-indicator">
+          <span class="w-2 h-2 rounded-full bg-emerald-400 inline-block animate-pulse"></span>
+          <span id="sync-status-text">Pronto para atualizar</span>
+        </p>
+      </div>
+    </div>
+
+    <div class="flex items-center gap-1.5">
+      <button onclick="app.refreshData()" id="btn-sync" class="w-9 h-9 rounded-xl bg-slate-800/90 border border-slate-700/80 text-slate-300 hover:text-white flex items-center justify-center transition active:scale-95">
+        <i class="ph ph-arrows-clockwise text-base" id="icon-sync"></i>
+      </button>
+      <button onclick="app.openSettings()" class="w-9 h-9 rounded-xl bg-slate-800/90 border border-slate-700/80 text-slate-300 hover:text-white flex items-center justify-center transition active:scale-95">
+        <i class="ph ph-gear text-base"></i>
+      </button>
+    </div>
+  </header>
+
+  <!-- CONTEÚDO PRINCIPAL -->
+  <main class="flex-1 px-4 py-4 max-w-lg mx-auto w-full space-y-4">
+
+    <!-- FILTRO RÁPIDO DE DATA -->
+    <div class="flex items-center gap-1.5 overflow-x-auto custom-scrollbar pb-1">
+      <button onclick="app.setFilter('today')" id="filter-today" class="filter-chip px-3.5 py-1.5 rounded-xl text-xs font-bold transition bg-indigo-600 text-white shadow-md shadow-indigo-600/25 flex-shrink-0">
+        Hoje
+      </button>
+      <button onclick="app.setFilter('yesterday')" id="filter-yesterday" class="filter-chip px-3.5 py-1.5 rounded-xl text-xs font-bold transition bg-slate-800/80 border border-slate-700/80 text-slate-300 flex-shrink-0">
+        Ontem
+      </button>
+      <button onclick="app.setFilter('month')" id="filter-month" class="filter-chip px-3.5 py-1.5 rounded-xl text-xs font-bold transition bg-slate-800/80 border border-slate-700/80 text-slate-300 flex-shrink-0">
+        Este Mês
+      </button>
+      <button onclick="app.toggleDateRangeModal()" id="filter-range" class="filter-chip px-3 py-1.5 rounded-xl text-xs font-bold transition bg-slate-800/80 border border-slate-700/80 text-slate-300 flex-shrink-0 flex items-center gap-1">
+        <i class="ph ph-calendar"></i> Período
+      </button>
+    </div>
+
+    <!-- CARDS DE MÉTRICAS PRINCIPAIS -->
+    <div class="grid grid-cols-2 gap-3">
+      <!-- Vendas Aprovadas -->
+      <div class="bg-gradient-to-b from-slate-900/90 to-slate-900/50 border border-emerald-500/20 rounded-2xl p-3.5 shadow-sm relative overflow-hidden">
+        <div class="absolute -right-3 -top-3 w-16 h-16 bg-emerald-500/10 rounded-full blur-xl pointer-events-none"></div>
+        <div class="flex items-center justify-between text-slate-400 mb-1.5">
+          <span class="text-[11px] font-bold uppercase tracking-wider text-emerald-400 flex items-center gap-1">
+            <i class="ph ph-check-circle text-xs"></i> Aprovadas
+          </span>
+          <span id="card-approved-count" class="text-xs font-extrabold px-1.5 py-0.5 rounded-md bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">0</span>
+        </div>
+        <div id="card-approved-revenue" class="text-lg font-black text-white tracking-tight">R$ 0,00</div>
+        <p class="text-[10px] text-slate-400 mt-1 font-medium">Faturamento real confirmado</p>
+      </div>
+
+      <!-- Aguardando Pagamento -->
+      <div class="bg-gradient-to-b from-slate-900/90 to-slate-900/50 border border-amber-500/20 rounded-2xl p-3.5 shadow-sm relative overflow-hidden">
+        <div class="absolute -right-3 -top-3 w-16 h-16 bg-amber-500/10 rounded-full blur-xl pointer-events-none"></div>
+        <div class="flex items-center justify-between text-slate-400 mb-1.5">
+          <span class="text-[11px] font-bold uppercase tracking-wider text-amber-400 flex items-center gap-1">
+            <i class="ph ph-clock text-xs"></i> Pendentes
+          </span>
+          <span id="card-pending-count" class="text-xs font-extrabold px-1.5 py-0.5 rounded-md bg-amber-500/10 text-amber-400 border border-amber-500/20">0</span>
+        </div>
+        <div id="card-pending-revenue" class="text-lg font-black text-white tracking-tight">R$ 0,00</div>
+        <p class="text-[10px] text-slate-400 mt-1 font-medium">PIX e Boletos gerados</p>
+      </div>
+    </div>
+
+    <!-- RESUMO DE CONVERSÃO DO FUNIL -->
+    <div class="bg-slate-900/80 border border-slate-800 rounded-2xl p-3.5">
+      <div class="flex items-center justify-between mb-2">
+        <span class="text-xs font-bold text-slate-300 flex items-center gap-1.5">
+          <i class="ph ph-funnel text-indigo-400"></i> Eficiência do Funil
+        </span>
+        <span id="metric-conversion-rate" class="text-xs font-black px-2 py-0.5 rounded-lg bg-indigo-500/15 text-indigo-400 border border-indigo-500/20">
+          0.0%
+        </span>
+      </div>
+
+      <div class="grid grid-cols-3 gap-2 text-center pt-1 border-t border-slate-800/80">
+        <div>
+          <div class="text-[10px] text-slate-400 font-semibold">Iniciaram</div>
+          <div id="metric-starts" class="text-sm font-extrabold text-white mt-0.5">0</div>
+        </div>
+        <div class="border-x border-slate-800/80">
+          <div class="text-[10px] text-slate-400 font-semibold">Concluíram</div>
+          <div id="metric-completions" class="text-sm font-extrabold text-white mt-0.5">0</div>
+        </div>
+        <div>
+          <div class="text-[10px] text-slate-400 font-semibold">Checkouts</div>
+          <div id="metric-checkouts" class="text-sm font-extrabold text-white mt-0.5">0</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ABAS INTERNAS: PEDIDOS VS FUNIL -->
+    <div class="flex p-1 bg-slate-900/90 border border-slate-800 rounded-xl">
+      <button onclick="app.switchTab('orders')" id="tab-btn-orders" class="flex-1 py-2 rounded-lg text-xs font-extrabold transition bg-indigo-600 text-white shadow-sm flex items-center justify-center gap-1.5">
+        <i class="ph ph-shopping-bag"></i> Pedidos & Clientes
+      </button>
+      <button onclick="app.switchTab('funnel')" id="tab-btn-funnel" class="flex-1 py-2 rounded-lg text-xs font-extrabold transition text-slate-400 hover:text-white flex items-center justify-center gap-1.5">
+        <i class="ph ph-chart-bar"></i> Etapas do Funil
+      </button>
+    </div>
+
+    <!-- CONTEÚDO DA ABA: PEDIDOS -->
+    <div id="tab-content-orders" class="space-y-3">
+      <!-- Filtro de Status dos Pedidos (Aprovados vs Aguardando) -->
+      <div class="flex items-center justify-between gap-2">
+        <div class="flex items-center gap-1 bg-slate-900/60 p-1 rounded-xl border border-slate-800 text-xs">
+          <button onclick="app.setOrdersFilter('approved')" id="orders-filter-approved" class="px-2.5 py-1 rounded-lg font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 transition">
+            Aprovados (<span id="count-tab-approved">0</span>)
+          </button>
+          <button onclick="app.setOrdersFilter('pending')" id="orders-filter-pending" class="px-2.5 py-1 rounded-lg font-bold text-slate-400 hover:text-slate-200 transition">
+            Aguardando (<span id="count-tab-pending">0</span>)
+          </button>
+        </div>
+        
+        <span class="text-[11px] text-slate-500 font-semibold" id="orders-last-update">Atualizado agora</span>
+      </div>
+
+      <!-- Lista de Pedidos -->
+      <div id="orders-list-container" class="space-y-2.5">
+        <!-- Renderizado dinamicamente via JS -->
+      </div>
+    </div>
+
+    <!-- CONTEÚDO DA ABA: FUNIL DETALHADO -->
+    <div id="tab-content-funnel" class="space-y-3 hidden">
+      <div class="bg-slate-900/80 border border-slate-800 rounded-2xl p-4">
+        <h3 class="text-xs font-bold text-slate-300 uppercase tracking-wider mb-3 flex items-center justify-between">
+          <span>Retenção por Etapa</span>
+          <span class="text-[10px] text-slate-400 normal-case font-normal">Base: <strong id="funnel-base-starts">0</strong> visitantes</span>
+        </h3>
+        
+        <div id="funnel-steps-container" class="space-y-3">
+          <!-- Renderizado dinamicamente via JS -->
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- MODAL: CONFIGURAÇÕES -->
+  <div id="modal-settings" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4 hidden">
+    <div class="bg-slate-900 border border-slate-800 w-full max-w-md rounded-t-3xl sm:rounded-2xl p-5 space-y-4 max-h-[90vh] overflow-y-auto">
+      <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+        <div class="flex items-center gap-2">
+          <div class="w-8 h-8 rounded-lg bg-indigo-600/20 text-indigo-400 flex items-center justify-center font-bold">
+            <i class="ph ph-gear text-base"></i>
+          </div>
+          <h2 class="text-base font-extrabold text-white">Configurações</h2>
+        </div>
+        <button onclick="app.closeSettings()" class="w-8 h-8 rounded-full bg-slate-800 text-slate-400 hover:text-white flex items-center justify-center">
+          <i class="ph ph-x"></i>
+        </button>
+      </div>
+
+      <!-- URL Google Apps Script -->
+      <div class="space-y-1.5">
+        <label class="text-xs font-bold text-slate-300 flex items-center gap-1.5">
+          <i class="ph ph-table text-indigo-400"></i> URL do Google Apps Script
+        </label>
+        <p class="text-[11px] text-slate-400">Cole a URL WebApp da sua planilha onde as vendas e o funil são gravados:</p>
+        <input type="text" id="setting-sheet-url" placeholder="https://script.google.com/macros/s/.../exec" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-xs text-white placeholder-slate-600 focus:outline-none focus:border-indigo-500 font-mono">
+      </div>
+
+      <!-- Template Mensagem de WhatsApp -->
+      <div class="space-y-1.5">
+        <label class="text-xs font-bold text-slate-300 flex items-center gap-1.5">
+          <i class="ph ph-whatsapp-logo text-emerald-400"></i> Mensagem Padrão do WhatsApp
+        </label>
+        <p class="text-[11px] text-slate-400">Texto que já aparece digitado ao clicar em chamar o cliente:</p>
+        <textarea id="setting-whatsapp-template" rows="3" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-xs text-white placeholder-slate-600 focus:outline-none focus:border-indigo-500" placeholder="Oi {nome}, tudo bem? Preciso falar com você sobre o seu pedido do OrçaObra!"></textarea>
+        <div class="flex items-center gap-2 text-[10px] text-slate-500">
+          <span>Variáveis:</span>
+          <code class="text-indigo-400 bg-indigo-500/10 px-1 py-0.5 rounded">{nome}</code>
+          <code class="text-indigo-400 bg-indigo-500/10 px-1 py-0.5 rounded">{produto}</code>
+        </div>
+      </div>
+
+      <!-- Dica PWA -->
+      <div class="p-3 bg-indigo-500/10 border border-indigo-500/20 rounded-xl text-[11px] text-indigo-300 flex items-start gap-2.5">
+        <i class="ph ph-device-mobile text-lg text-indigo-400 flex-shrink-0 mt-0.5"></i>
+        <div>
+          <strong class="font-bold text-white block mb-0.5">Instalar no seu celular:</strong>
+          No iPhone: toque no ícone de <strong>Compartilhar</strong> e selecione <strong>"Adicionar à Tela de Início"</strong>.<br>
+          No Android: toque nos 3 pontinhos e clique em <strong>"Instalar Aplicativo"</strong>.
+        </div>
+      </div>
+
+      <!-- Botão Salvar -->
+      <button onclick="app.saveSettings()" class="w-full py-3 bg-indigo-600 hover:bg-indigo-500 active:scale-[0.98] text-white rounded-xl text-xs font-bold transition shadow-lg shadow-indigo-600/30 flex items-center justify-center gap-1.5">
+        <i class="ph ph-check-bold"></i> Salvar e Atualizar
+      </button>
+    </div>
+  </div>
+
+  <!-- MODAL: PERÍODO PERSONALIZADO -->
+  <div id="modal-date-range" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4 hidden">
+    <div class="bg-slate-900 border border-slate-800 w-full max-w-sm rounded-t-3xl sm:rounded-2xl p-5 space-y-4">
+      <div class="flex items-center justify-between border-b border-slate-800 pb-2.5">
+        <h3 class="text-sm font-bold text-white flex items-center gap-2">
+          <i class="ph ph-calendar text-indigo-400"></i> Selecionar Período
+        </h3>
+        <button onclick="app.toggleDateRangeModal()" class="w-7 h-7 rounded-full bg-slate-800 text-slate-400 hover:text-white flex items-center justify-center">
+          <i class="ph ph-x text-xs"></i>
+        </button>
+      </div>
+
+      <div class="space-y-3">
+        <div>
+          <label class="text-[11px] font-bold text-slate-400 block mb-1">Data Inicial:</label>
+          <input type="date" id="input-start-date" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500">
+        </div>
+        <div>
+          <label class="text-[11px] font-bold text-slate-400 block mb-1">Data Final:</label>
+          <input type="date" id="input-end-date" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500">
+        </div>
+      </div>
+
+      <button onclick="app.applyDateRange()" class="w-full py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-bold transition shadow-md shadow-indigo-600/25">
+        Filtrar Período
+      </button>
+    </div>
+  </div>
+
+  <!-- JAVASCRIPT PRINCIPAL DO APLICATIVO -->
+  <script>
+    // Registro do Service Worker PWA
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('./sw.js').catch(err => console.log('SW fail:', err));
+    }
+
+    const app = {
+      // Estado
+      filter: 'today',
+      ordersFilter: 'approved',
+      activeTab: 'orders',
+      startDate: '',
+      endDate: '',
+      data: {
+        totalStarts: 0,
+        totalCompletions: 0,
+        totalCheckouts: 0,
+        totalSalesApproved: 0,
+        revenueApproved: 0,
+        totalSalesPending: 0,
+        revenuePending: 0,
+        stepViews: {},
+        orders: [],
+        recentLeads: []
+      },
+      settings: {
+        sheetUrl: '',
+        whatsappTemplate: 'Oi {nome}, tudo bem? Preciso falar com você sobre o seu pedido do OrçaObra!'
+      },
+
+      init() {
+        this.loadSettings();
+        this.initDates();
+        
+        // Se já tiver uma URL de planilha salva, busca os dados reais automaticamente
+        if (this.settings.sheetUrl) {
+          this.refreshData();
+        } else {
+          // Exibe dados de demonstração iniciais e convida a preencher nas configurações
+          this.loadDemoData();
+          this.renderUI();
+        }
+      },
+
+      initDates() {
+        const now = new Date();
+        const y = now.getFullYear();
+        const m = String(now.getMonth() + 1).padStart(2, '0');
+        const d = String(now.getDate()).padStart(2, '0');
+        this.startDate = `${y}-${m}-${d}`;
+        this.endDate = `${y}-${m}-${d}`;
+
+        const sInput = document.getElementById('input-start-date');
+        const eInput = document.getElementById('input-end-date');
+        if (sInput) sInput.value = this.startDate;
+        if (eInput) eInput.value = this.endDate;
+      },
+
+      loadSettings() {
+        try {
+          const s = localStorage.getItem('qf_mobile_settings');
+          if (s) {
+            this.settings = Object.assign(this.settings, JSON.parse(s));
+          } else {
+            // Tenta puxar a URL salva no construtor principal se estiver no mesmo domínio
+            const quizList = localStorage.getItem('quizforge_quizzes');
+            if (quizList) {
+              const list = JSON.parse(quizList);
+              if (list && list[0] && list[0].tracking && (list[0].tracking.sheetUrl || list[0].tracking.webhookUrl)) {
+                this.settings.sheetUrl = (list[0].tracking.sheetUrl || list[0].tracking.webhookUrl).trim();
+              }
+            }
+          }
+        } catch (e) {
+          console.warn('Erro ao carregar configurações:', e);
+        }
+
+        const inputUrl = document.getElementById('setting-sheet-url');
+        const inputTpl = document.getElementById('setting-whatsapp-template');
+        if (inputUrl) inputUrl.value = this.settings.sheetUrl;
+        if (inputTpl) inputTpl.value = this.settings.whatsappTemplate;
+      },
+
+      saveSettings() {
+        const inputUrl = document.getElementById('setting-sheet-url');
+        const inputTpl = document.getElementById('setting-whatsapp-template');
+        if (inputUrl) this.settings.sheetUrl = inputUrl.value.trim();
+        if (inputTpl) this.settings.whatsappTemplate = inputTpl.value.trim() || 'Oi {nome}, tudo bem? Preciso falar com você!';
+        
+        localStorage.setItem('qf_mobile_settings', JSON.stringify(this.settings));
+        this.closeSettings();
+        this.refreshData();
+      },
+
+      openSettings() {
+        document.getElementById('modal-settings').classList.remove('hidden');
+      },
+
+      closeSettings() {
+        document.getElementById('modal-settings').classList.add('hidden');
+      },
+
+      toggleDateRangeModal() {
+        const m = document.getElementById('modal-date-range');
+        m.classList.toggle('hidden');
+      },
+
+      applyDateRange() {
+        const s = document.getElementById('input-start-date').value;
+        const e = document.getElementById('input-end-date').value;
+        if (s && e) {
+          this.startDate = s;
+          this.endDate = e;
+          this.setFilter('range');
+          this.toggleDateRangeModal();
+        }
+      },
+
+      setFilter(filterName) {
+        this.filter = filterName;
+
+        // Atualiza estilo dos botões de filtro
+        document.querySelectorAll('.filter-chip').forEach(btn => {
+          btn.className = 'filter-chip px-3.5 py-1.5 rounded-xl text-xs font-bold transition bg-slate-800/80 border border-slate-700/80 text-slate-300 flex-shrink-0';
+        });
+
+        const activeBtn = document.getElementById(`filter-${filterName}`);
+        if (activeBtn) {
+          activeBtn.className = 'filter-chip px-3.5 py-1.5 rounded-xl text-xs font-bold transition bg-indigo-600 text-white shadow-md shadow-indigo-600/25 flex-shrink-0';
+        }
+
+        this.refreshData();
+      },
+
+      switchTab(tab) {
+        this.activeTab = tab;
+        const btnOrders = document.getElementById('tab-btn-orders');
+        const btnFunnel = document.getElementById('tab-btn-funnel');
+        const contentOrders = document.getElementById('tab-content-orders');
+        const contentFunnel = document.getElementById('tab-content-funnel');
+
+        if (tab === 'orders') {
+          btnOrders.className = 'flex-1 py-2 rounded-lg text-xs font-extrabold transition bg-indigo-600 text-white shadow-sm flex items-center justify-center gap-1.5';
+          btnFunnel.className = 'flex-1 py-2 rounded-lg text-xs font-extrabold transition text-slate-400 hover:text-white flex items-center justify-center gap-1.5';
+          contentOrders.classList.remove('hidden');
+          contentFunnel.classList.add('hidden');
+        } else {
+          btnFunnel.className = 'flex-1 py-2 rounded-lg text-xs font-extrabold transition bg-indigo-600 text-white shadow-sm flex items-center justify-center gap-1.5';
+          btnOrders.className = 'flex-1 py-2 rounded-lg text-xs font-extrabold transition text-slate-400 hover:text-white flex items-center justify-center gap-1.5';
+          contentFunnel.classList.remove('hidden');
+          contentOrders.classList.add('hidden');
+        }
+      },
+
+      setOrdersFilter(status) {
+        this.ordersFilter = status;
+        const btnApp = document.getElementById('orders-filter-approved');
+        const btnPend = document.getElementById('orders-filter-pending');
+
+        if (status === 'approved') {
+          btnApp.className = 'px-2.5 py-1 rounded-lg font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 transition';
+          btnPend.className = 'px-2.5 py-1 rounded-lg font-bold text-slate-400 hover:text-slate-200 transition';
+        } else {
+          btnPend.className = 'px-2.5 py-1 rounded-lg font-bold bg-amber-500/20 text-amber-400 border border-amber-500/30 transition';
+          btnApp.className = 'px-2.5 py-1 rounded-lg font-bold text-slate-400 hover:text-slate-200 transition';
+        }
+
+        this.renderOrders();
+      },
+
+      async refreshData() {
+        const syncBtn = document.getElementById('btn-sync');
+        const syncIcon = document.getElementById('icon-sync');
+        const statusText = document.getElementById('sync-status-text');
+
+        if (syncIcon) syncIcon.classList.add('animate-spin-fast');
+        if (statusText) statusText.innerText = 'Sincronizando dados...';
+
+        if (!this.settings.sheetUrl) {
+          setTimeout(() => {
+            if (syncIcon) syncIcon.classList.remove('animate-spin-fast');
+            if (statusText) statusText.innerText = 'Configure o link da planilha';
+            this.openSettings();
+          }, 400);
+          return;
+        }
+
+        try {
+          const cleanUrl = this.settings.sheetUrl.trim().replace(/^http:\/\//i, 'https://');
+          const sep = cleanUrl.indexOf('?') !== -1 ? '&' : '?';
+          const fetchUrl = `${cleanUrl}${sep}action=getMetrics&filter=${this.filter}&startDate=${this.startDate}&endDate=${this.endDate}&date=${this.startDate}&nocache=${Date.now()}`;
+
+          const res = await fetch(fetchUrl);
+          if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+          const json = await res.json();
+          if (json.status === 'success') {
+            this.data = json;
+            this.renderUI();
+            if (statusText) statusText.innerText = `Sincronizado ${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+          } else {
+            throw new Error(json.message || 'Erro retornado pela planilha');
+          }
+        } catch (err) {
+          console.error('Erro na sincronização:', err);
+          if (statusText) statusText.innerText = 'Erro ao conectar. Tentando novamente';
+          alert('Não foi possível conectar com a planilha:\n' + err.message + '\n\nVerifique se o link foi implantado como "Qualquer pessoa".');
+        } finally {
+          if (syncIcon) syncIcon.classList.remove('animate-spin-fast');
+        }
+      },
+
+      loadDemoData() {
+        this.data = {
+          totalStarts: 145,
+          totalCompletions: 82,
+          totalCheckouts: 24,
+          totalSalesApproved: 3,
+          revenueApproved: 59.70,
+          totalSalesPending: 2,
+          revenuePending: 39.80,
+          stepViews: {
+            'step_0': 145,
+            'step_1': 122,
+            'step_2': 105,
+            'step_3': 92,
+            'step_4': 82,
+            'step_checkout': 24
+          },
+          orders: [
+            {
+              id: 'ord_demo_1',
+              name: 'Gabriel Silva',
+              whatsapp: '27992043806',
+              email: 'gabriel91241566@gmail.com',
+              amount: 19.90,
+              method: 'PIX',
+              status: 'approved',
+              platform: 'PerfectPay',
+              product: 'OrçaObra Pro',
+              date: 'Hoje 08:59'
+            },
+            {
+              id: 'ord_demo_2',
+              name: 'Carlos Mendes',
+              whatsapp: '11985432109',
+              email: 'carlos.m@gmail.com',
+              amount: 19.90,
+              method: 'PIX',
+              status: 'approved',
+              platform: 'PerfectPay',
+              product: 'OrçaObra Pro',
+              date: 'Hoje 09:30'
+            },
+            {
+              id: 'ord_demo_3',
+              name: 'Lucas Ferreira',
+              whatsapp: '31987654321',
+              email: 'lucas.f@gmail.com',
+              amount: 19.90,
+              method: 'PIX',
+              status: 'waiting_payment',
+              platform: 'PerfectPay',
+              product: 'OrçaObra Pro',
+              date: 'Hoje 10:15'
+            }
+          ]
+        };
+      },
+
+      renderUI() {
+        // Formatação de Valores
+        const formatBRL = (val) => Number(val || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+
+        // Cards principais
+        document.getElementById('card-approved-revenue').innerText = formatBRL(this.data.revenueApproved);
+        document.getElementById('card-approved-count').innerText = this.data.totalSalesApproved || 0;
+        document.getElementById('card-pending-revenue').innerText = formatBRL(this.data.revenuePending);
+        document.getElementById('card-pending-count').innerText = this.data.totalSalesPending || 0;
+
+        // Métricas de funil
+        document.getElementById('metric-starts').innerText = this.data.totalStarts || 0;
+        document.getElementById('metric-completions').innerText = this.data.totalCompletions || 0;
+        document.getElementById('metric-checkouts').innerText = this.data.totalCheckouts || 0;
+
+        const starts = Number(this.data.totalStarts) || 0;
+        const sales = Number(this.data.totalSalesApproved) || 0;
+        const rate = starts > 0 ? ((sales / starts) * 100).toFixed(1) : '0.0';
+        document.getElementById('metric-conversion-rate').innerText = `${rate}% Vendas/Visitas`;
+
+        this.renderOrders();
+        this.renderFunnel();
+      },
+
+      renderOrders() {
+        const container = document.getElementById('orders-list-container');
+        const orders = this.data.orders || [];
+
+        // Filtra aprovados vs pendentes
+        const isApproved = this.ordersFilter === 'approved';
+        const filtered = orders.filter(o => {
+          const st = String(o.status || '').toLowerCase();
+          if (isApproved) {
+            return st === 'approved' || st === 'aprovado' || st === 'paid';
+          } else {
+            return st === 'waiting_payment' || st === 'pending' || st === 'pendente';
+          }
+        });
+
+        // Contadores das abas
+        const appCount = orders.filter(o => ['approved', 'aprovado', 'paid'].includes(String(o.status || '').toLowerCase())).length;
+        const pendCount = orders.filter(o => ['waiting_payment', 'pending', 'pendente'].includes(String(o.status || '').toLowerCase())).length;
+        document.getElementById('count-tab-approved').innerText = appCount;
+        document.getElementById('count-tab-pending').innerText = pendCount;
+
+        if (filtered.length === 0) {
+          container.innerHTML = `
+            <div class="bg-slate-900/50 border border-slate-800 rounded-2xl p-6 text-center space-y-2">
+              <i class="ph ph-receipt text-3xl text-slate-600"></i>
+              <p class="text-xs text-slate-400 font-medium">Nenhum pedido encontrado para este filtro.</p>
+            </div>
+          `;
+          return;
+        }
+
+        container.innerHTML = filtered.map(order => {
+          // Extrai primeiro nome
+          const rawName = (order.name || 'Cliente').trim();
+          const firstName = rawName.split(/\s+/)[0];
+          const initials = rawName.slice(0, 2).toUpperCase();
+
+          // Formata telefone para WhatsApp
+          let cleanPhone = String(order.whatsapp || order.phone || '').replace(/\D/g, '');
+          if (cleanPhone && cleanPhone.indexOf('55') !== 0 && cleanPhone.length >= 10) {
+            cleanPhone = '55' + cleanPhone;
+          }
+
+          // Prepara mensagem de WhatsApp pré-escrita
+          const msg = this.settings.whatsappTemplate
+            .replace(/{nome}/g, firstName)
+            .replace(/{produto}/g, order.product || 'OrçaObra Pro');
+          const waUrl = cleanPhone ? `https://wa.me/${cleanPhone}?text=${encodeURIComponent(msg)}` : null;
+
+          const isPaid = ['approved', 'aprovado', 'paid'].includes(String(order.status || '').toLowerCase());
+          const badgeClass = isPaid ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-amber-500/10 text-amber-400 border-amber-500/20';
+          const badgeText = isPaid ? 'Aprovado ✅' : 'Aguardando PIX ⏳';
+
+          const val = Number(order.amount || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+
+          return `
+            <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-3.5 space-y-3 transition hover:border-slate-700">
+              <div class="flex items-center justify-between">
+                <div class="flex items-center gap-2.5">
+                  <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600/30 to-violet-600/20 border border-indigo-500/30 flex items-center justify-center text-xs font-black text-indigo-300">
+                    ${initials}
+                  </div>
+                  <div>
+                    <h4 class="text-xs font-extrabold text-white leading-tight">${rawName}</h4>
+                    <p class="text-[11px] text-slate-400 mt-0.5">${order.product || 'OrçaObra Pro'} • <span class="text-slate-300 font-semibold">${order.method || 'PIX'}</span></p>
+                  </div>
+                </div>
+
+                <div class="text-right">
+                  <div class="text-sm font-black text-white">${val}</div>
+                  <span class="text-[10px] font-bold px-1.5 py-0.5 rounded-full border ${badgeClass} inline-block mt-0.5">
+                    ${badgeText}
+                  </span>
+                </div>
+              </div>
+
+              <!-- Informações adicionais e Botão de Ação -->
+              <div class="pt-2 border-t border-slate-800/80 flex items-center justify-between">
+                <span class="text-[10px] text-slate-500 font-medium">
+                  <i class="ph ph-clock text-[11px]"></i> ${order.date || 'Hoje'}
+                </span>
+
+                ${waUrl ? `
+                  <a href="${waUrl}" target="_blank" class="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white text-[11px] font-extrabold flex items-center gap-1.5 shadow-md shadow-emerald-600/20 transition">
+                    <i class="ph ph-whatsapp-logo text-sm"></i> Chamar no WhatsApp
+                  </a>
+                ` : `
+                  <span class="text-[10px] text-slate-500">Sem telefone cadastrado</span>
+                `}
+              </div>
+            </div>
+          `;
+        }).join('');
+      },
+
+      renderFunnel() {
+        const container = document.getElementById('funnel-steps-container');
+        const views = this.data.stepViews || {};
+        const keys = Object.keys(views);
+
+        if (keys.length === 0) {
+          container.innerHTML = '<p class="text-xs text-slate-400 text-center py-4">Nenhum dado de etapas registrado ainda.</p>';
+          return;
+        }
+
+        const base = Number(views['step_0'] || this.data.totalStarts || 1);
+        document.getElementById('funnel-base-starts').innerText = base;
+
+        container.innerHTML = keys.map((key, idx) => {
+          const count = Number(views[key] || 0);
+          const pct = base > 0 ? Math.min(100, Math.round((count / base) * 100)) : 0;
+          const stepLabel = key === 'step_checkout' ? '🛒 Checkout' : `Etapa ${idx + 1}`;
+
+          return `
+            <div class="space-y-1">
+              <div class="flex items-center justify-between text-xs">
+                <span class="font-bold text-slate-300">${stepLabel}</span>
+                <span class="font-extrabold text-white">${count} <span class="text-[10px] font-normal text-slate-400">(${pct}%)</span></span>
+              </div>
+              <div class="w-full h-2 bg-slate-950 rounded-full overflow-hidden border border-slate-800">
+                <div class="h-full bg-gradient-to-r from-indigo-500 to-emerald-400 rounded-full transition-all duration-500" style="width: ${pct}%"></div>
+              </div>
+            </div>
+          `;
+        }).join('');
+      }
+    };
+
+    // Inicialização ao carregar
+    window.addEventListener('DOMContentLoaded', () => app.init());
+  </script>
+</body>
+</html>
