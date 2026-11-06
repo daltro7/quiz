@@ -817,8 +817,12 @@
 
           <!-- Controles de Navegação e Rolagem do Preview -->
           <div class="flex items-center gap-1.5">
+            <button id="btn-toggle-full-phone" onclick="App.toggleFullPhoneView()" class="px-2.5 py-1 rounded-lg bg-teal-600/20 hover:bg-teal-600/30 text-teal-300 border border-teal-500/30 text-xs font-bold flex items-center gap-1 transition" title="Alternar entre altura fixa do celular ou Tela Total estendida">
+              <i class="ph ph-arrows-out-simple text-sm" id="icon-full-phone"></i>
+              <span id="text-full-phone">Tela Total</span>
+            </button>
             <button onclick="App.scrollPreview(1)" class="px-2.5 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-xs text-white font-bold flex items-center gap-1 shadow-sm transition" title="Rolar tela do celular para baixo">
-              <i class="ph ph-arrow-down"></i> Rolar Celular ↓
+              <i class="ph ph-arrow-down"></i> Rolar ↓
             </button>
             <button onclick="App.scrollPreview(-1)" class="px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-xs text-slate-300 hover:text-white font-semibold flex items-center gap-1 border border-slate-700 transition" title="Voltar ao topo do celular">
               <i class="ph ph-arrow-up"></i> Topo ↑

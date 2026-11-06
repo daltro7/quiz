@@ -52,6 +52,7 @@ const App = {
   init() {
     this.loadQuizzesFromStorage();
     this.initFirebase();
+    this.initFullPhoneViewState();
     if (this.quizzes && this.quizzes.length > 0) {
       this.openEditor(this.quizzes[0].id);
       const params = new URLSearchParams(window.location.search);
@@ -3208,6 +3209,42 @@ const App = {
       vp.scrollTo({ top: 0, behavior: 'smooth' });
     } else {
       vp.scrollBy({ top: 300, behavior: 'smooth' });
+    }
+  },
+
+  toggleFullPhoneView() {
+    const frame = document.getElementById('preview-mockup-frame');
+    if (!frame) return;
+    const isFull = frame.classList.toggle('full-view');
+    localStorage.setItem('qf_phone_full_view', isFull ? 'true' : 'false');
+    this.updateFullPhoneButtonUI(isFull);
+  },
+
+  updateFullPhoneButtonUI(isFull) {
+    const btn = document.getElementById('btn-toggle-full-phone');
+    const icon = document.getElementById('icon-full-phone');
+    const text = document.getElementById('text-full-phone');
+    if (!btn) return;
+
+    if (isFull) {
+      btn.className = 'px-2.5 py-1 rounded-lg bg-teal-500 text-slate-950 border border-teal-400 text-xs font-black flex items-center gap-1 shadow-md shadow-teal-500/25 transition';
+      if (icon) icon.className = 'ph ph-arrows-in-simple text-sm';
+      if (text) text.innerText = 'Tela Fixa';
+      btn.title = 'Voltar para a moldura fixa do celular com scroll interno';
+    } else {
+      btn.className = 'px-2.5 py-1 rounded-lg bg-teal-600/20 hover:bg-teal-600/30 text-teal-300 border border-teal-500/30 text-xs font-bold flex items-center gap-1 transition';
+      if (icon) icon.className = 'ph ph-arrows-out-simple text-sm';
+      if (text) text.innerText = 'Tela Total';
+      btn.title = 'Expandir para ver a tela inteira estendida sem cortes';
+    }
+  },
+
+  initFullPhoneViewState() {
+    const saved = localStorage.getItem('qf_phone_full_view');
+    const frame = document.getElementById('preview-mockup-frame');
+    if (frame && saved === 'true') {
+      frame.classList.add('full-view');
+      this.updateFullPhoneButtonUI(true);
     }
   },
 

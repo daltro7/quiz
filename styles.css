@@ -63,6 +63,24 @@
   box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.5), 0 0 0 6px #1e293b;
 }
 
+/* Modo Tela Total / Estendida (Sem corte, 100% visível de ponta a ponta) */
+.phone-mockup.full-view {
+  height: auto !important;
+  max-height: none !important;
+  min-height: 640px;
+  overflow: visible !important;
+  margin-bottom: 60px;
+  box-shadow: 0 25px 60px -10px rgba(0, 0, 0, 0.8), 0 0 0 8px #0f172a, 0 0 0 10px #334155;
+}
+
+.phone-mockup.full-view .phone-screen {
+  height: auto !important;
+  min-height: 600px;
+  overflow-y: visible !important;
+  border-bottom-left-radius: 28px;
+  border-bottom-right-radius: 28px;
+}
+
 /* Speaker e Notch do celular (pointer-events: none para não bloquear toques) */
 .phone-notch {
   width: 130px;
