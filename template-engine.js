@@ -3842,22 +3842,6 @@ const QuizTemplateEngine = {
             }
             bHtml += '</div>';
           }
-            const size = block.imageSize || 'medium';
-            const titleSize = block.titleSize || 'md';
-            const titleColor = block.titleColor || block.textColor || '';
-            const titleStyle = titleColor ? 'style=\"color: ' + titleColor + ';\"' : '';
-            bHtml += '<div class=\"quiz-image-card align-' + align + ' quiz-image-' + size + '\">';
-            if (block.title) {
-              bHtml += '<h3 class=\"quiz-image-title title-' + titleSize + '\" ' + titleStyle + '>' + this.escapeHtml(block.title) + '</h3>';
-            }
-            if (block.imageUrl) {
-              bHtml += '<img src=\"' + this.escapeHtml(block.imageUrl) + '\" alt=\"' + this.escapeHtml(block.altText || block.title || '') + '\" loading=\"lazy\">';
-            }
-            if (block.caption) {
-              bHtml += '<p class=\"quiz-image-caption\">' + this.escapeHtml(block.caption) + '</p>';
-            }
-            bHtml += '</div>';
-          }
           else if (block.type === 'video') {
             const videoUrl = (block.youtubeUrl || block.videoUrl || '').trim();
             if (videoUrl) {
