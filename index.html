@@ -125,10 +125,10 @@
           <input type="file" id="input-import-project" accept=".json" class="hidden" onchange="App.handleImportProject(event)">
         </label>
 
-        <!-- Criar Novo Quiz -->
-        <button onclick="App.createNewQuiz()" class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-bold shadow-lg shadow-indigo-500/20 transition">
+        <!-- Criar Novo Projeto (Quiz ou Página de Vendas) -->
+        <button onclick="App.openNewProjectModal()" class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 to-teal-600 hover:from-indigo-500 hover:to-teal-500 text-white text-sm font-bold shadow-lg shadow-indigo-500/20 transition active:scale-95">
           <i class="ph ph-plus-circle text-base"></i>
-          Novo Quiz
+          Novo Projeto
         </button>
       </div>
     </div>
@@ -1728,6 +1728,63 @@ function doPost(e) {
         <button type="button" onclick="App.closeModals()" class="text-slate-400 hover:text-white">
           Continuar offline
         </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- MODAL: ESCOLHA DE PROJETO (QUIZ VS PÁGINA) -->
+  <!-- ========================================== -->
+  <div id="modal-new-project" class="hidden fixed inset-0 z-50 bg-slate-950/85 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-800 rounded-3xl max-w-lg w-full p-6 shadow-2xl space-y-5">
+      <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+        <div class="flex items-center gap-2.5">
+          <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-indigo-500 to-teal-500 text-white flex items-center justify-center text-lg font-bold">
+            <i class="ph ph-sparkle"></i>
+          </div>
+          <div>
+            <h3 class="font-extrabold text-white text-base">O que você deseja criar?</h3>
+            <p class="text-xs text-slate-400">Escolha o modelo inicial do seu novo projeto</p>
+          </div>
+        </div>
+        <button type="button" onclick="App.closeModals()" class="w-8 h-8 rounded-full bg-slate-800 text-slate-400 hover:text-white flex items-center justify-center">
+          <i class="ph ph-x"></i>
+        </button>
+      </div>
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+        <!-- Card 1: Quiz Interativo -->
+        <div onclick="App.createNewProject('quiz')" class="bg-slate-950/80 border border-slate-800 hover:border-indigo-500 rounded-2xl p-4 cursor-pointer transition hover:scale-[1.02] flex flex-col justify-between group space-y-3">
+          <div class="space-y-2">
+            <div class="w-10 h-10 rounded-xl bg-indigo-600/20 text-indigo-400 flex items-center justify-center text-xl font-bold group-hover:bg-indigo-600 group-hover:text-white transition">
+              <i class="ph ph-chat-circle-dots"></i>
+            </div>
+            <h4 class="font-bold text-white text-sm">Quiz Interativo</h4>
+            <p class="text-xs text-slate-400 leading-relaxed">
+              Funil em etapas com perguntas de qualificação, pontuação, barra de progresso e tela de resultado.
+            </p>
+          </div>
+          <span class="inline-flex items-center gap-1.5 text-xs font-bold text-indigo-400 group-hover:text-indigo-300">
+            Criar Quiz <i class="ph ph-arrow-right"></i>
+          </span>
+        </div>
+
+        <!-- Card 2: Página de Vendas -->
+        <div onclick="App.createNewProject('landing_page')" class="bg-slate-950/80 border border-slate-800 hover:border-teal-500 rounded-2xl p-4 cursor-pointer transition hover:scale-[1.02] flex flex-col justify-between group space-y-3 relative overflow-hidden">
+          <span class="absolute top-2 right-2 text-[9px] font-extrabold px-1.5 py-0.5 rounded bg-teal-500/15 text-teal-300 border border-teal-500/30">NOVO</span>
+          <div class="space-y-2">
+            <div class="w-10 h-10 rounded-xl bg-teal-600/20 text-teal-400 flex items-center justify-center text-xl font-bold group-hover:bg-teal-600 group-hover:text-white transition">
+              <i class="ph ph-browsers"></i>
+            </div>
+            <h4 class="font-bold text-white text-sm">Página de Vendas</h4>
+            <p class="text-xs text-slate-400 leading-relaxed">
+              Página contínua com VSL, 3 planos, dores, garantia de 30 dias e FAQ (Template NetFree 100% modular).
+            </p>
+          </div>
+          <span class="inline-flex items-center gap-1.5 text-xs font-bold text-teal-400 group-hover:text-teal-300">
+            Criar Página <i class="ph ph-arrow-right"></i>
+          </span>
+        </div>
       </div>
     </div>
   </div>
