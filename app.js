@@ -2929,8 +2929,8 @@ const App = {
     const theme = this.currentQuiz.theme || {};
     const showProgress = theme.showProgressBar !== false;
     const hideUntilClick = theme.hideUntilFirstClick !== false;
-    const hasInteracted = this.preview.hasAnswered || (currentIdx > 0) || (Object.keys(this.preview.userAnswers || {}).length > 0);
-    const shouldShowProgress = showProgress && (!hideUntilClick || hasInteracted);
+    // Se "Ocultar até 1º clique" estiver ativo, a barra NUNCA aparece na primeira etapa (currentIdx === 0), surgindo apenas a partir da 2ª etapa!
+    const shouldShowProgress = showProgress && (!hideUntilClick || currentIdx > 0);
 
     const progressSection = document.getElementById('preview-progress-section');
     if (progressSection) {

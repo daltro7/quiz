@@ -3868,10 +3868,11 @@ const QuizTemplateEngine = {
         const theme = this.config.theme || {};
         const showProgress = (theme.showProgressBar !== false);
         const hideUntilClick = (theme.hideUntilFirstClick !== false);
-        const hasInteracted = this.hasAnswered || (index > 0) || (Object.keys(this.userAnswers || {}).length > 0);
+        // Se "Ocultar até 1º clique" estiver ativo, a barra NUNCA aparece na primeira etapa (index === 0), surgindo apenas a partir da 2ª etapa!
+        const shouldShowProgress = showProgress && (!hideUntilClick || index > 0);
 
         if (progressSection) {
-          progressSection.style.display = (showProgress && (!hideUntilClick || hasInteracted)) ? 'block' : 'none';
+          progressSection.style.display = shouldShowProgress ? 'block' : 'none';
         }
 
         const format = theme.progressTextFormat || 'full';
