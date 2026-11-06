@@ -959,9 +959,9 @@
       renderFunnel() {
         const container = document.getElementById('funnel-steps-container');
         const views = this.data.stepViews || {};
-        const keys = Object.keys(views);
+        const keys = Object.keys(views).filter(k => k.startsWith('step_'));
 
-        if (keys.length === 0) {
+        if (keys.length === 0 && !this.data.totalStarts) {
           container.innerHTML = '<p class="text-xs text-slate-400 text-center py-4">Nenhum dado de etapas registrado ainda.</p>';
           return;
         }
@@ -969,23 +969,76 @@
         const base = Number(views['step_0'] || this.data.totalStarts || 1);
         document.getElementById('funnel-base-starts').innerText = base;
 
-        container.innerHTML = keys.map((key, idx) => {
+        const currentQuiz = this.quizzes.find(q => q.id === this.selectedQuizId);
+        const steps = currentQuiz && currentQuiz.steps ? currentQuiz.steps : [];
+
+        // Ordena as etapas cronologicamente: step_0, step_1, ... e step_checkout no final
+        keys.sort((a, b) => {
+          if (a === 'step_checkout') return 1;
+          if (b === 'step_checkout') return -1;
+          const numA = parseInt(a.replace('step_', ''), 10) || 0;
+          const numB = parseInt(b.replace('step_', ''), 10) || 0;
+          return numA - numB;
+        });
+
+        const stepsHtml = keys.map((key, idx) => {
           const count = Number(views[key] || 0);
           const pct = base > 0 ? Math.min(100, Math.round((count / base) * 100)) : 0;
-          const stepLabel = key === 'step_checkout' ? '🛒 Checkout' : `Etapa ${idx + 1}`;
+          
+          let stepLabel = '';
+          const numIdx = parseInt(key.replace('step_', ''), 10);
+          const isLastQuizStep = !isNaN(numIdx) && (numIdx === steps.length - 1 || idx === keys.length - 1);
+
+          if (key === 'step_checkout') {
+            stepLabel = '🛒 Checkout Iniciado';
+          } else if (!isNaN(numIdx) && steps[numIdx] && steps[numIdx].title) {
+            const shortTitle = steps[numIdx].title.length > 25 ? steps[numIdx].title.substring(0, 25) + '...' : steps[numIdx].title;
+            stepLabel = `${idx + 1}. ${shortTitle}`;
+          } else if (isLastQuizStep) {
+            stepLabel = `Etapa ${idx + 1} (Página de Oferta/Venda)`;
+          } else {
+            stepLabel = `Etapa ${idx + 1}`;
+          }
 
           return `
             <div class="space-y-1">
               <div class="flex items-center justify-between text-xs">
-                <span class="font-bold text-slate-300">${stepLabel}</span>
-                <span class="font-extrabold text-white">${count} <span class="text-[10px] font-normal text-slate-400">(${pct}%)</span></span>
+                <span class="font-bold text-slate-300 truncate max-w-[210px]">${stepLabel}</span>
+                <span class="font-extrabold text-white shrink-0">${count} <span class="text-[10px] font-normal text-slate-400">(${pct}%)</span></span>
               </div>
               <div class="w-full h-2 bg-slate-950 rounded-full overflow-hidden border border-slate-800">
-                <div class="h-full bg-gradient-to-r from-indigo-500 to-emerald-400 rounded-full transition-all duration-500" style="width: ${pct}%"></div>
+                <div class="h-full bg-gradient-to-r from-indigo-500 to-cyan-400 rounded-full transition-all duration-500" style="width: ${pct}%"></div>
               </div>
             </div>
           `;
         }).join('');
+
+        // Linha final destacada: VENDAS APROVADAS
+        const salesCount = Number(this.data.totalSalesApproved || 0);
+        const salesPct = base > 0 ? ((salesCount / base) * 100).toFixed(1) : '0.0';
+        const formatBRL = (val) => Number(val || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+
+        const salesFinalHtml = `
+          <div class="pt-3 mt-3 border-t border-slate-800/80 space-y-1.5 bg-emerald-500/5 -mx-4 -mb-4 p-4 rounded-b-2xl border-emerald-500/20">
+            <div class="flex items-center justify-between text-xs">
+              <span class="font-extrabold text-emerald-400 flex items-center gap-1.5">
+                <i class="ph ph-trophy text-sm"></i> Vendas Aprovadas
+              </span>
+              <span class="font-black text-emerald-300">
+                ${salesCount} <span class="text-[10px] font-semibold text-emerald-400/80">(${salesPct}%)</span>
+              </span>
+            </div>
+            <div class="w-full h-2.5 bg-slate-950 rounded-full overflow-hidden border border-emerald-500/30">
+              <div class="h-full bg-gradient-to-r from-emerald-500 to-teal-300 rounded-full transition-all duration-500" style="width: ${Math.min(100, Math.max(2, parseFloat(salesPct)))}%"></div>
+            </div>
+            <div class="flex items-center justify-between text-[11px] text-slate-400 pt-0.5">
+              <span>Faturamento confirmado:</span>
+              <strong class="text-white font-bold">${formatBRL(this.data.revenueApproved)}</strong>
+            </div>
+          </div>
+        `;
+
+        container.innerHTML = stepsHtml + salesFinalHtml;
       }
     };
 

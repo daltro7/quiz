@@ -546,6 +546,9 @@ const App = {
         <button onclick="App.addBlockToStep(${stepIdx}, 'faq')" class="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-sky-400 text-xs font-semibold border border-sky-500/30 transition flex items-center gap-1 shadow-sm">
           <span>💬</span> Dúvidas Frequentes (FAQ)
         </button>
+        <button onclick="App.addBlockToStep(${stepIdx}, 'sales_page')" class="px-2.5 py-1.5 rounded-lg bg-gradient-to-r from-teal-600/30 to-emerald-600/30 hover:from-teal-600/50 hover:to-emerald-600/50 text-teal-300 hover:text-white text-xs font-bold border border-teal-500/40 transition flex items-center gap-1 shadow-sm">
+          <span>🚀</span> Página de Vendas Pronta
+        </button>
       </div>
     `;
   },
@@ -843,6 +846,141 @@ const App = {
                 ` : ''}
               </div>
             `).join('')}
+          </div>
+        </div>
+      `;
+    }
+
+    // 12. NOVO SUPER-BLOCO: PÁGINA DE VENDAS PRONTA (sales_page)
+    else if (block.type === 'sales_page') {
+      blockBadge = '<span class="text-teal-300 font-bold text-xs flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-teal-400 animate-pulse"></span>🚀 Página de Vendas Pronta (Alta Conversão)</span>';
+      const plans = block.plans || [];
+
+      blockBody = `
+        <div class="space-y-3 pt-1">
+          <!-- Alerta Didático -->
+          <div class="p-3 bg-teal-500/10 border border-teal-500/25 rounded-xl text-xs text-teal-300 flex items-start gap-2">
+            <i class="ph ph-sparkle text-base text-teal-400 shrink-0 mt-0.5"></i>
+            <div>
+              <strong class="text-white block font-bold mb-0.5">Template Completo de Vendas Ativo</strong>
+              Este super-bloco insere a página de vendas completa com VSL, 3 planos, garantia, depoimentos e FAQ. Configure os campos abaixo:
+            </div>
+          </div>
+
+          <!-- SEÇÃO 1: HERO & VÍDEO PRINCIPAL (VSL) -->
+          <div class="bg-slate-900/80 border border-slate-800 rounded-xl p-3 space-y-2.5">
+            <div class="text-xs font-bold text-teal-400 flex items-center gap-1.5 border-b border-slate-800 pb-1.5">
+              <i class="ph ph-video-camera"></i> 1. Topo & Vídeo de Vendas (VSL)
+            </div>
+            
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <div>
+                <label class="block text-[10px] font-bold text-slate-400 mb-1">Tag Superior</label>
+                <input type="text" value="${this.escape(block.heroBadge || '')}" oninput="App.updateBlockProp(${stepIdx}, ${bIdx}, 'heroBadge', this.value)" placeholder="Ex: Nova tecnologia" class="w-full bg-slate-950 border border-slate-700 px-2.5 py-1.5 rounded-lg text-xs text-white">
+              </div>
+              <div>
+                <label class="block text-[10px] font-bold text-slate-400 mb-1">Texto do Botão Principal</label>
+                <input type="text" value="${this.escape(block.heroCtaText || 'VER OS PLANOS DE ACESSO')}" oninput="App.updateBlockProp(${stepIdx}, ${bIdx}, 'heroCtaText', this.value)" class="w-full bg-slate-950 border border-slate-700 px-2.5 py-1.5 rounded-lg text-xs text-teal-300 font-bold">
+              </div>
+            </div>
+
+            <div>
+              <label class="block text-[10px] font-bold text-slate-400 mb-1">Headline Principal (Use \\n para quebrar linha)</label>
+              <textarea rows="2" oninput="App.updateBlockProp(${stepIdx}, ${bIdx}, 'heroHeadline', this.value)" class="w-full bg-slate-950 border border-slate-700 px-2.5 py-1.5 rounded-lg text-xs text-white font-bold">${this.escape(block.heroHeadline || '')}</textarea>
+            </div>
+
+            <div>
+              <label class="block text-[10px] font-bold text-slate-400 mb-1">Link do Vídeo VSL (Vimeo, YouTube ou MP4 direto)</label>
+              <input type="text" value="${this.escape(block.vslVideoUrl || '')}" oninput="App.updateBlockProp(${stepIdx}, ${bIdx}, 'vslVideoUrl', this.value)" placeholder="https://player.vimeo.com/video/... ou .mp4" class="w-full bg-slate-950 border border-slate-700 px-2.5 py-1.5 rounded-lg text-xs text-indigo-300 font-mono">
+            </div>
+          </div>
+
+          <!-- SEÇÃO 2: OS 3 PLANOS & CHECKOUTS -->
+          <div class="bg-slate-900/80 border border-slate-800 rounded-xl p-3 space-y-2.5">
+            <div class="text-xs font-bold text-teal-400 flex items-center justify-between border-b border-slate-800 pb-1.5">
+              <span class="flex items-center gap-1.5"><i class="ph ph-credit-card"></i> 2. Os 3 Planos de Acesso</span>
+              <span class="text-[10px] text-slate-400">Kirvano / PerfectPay</span>
+            </div>
+
+            <div class="space-y-2">
+              ${plans.map((pl, pIdx) => `
+                <div class="p-2.5 bg-slate-950/80 border ${pl.featured ? 'border-teal-500/50 bg-teal-500/5' : 'border-slate-800'} rounded-lg space-y-2">
+                  <div class="flex items-center justify-between">
+                    <span class="text-xs font-bold ${pl.featured ? 'text-teal-300' : 'text-slate-300'} flex items-center gap-1.5">
+                      <span class="w-5 h-5 rounded-full bg-slate-800 flex items-center justify-center text-[10px] text-white font-extrabold">${pIdx + 1}</span>
+                      ${this.escape(pl.name || 'Plano')}
+                      ${pl.featured ? '<span class="text-[9px] px-1.5 py-0.2 rounded bg-teal-500/20 text-teal-300 border border-teal-500/30 font-bold">Destaque</span>' : ''}
+                    </span>
+                    <div class="flex items-center gap-1">
+                      <span class="text-xs font-bold text-white">R$ ${pl.priceVal || '0'}${pl.priceCts || ',00'}</span>
+                    </div>
+                  </div>
+
+                  <div class="grid grid-cols-2 gap-2">
+                    <div>
+                      <label class="block text-[9px] font-bold text-slate-400 mb-0.5">Nome do Plano</label>
+                      <input type="text" value="${this.escape(pl.name || '')}" oninput="App.updateSalesPlanProp(${stepIdx}, ${bIdx}, ${pIdx}, 'name', this.value)" class="w-full bg-slate-900 border border-slate-700 px-2 py-1 rounded text-xs text-white">
+                    </div>
+                    <div>
+                      <label class="block text-[9px] font-bold text-slate-400 mb-0.5">Valor (ex: 39,90)</label>
+                      <input type="text" value="${pl.priceVal || ''}${pl.priceCts || ''}" oninput="App.updateSalesPlanPrice(${stepIdx}, ${bIdx}, ${pIdx}, this.value)" class="w-full bg-slate-900 border border-slate-700 px-2 py-1 rounded text-xs text-white font-mono">
+                    </div>
+                  </div>
+
+                  <div>
+                    <label class="block text-[9px] font-bold text-teal-400 mb-0.5">Link de Checkout (Kirvano / PerfectPay)</label>
+                    <input type="text" value="${this.escape(pl.checkoutUrl || '')}" oninput="App.updateSalesPlanProp(${stepIdx}, ${bIdx}, ${pIdx}, 'checkoutUrl', this.value)" placeholder="https://pay.kirvano.com/... ou https://checkout.perfectpay..." class="w-full bg-slate-900 border border-slate-700 px-2 py-1 rounded text-xs text-teal-300 font-mono">
+                  </div>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+
+          <!-- SEÇÃO 3: VÍDEOS DE PROVA SOCIAL & TUTORIAL -->
+          <div class="bg-slate-900/80 border border-slate-800 rounded-xl p-3 space-y-2.5">
+            <div class="text-xs font-bold text-teal-400 flex items-center gap-1.5 border-b border-slate-800 pb-1.5">
+              <i class="ph ph-video"></i> 3. Vídeos Tutoriais e Depoimentos (Vimeo / Short)
+            </div>
+            
+            <div>
+              <label class="block text-[10px] font-bold text-slate-400 mb-1">Vídeo Tutorial Passo a Passo (Vimeo)</label>
+              <input type="text" value="${this.escape(block.tutorialVideoUrl || '')}" oninput="App.updateBlockProp(${stepIdx}, ${bIdx}, 'tutorialVideoUrl', this.value)" class="w-full bg-slate-950 border border-slate-700 px-2.5 py-1.5 rounded-lg text-xs text-indigo-300 font-mono">
+            </div>
+
+            <div>
+              <label class="block text-[10px] font-bold text-slate-400 mb-1">Vídeo de Depoimentos de Clientes (Vimeo)</label>
+              <input type="text" value="${this.escape(block.reviewsVideoUrl || '')}" oninput="App.updateBlockProp(${stepIdx}, ${bIdx}, 'reviewsVideoUrl', this.value)" class="w-full bg-slate-950 border border-slate-700 px-2.5 py-1.5 rounded-lg text-xs text-indigo-300 font-mono">
+            </div>
+          </div>
+
+          <!-- SEÇÃO 4: GATILHOS DE CONVERSÃO & PROTEÇÃO -->
+          <div class="bg-slate-900/80 border border-slate-800 rounded-xl p-3 space-y-2.5">
+            <div class="text-xs font-bold text-teal-400 flex items-center gap-1.5 border-b border-slate-800 pb-1.5">
+              <i class="ph ph-lightning"></i> 4. Gatilhos de Conversão Ativos
+            </div>
+
+            <div class="space-y-2">
+              <label class="flex items-center justify-between p-2 rounded-lg bg-slate-950/60 border border-slate-800 text-xs cursor-pointer">
+                <span class="text-slate-300 font-semibold flex items-center gap-2">
+                  <i class="ph ph-bell text-teal-400"></i> Notificações de Compradores (Toast Flutuante)
+                </span>
+                <input type="checkbox" ${block.showSocialProof !== false ? 'checked' : ''} onchange="App.updateBlockProp(${stepIdx}, ${bIdx}, 'showSocialProof', this.checked)" class="w-4 h-4 rounded text-teal-500 bg-slate-900 border-slate-700">
+              </label>
+
+              <label class="flex items-center justify-between p-2 rounded-lg bg-slate-950/60 border border-slate-800 text-xs cursor-pointer">
+                <span class="text-slate-300 font-semibold flex items-center gap-2">
+                  <i class="ph ph-sign-out text-amber-400"></i> Pop-up ao Tentar Sair (Exit Intent)
+                </span>
+                <input type="checkbox" ${block.showExitIntent !== false ? 'checked' : ''} onchange="App.updateBlockProp(${stepIdx}, ${bIdx}, 'showExitIntent', this.checked)" class="w-4 h-4 rounded text-teal-500 bg-slate-900 border-slate-700">
+              </label>
+
+              <label class="flex items-center justify-between p-2 rounded-lg bg-slate-950/60 border border-slate-800 text-xs cursor-pointer">
+                <span class="text-slate-300 font-semibold flex items-center gap-2">
+                  <i class="ph ph-shield text-indigo-400"></i> Proteção contra Cópia / F12 (Anti-Spy)
+                </span>
+                <input type="checkbox" ${block.enableAntiSpy ? 'checked' : ''} onchange="App.updateBlockProp(${stepIdx}, ${bIdx}, 'enableAntiSpy', this.checked)" class="w-4 h-4 rounded text-teal-500 bg-slate-900 border-slate-700">
+              </label>
+            </div>
           </div>
         </div>
       `;
@@ -1471,6 +1609,141 @@ const App = {
       `;
     }
 
+    // 12. NOVO SUPER-BLOCO: PÁGINA DE VENDAS PRONTA (sales_page)
+    else if (block.type === 'sales_page') {
+      blockBadge = '<span class="text-teal-300 font-bold text-xs flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-teal-400 animate-pulse"></span>🚀 Página de Vendas Pronta (Alta Conversão)</span>';
+      const plans = block.plans || [];
+
+      blockBody = `
+        <div class="space-y-3 pt-1">
+          <!-- Alerta Didático -->
+          <div class="p-3 bg-teal-500/10 border border-teal-500/25 rounded-xl text-xs text-teal-300 flex items-start gap-2">
+            <i class="ph ph-sparkle text-base text-teal-400 shrink-0 mt-0.5"></i>
+            <div>
+              <strong class="text-white block font-bold mb-0.5">Template Completo de Vendas Ativo</strong>
+              Este super-bloco insere a página de vendas completa com VSL, 3 planos, garantia, depoimentos e FAQ. Configure os campos abaixo:
+            </div>
+          </div>
+
+          <!-- SEÇÃO 1: HERO & VÍDEO PRINCIPAL (VSL) -->
+          <div class="bg-slate-900/80 border border-slate-800 rounded-xl p-3 space-y-2.5">
+            <div class="text-xs font-bold text-teal-400 flex items-center gap-1.5 border-b border-slate-800 pb-1.5">
+              <i class="ph ph-video-camera"></i> 1. Topo & Vídeo de Vendas (VSL)
+            </div>
+            
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <div>
+                <label class="block text-[10px] font-bold text-slate-400 mb-1">Tag Superior</label>
+                <input type="text" value="${this.escape(block.heroBadge || '')}" oninput="App.updateBlockProp(${stepIdx}, ${bIdx}, 'heroBadge', this.value)" placeholder="Ex: Nova tecnologia" class="w-full bg-slate-950 border border-slate-700 px-2.5 py-1.5 rounded-lg text-xs text-white">
+              </div>
+              <div>
+                <label class="block text-[10px] font-bold text-slate-400 mb-1">Texto do Botão Principal</label>
+                <input type="text" value="${this.escape(block.heroCtaText || 'VER OS PLANOS DE ACESSO')}" oninput="App.updateBlockProp(${stepIdx}, ${bIdx}, 'heroCtaText', this.value)" class="w-full bg-slate-950 border border-slate-700 px-2.5 py-1.5 rounded-lg text-xs text-teal-300 font-bold">
+              </div>
+            </div>
+
+            <div>
+              <label class="block text-[10px] font-bold text-slate-400 mb-1">Headline Principal (Use \\n para quebrar linha)</label>
+              <textarea rows="2" oninput="App.updateBlockProp(${stepIdx}, ${bIdx}, 'heroHeadline', this.value)" class="w-full bg-slate-950 border border-slate-700 px-2.5 py-1.5 rounded-lg text-xs text-white font-bold">${this.escape(block.heroHeadline || '')}</textarea>
+            </div>
+
+            <div>
+              <label class="block text-[10px] font-bold text-slate-400 mb-1">Link do Vídeo VSL (Vimeo, YouTube ou MP4 direto)</label>
+              <input type="text" value="${this.escape(block.vslVideoUrl || '')}" oninput="App.updateBlockProp(${stepIdx}, ${bIdx}, 'vslVideoUrl', this.value)" placeholder="https://player.vimeo.com/video/... ou .mp4" class="w-full bg-slate-950 border border-slate-700 px-2.5 py-1.5 rounded-lg text-xs text-indigo-300 font-mono">
+            </div>
+          </div>
+
+          <!-- SEÇÃO 2: OS 3 PLANOS & CHECKOUTS -->
+          <div class="bg-slate-900/80 border border-slate-800 rounded-xl p-3 space-y-2.5">
+            <div class="text-xs font-bold text-teal-400 flex items-center justify-between border-b border-slate-800 pb-1.5">
+              <span class="flex items-center gap-1.5"><i class="ph ph-credit-card"></i> 2. Os 3 Planos de Acesso</span>
+              <span class="text-[10px] text-slate-400">Kirvano / PerfectPay</span>
+            </div>
+
+            <div class="space-y-2">
+              ${plans.map((pl, pIdx) => `
+                <div class="p-2.5 bg-slate-950/80 border ${pl.featured ? 'border-teal-500/50 bg-teal-500/5' : 'border-slate-800'} rounded-lg space-y-2">
+                  <div class="flex items-center justify-between">
+                    <span class="text-xs font-bold ${pl.featured ? 'text-teal-300' : 'text-slate-300'} flex items-center gap-1.5">
+                      <span class="w-5 h-5 rounded-full bg-slate-800 flex items-center justify-center text-[10px] text-white font-extrabold">${pIdx + 1}</span>
+                      ${this.escape(pl.name || 'Plano')}
+                      ${pl.featured ? '<span class="text-[9px] px-1.5 py-0.2 rounded bg-teal-500/20 text-teal-300 border border-teal-500/30 font-bold">Destaque</span>' : ''}
+                    </span>
+                    <div class="flex items-center gap-1">
+                      <span class="text-xs font-bold text-white">R$ ${pl.priceVal || '0'}${pl.priceCts || ',00'}</span>
+                    </div>
+                  </div>
+
+                  <div class="grid grid-cols-2 gap-2">
+                    <div>
+                      <label class="block text-[9px] font-bold text-slate-400 mb-0.5">Nome do Plano</label>
+                      <input type="text" value="${this.escape(pl.name || '')}" oninput="App.updateSalesPlanProp(${stepIdx}, ${bIdx}, ${pIdx}, 'name', this.value)" class="w-full bg-slate-900 border border-slate-700 px-2 py-1 rounded text-xs text-white">
+                    </div>
+                    <div>
+                      <label class="block text-[9px] font-bold text-slate-400 mb-0.5">Valor (ex: 39,90)</label>
+                      <input type="text" value="${pl.priceVal || ''}${pl.priceCts || ''}" oninput="App.updateSalesPlanPrice(${stepIdx}, ${bIdx}, ${pIdx}, this.value)" class="w-full bg-slate-900 border border-slate-700 px-2 py-1 rounded text-xs text-white font-mono">
+                    </div>
+                  </div>
+
+                  <div>
+                    <label class="block text-[9px] font-bold text-teal-400 mb-0.5">Link de Checkout (Kirvano / PerfectPay)</label>
+                    <input type="text" value="${this.escape(pl.checkoutUrl || '')}" oninput="App.updateSalesPlanProp(${stepIdx}, ${bIdx}, ${pIdx}, 'checkoutUrl', this.value)" placeholder="https://pay.kirvano.com/... ou https://checkout.perfectpay..." class="w-full bg-slate-900 border border-slate-700 px-2 py-1 rounded text-xs text-teal-300 font-mono">
+                  </div>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+
+          <!-- SEÇÃO 3: VÍDEOS DE PROVA SOCIAL & TUTORIAL -->
+          <div class="bg-slate-900/80 border border-slate-800 rounded-xl p-3 space-y-2.5">
+            <div class="text-xs font-bold text-teal-400 flex items-center gap-1.5 border-b border-slate-800 pb-1.5">
+              <i class="ph ph-video"></i> 3. Vídeos Tutoriais e Depoimentos (Vimeo / Short)
+            </div>
+            
+            <div>
+              <label class="block text-[10px] font-bold text-slate-400 mb-1">Vídeo Tutorial Passo a Passo (Vimeo)</label>
+              <input type="text" value="${this.escape(block.tutorialVideoUrl || '')}" oninput="App.updateBlockProp(${stepIdx}, ${bIdx}, 'tutorialVideoUrl', this.value)" class="w-full bg-slate-950 border border-slate-700 px-2.5 py-1.5 rounded-lg text-xs text-indigo-300 font-mono">
+            </div>
+
+            <div>
+              <label class="block text-[10px] font-bold text-slate-400 mb-1">Vídeo de Depoimentos de Clientes (Vimeo)</label>
+              <input type="text" value="${this.escape(block.reviewsVideoUrl || '')}" oninput="App.updateBlockProp(${stepIdx}, ${bIdx}, 'reviewsVideoUrl', this.value)" class="w-full bg-slate-950 border border-slate-700 px-2.5 py-1.5 rounded-lg text-xs text-indigo-300 font-mono">
+            </div>
+          </div>
+
+          <!-- SEÇÃO 4: GATILHOS DE CONVERSÃO & PROTEÇÃO -->
+          <div class="bg-slate-900/80 border border-slate-800 rounded-xl p-3 space-y-2.5">
+            <div class="text-xs font-bold text-teal-400 flex items-center gap-1.5 border-b border-slate-800 pb-1.5">
+              <i class="ph ph-lightning"></i> 4. Gatilhos de Conversão Ativos
+            </div>
+
+            <div class="space-y-2">
+              <label class="flex items-center justify-between p-2 rounded-lg bg-slate-950/60 border border-slate-800 text-xs cursor-pointer">
+                <span class="text-slate-300 font-semibold flex items-center gap-2">
+                  <i class="ph ph-bell text-teal-400"></i> Notificações de Compradores (Toast Flutuante)
+                </span>
+                <input type="checkbox" ${block.showSocialProof !== false ? 'checked' : ''} onchange="App.updateBlockProp(${stepIdx}, ${bIdx}, 'showSocialProof', this.checked)" class="w-4 h-4 rounded text-teal-500 bg-slate-900 border-slate-700">
+              </label>
+
+              <label class="flex items-center justify-between p-2 rounded-lg bg-slate-950/60 border border-slate-800 text-xs cursor-pointer">
+                <span class="text-slate-300 font-semibold flex items-center gap-2">
+                  <i class="ph ph-sign-out text-amber-400"></i> Pop-up ao Tentar Sair (Exit Intent)
+                </span>
+                <input type="checkbox" ${block.showExitIntent !== false ? 'checked' : ''} onchange="App.updateBlockProp(${stepIdx}, ${bIdx}, 'showExitIntent', this.checked)" class="w-4 h-4 rounded text-teal-500 bg-slate-900 border-slate-700">
+              </label>
+
+              <label class="flex items-center justify-between p-2 rounded-lg bg-slate-950/60 border border-slate-800 text-xs cursor-pointer">
+                <span class="text-slate-300 font-semibold flex items-center gap-2">
+                  <i class="ph ph-shield text-indigo-400"></i> Proteção contra Cópia / F12 (Anti-Spy)
+                </span>
+                <input type="checkbox" ${block.enableAntiSpy ? 'checked' : ''} onchange="App.updateBlockProp(${stepIdx}, ${bIdx}, 'enableAntiSpy', this.checked)" class="w-4 h-4 rounded text-teal-500 bg-slate-900 border-slate-700">
+              </label>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
     // Demanda 4: Delay Universal Programável em TODOS os componentes
     const universalDelayControl = `
       <div class="mt-3 pt-2.5 border-t border-slate-800/80 flex items-center justify-between text-xs">
@@ -1751,6 +2024,108 @@ const App = {
             { id: 'faq_3', question: 'E se eu tiver dúvidas ou precisar de ajuda?', answer: 'Você terá acesso ao nosso suporte exclusivo via WhatsApp para tirar qualquer dúvida sempre que precisar.' },
             { id: 'faq_4', question: 'Tenho garantia se eu não gostar?', answer: 'Com certeza! Você tem garantia incondicional de 30 dias. Se por qualquer motivo não ficar satisfeito, devolvemos 100% do seu dinheiro sem burocracia.' }
           ];
+    } else if (blockType === 'sales_page') {
+      newBlock.themeColor = '#00d4aa';
+      newBlock.brandName = 'NetFree';
+      newBlock.brandLogo = 'https://planetaideias.com.br/wp-content/uploads/2026/03/compacta-logo.png';
+      
+      // Hero
+      newBlock.heroBadge = 'Nova tecnologia de conectividade';
+      newBlock.heroHeadline = 'INTERNET MÓVEL ILIMITADA\\nPor Um Preço Justo!';
+      newBlock.heroSub = 'Planos a Partir de R$ 11,31 — **Use o quanto quiser e pague um valor fixo, sem contrato, sem fidelidade e sem surpresas na conta.**\\n\\n**Assista o vídeo abaixo e veja como é simples:**';
+      newBlock.vslVideoUrl = 'https://player.vimeo.com/video/1173821519';
+      newBlock.heroCtaText = 'VER OS PLANOS DE ACESSO';
+      newBlock.trustPills = ['Sem contrato', 'Acesso imediato', '30 dias de garantia', 'Suporte dedicado'];
+
+      // Seção Dor
+      newBlock.showPainSection = true;
+      newBlock.painTag = 'O problema que ninguém resolve';
+      newBlock.painHeadline = 'Você Já Ficou Sem Internet em um **Momento Importante?**';
+      newBlock.painCards = [
+        { title: 'Sinal caindo sempre', desc: 'Na reunião, no vídeo, na entrega do trabalho. Sempre na pior hora possível.' },
+        { title: 'Mensalidades caras', desc: 'Você paga todo mês mesmo sem usar. A franquia acaba antes do fim do mês.' },
+        { title: 'Contratos de fidelidade', desc: 'Preso por 12 ou 24 meses. Multa altíssima. Atendimento péssimo sem saída.' }
+      ];
+
+      // Seção Produto / Mockup
+      newBlock.showProductSection = true;
+      newBlock.mockupImageUrl = 'https://planetaideias.com.br/wp-content/uploads/2026/03/Gemini_Generated_Image_4ohvaj4ohvaj4ohv.png';
+      newBlock.prodTag = 'Como funciona';
+      newBlock.prodHeadline = 'Um App. Todas as Redes.\\n**Em Qualquer Lugar.**';
+      newBlock.prodDesc = 'Nosso app não é uma operadora. É uma plataforma global de conectividade — um GPS inteligente que sempre encontra a rede mais rápida disponível onde você estiver.';
+      newBlock.operators = ['Vivo', 'Claro', 'Tim', 'Oi', 'Starlink'];
+
+      // Seção Benefícios
+      newBlock.showBenefits = true;
+      newBlock.benefitsHeadline = 'Tudo o Que Você Merecia **Desde Sempre**';
+
+      // Seção 3 Planos
+      newBlock.plansHeadline = 'Planos de Acesso **NetFree**';
+      newBlock.plansSub = 'Internet ilimitada e 200 Mbps em todos os planos. Sem contrato. Acesso imediato.';
+      newBlock.plans = [
+        {
+          id: 'plan_1',
+          name: '1 Mês',
+          priceCur: 'R$',
+          priceVal: '19',
+          priceCts: ',90',
+          sub: '30 dias de acesso',
+          features: ['Internet Ilimitada', '200 Mbps velocidade', 'Sem contrato', 'Acesso imediato'],
+          checkoutUrl: 'https://pay.kirvano.com/e22ded46-ae4b-42c7-9660-df4c334992d6',
+          ctaText: 'Quero Este Plano',
+          featured: false,
+          ribbon: ''
+        },
+        {
+          id: 'plan_2',
+          name: '3 Meses',
+          priceCur: 'R$',
+          priceVal: '39',
+          priceCts: ',90',
+          sub: 'Economia de R$ 19,80',
+          features: ['Internet Ilimitada', '200 Mbps velocidade', 'Sem contrato', 'Acesso imediato'],
+          checkoutUrl: 'https://pay.kirvano.com/bda0b6c8-bd6e-4aea-87e0-371bede978db',
+          ctaText: 'Quero Este Plano',
+          featured: true,
+          ribbon: '⭐ Melhor Custo-Benefício'
+        },
+        {
+          id: 'plan_3',
+          name: '6 Meses',
+          priceCur: 'R$',
+          priceVal: '67',
+          priceCts: ',90',
+          sub: 'Apenas R$ 11,31/mês',
+          features: ['Internet Ilimitada', '200 Mbps velocidade', 'Sem contrato', 'Economia de R$ 51,50'],
+          checkoutUrl: 'https://pay.kirvano.com/f4ceda6c-beff-4eff-b2e1-46a5a45176a4',
+          ctaText: 'Quero Este Plano',
+          featured: false,
+          ribbon: ''
+        }
+      ];
+
+      // Garantia
+      newBlock.showGuarantee = true;
+      newBlock.guaranteeDays = '30';
+      newBlock.guaranteeSealUrl = 'https://planetaideias.com.br/wp-content/uploads/2026/01/selo-garantia-699x1024-1.png';
+      newBlock.guaranteeText = 'Experimente nossa internet por 30 dias sem riscos. Se, por qualquer motivo, você não estiver 100% satisfeito, garantimos a devolução integral do seu dinheiro.\\nBasta enviar "REEMBOLSO" para nosso WhatsApp e **devolvemos todo seu dinheiro imediatamente!** Sem perguntas, sem burocracia, sem enrolação.';
+
+      // Passo a passo + Tutorial
+      newBlock.showStepsTutorial = true;
+      newBlock.tutorialVideoUrl = 'https://player.vimeo.com/video/1173822851';
+
+      // Prova Social / Depoimentos
+      newBlock.showReviews = true;
+      newBlock.reviewsVideoUrl = 'https://player.vimeo.com/video/1174044927';
+      newBlock.reviewsRating = '4.9 de 5 — mais de 2.400 avaliações';
+
+      // FAQ
+      newBlock.showFaq = true;
+
+      // Recursos extras
+      newBlock.showSocialProof = true; // Notificações compradores
+      newBlock.showExitIntent = true;   // Pop-up ao tentar sair
+      newBlock.enableAntiSpy = false;   // Bloqueio F12 / DevTools
     }
 
     step.blocks.push(newBlock);
@@ -1794,6 +2169,33 @@ const App = {
     if (!step.blocks || !step.blocks[bIdx]) return;
 
     step.blocks[bIdx][prop] = value;
+    this.currentQuiz.updatedAt = new Date().toISOString();
+    this.saveQuizzesToStorage();
+    this.refreshPreview(stepIdx);
+  },
+
+  updateSalesPlanProp(stepIdx, bIdx, planIdx, prop, value) {
+    if (!this.currentQuiz || !this.currentQuiz.steps[stepIdx]) return;
+    const block = this.currentQuiz.steps[stepIdx].blocks[bIdx];
+    if (!block || !block.plans || !block.plans[planIdx]) return;
+
+    block.plans[planIdx][prop] = value;
+    this.currentQuiz.updatedAt = new Date().toISOString();
+    this.saveQuizzesToStorage();
+    this.refreshPreview(stepIdx);
+  },
+
+  updateSalesPlanPrice(stepIdx, bIdx, planIdx, rawValue) {
+    if (!this.currentQuiz || !this.currentQuiz.steps[stepIdx]) return;
+    const block = this.currentQuiz.steps[stepIdx].blocks[bIdx];
+    if (!block || !block.plans || !block.plans[planIdx]) return;
+
+    // Converte entrada tipo "39,90" ou "39.90" em priceVal: "39" e priceCts: ",90"
+    const clean = String(rawValue || '').replace(/[^\d,\.]/g, '');
+    const parts = clean.split(/[,\.]/);
+    block.plans[planIdx].priceVal = parts[0] || '0';
+    block.plans[planIdx].priceCts = parts[1] !== undefined ? ',' + parts[1] : ',00';
+
     this.currentQuiz.updatedAt = new Date().toISOString();
     this.saveQuizzesToStorage();
     this.refreshPreview(stepIdx);
