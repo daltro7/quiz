@@ -265,19 +265,106 @@ const QuizTemplateEngine = {
     return out;
   },
 
-  renderOfferBlockHtml(block, isPreview = false) {
+  // Interpolação Dinâmica de Respostas e Dados (Forma 1: Tags/Variáveis em tempo real)
+  interpolateDynamicText(text, state = {}, steps = [], isPreview = false) {
+    if (!text || typeof text !== 'string') return text || '';
+    if (!steps || steps.length === 0) {
+      if (state && Array.isArray(state.steps)) steps = state.steps;
+      else if (typeof window !== 'undefined' && window.App && window.App.currentQuiz && Array.isArray(window.App.currentQuiz.steps)) {
+        steps = window.App.currentQuiz.steps;
+      }
+    }
+    steps = steps || [];
+
+    return text.replace(/\{([a-zA-Z0-9_]+)(?:\|([^}]+))?\}/g, (match, rawTag, fallback) => {
+      const tag = rawTag.toLowerCase();
+      const defaultVal = fallback !== undefined ? fallback : '';
+      const lead = (state && state.leadData) || {};
+
+      // 1. Tags de Lead
+      if (tag === 'nome' || tag === 'name') {
+        return lead.name || defaultVal || (isPreview ? '[Nome do Cliente]' : '');
+      }
+      if (tag === 'primeiro_nome' || tag === 'first_name') {
+        const pName = lead.name ? lead.name.trim().split(' ')[0] : '';
+        return pName || defaultVal || (isPreview ? '[Nome]' : '');
+      }
+      if (tag === 'whatsapp' || tag === 'telefone' || tag === 'phone') {
+        return lead.whatsapp || defaultVal || (isPreview ? '[WhatsApp]' : '');
+      }
+      if (tag === 'email' || tag === 'e-mail') {
+        return lead.email || defaultVal || (isPreview ? '[E-mail]' : '');
+      }
+
+      // 2. Tags de Pontuação / Score
+      if (tag === 'score' || tag === 'pontos') {
+        return (state && state.totalScore !== undefined && state.totalScore !== null) ? state.totalScore : (defaultVal || 0);
+      }
+
+      // 3. Tags de Resposta e Pergunta: {resposta_1}, {resposta_etapa_1}, {pergunta_1}, etc.
+      const respMatch = tag.match(/^(resposta|resp|pergunta|perg)(?:_etapa)?_(\d+)$/);
+      if (respMatch) {
+        const type = respMatch[1];
+        const num = parseInt(respMatch[2], 10);
+        if (isNaN(num) || num <= 0) return match;
+
+        let targetStep = steps[num - 1];
+        const questionSteps = steps.filter(s => (s.blocks || []).some(b => b.type === 'question'));
+
+        if (!targetStep || !(targetStep.blocks || []).some(b => b.type === 'question')) {
+          if (questionSteps[num - 1]) {
+            targetStep = questionSteps[num - 1];
+          }
+        }
+
+        if (!targetStep) {
+          return defaultVal || (isPreview ? `[Etapa ${num}]` : '');
+        }
+
+        const qBlock = (targetStep.blocks || []).find(b => b.type === 'question');
+        const hBlock = (targetStep.blocks || []).find(b => b.type === 'heading');
+
+        if (type.startsWith('perg')) {
+          return (hBlock && (hBlock.title || hBlock.tag)) || targetStep.title || (`Pergunta ${num}`);
+        }
+
+        const userAnswers = (state && state.userAnswers) || {};
+        const customAnswers = (state && state.customAnswers) || {};
+        const optIdx = userAnswers[targetStep.id];
+        const customVal = customAnswers[targetStep.id];
+
+        if (optIdx !== undefined && qBlock && qBlock.options && qBlock.options[optIdx]) {
+          const opt = qBlock.options[optIdx];
+          if (customVal && opt.allowCustomText) {
+            return customVal;
+          }
+          return opt.text || '';
+        }
+
+        if (defaultVal) return defaultVal;
+        if (isPreview) {
+          return `[Resposta da Etapa ${num}]`;
+        }
+        return '';
+      }
+
+      return match;
+    });
+  },
+
+  renderOfferBlockHtml(block, isPreview = false, state = {}, steps = []) {
     if (block.plans && Array.isArray(block.plans) && block.plans.length > 0) {
       let gridHtml = '<div class="pricing-plans-grid">';
       block.plans.forEach(plan => {
         const isFeatured = plan.featured === true;
         const featuredClass = isFeatured ? 'featured' : '';
-        const badgeText = plan.featuredBadge || (isFeatured ? '⭐ MELHOR CUSTO-BENEFÍCIO' : '');
-        const anchorPrice = plan.anchorPrice || '';
+        const badgeText = this.interpolateDynamicText(plan.featuredBadge || (isFeatured ? '⭐ MELHOR CUSTO-BENEFÍCIO' : ''), state, steps, isPreview);
+        const anchorPrice = this.interpolateDynamicText(plan.anchorPrice || '', state, steps, isPreview);
         const currency = plan.currency || 'R$';
-        const priceMain = plan.priceMain || '';
-        const priceCents = plan.priceCents || '';
-        const periodSub = plan.periodSub || '';
-        const ctaText = plan.ctaText || 'Quero Este Plano';
+        const priceMain = this.interpolateDynamicText(plan.priceMain || '', state, steps, isPreview);
+        const priceCents = this.interpolateDynamicText(plan.priceCents || '', state, steps, isPreview);
+        const periodSub = this.interpolateDynamicText(plan.periodSub || '', state, steps, isPreview);
+        const ctaText = this.interpolateDynamicText(plan.ctaText || 'Quero Este Plano', state, steps, isPreview);
         const ctaUrl = plan.ctaUrl || '#';
         const rawFeatures = Array.isArray(plan.features) ? plan.features : (plan.features ? String(plan.features).split('\n') : []);
         const features = rawFeatures.map(f => f.trim()).filter(Boolean);
@@ -288,7 +375,7 @@ const QuizTemplateEngine = {
           gridHtml += `<div class="plan-badge-ribbon">${this.escapeHtml(badgeText)}</div>`;
         }
 
-        gridHtml += `<div class="plan-title">${this.escapeHtml(plan.title || 'PLANO')}</div>`;
+        gridHtml += `<div class="plan-title">${this.escapeHtml(this.interpolateDynamicText(plan.title || 'PLANO', state, steps, isPreview))}</div>`;
 
         if (anchorPrice) {
           gridHtml += `<div class="plan-anchor-price">${this.escapeHtml(anchorPrice)}</div>`;
@@ -311,24 +398,28 @@ const QuizTemplateEngine = {
         if (features.length > 0) {
           gridHtml += `<ul class="plan-features-list">`;
           features.forEach(feat => {
+            const interpFeat = this.interpolateDynamicText(feat, state, steps, isPreview);
             gridHtml += `<li class="plan-feature-item">`;
             gridHtml += `<svg class="plan-check-icon" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>`;
-            gridHtml += `<span>${this.formatMarkdown(feat)}</span>`;
+            gridHtml += `<span>${this.formatMarkdown(interpFeat)}</span>`;
             gridHtml += `</li>`;
           });
           gridHtml += `</ul>`;
         }
 
         if (plan.bonus && (plan.bonus.title || plan.bonus.desc)) {
+          const bTitle = this.interpolateDynamicText(plan.bonus.title || '', state, steps, isPreview);
+          const bDesc = this.interpolateDynamicText(plan.bonus.desc || '', state, steps, isPreview);
+          const bTag = this.interpolateDynamicText(plan.bonus.tag || '', state, steps, isPreview);
           gridHtml += `<div class="plan-bonus-box">`;
           gridHtml += `<div class="plan-bonus-header">`;
-          gridHtml += `<span class="plan-bonus-title">${this.escapeHtml(plan.bonus.title || '')}</span>`;
-          if (plan.bonus.tag) {
-            gridHtml += `<span class="plan-bonus-tag">${this.escapeHtml(plan.bonus.tag)}</span>`;
+          gridHtml += `<span class="plan-bonus-title">${this.escapeHtml(bTitle)}</span>`;
+          if (bTag) {
+            gridHtml += `<span class="plan-bonus-tag">${this.escapeHtml(bTag)}</span>`;
           }
           gridHtml += `</div>`;
-          if (plan.bonus.desc) {
-            gridHtml += `<div class="plan-bonus-desc">${this.escapeHtml(plan.bonus.desc)}</div>`;
+          if (bDesc) {
+            gridHtml += `<div class="plan-bonus-desc">${this.escapeHtml(bDesc)}</div>`;
           }
           gridHtml += `</div>`;
         }
@@ -354,18 +445,21 @@ const QuizTemplateEngine = {
     }
 
     if (block.productTitle) {
+      const pTitle = this.interpolateDynamicText(block.productTitle, state, steps, isPreview);
+      const pDesc = this.interpolateDynamicText(block.productDescription || '', state, steps, isPreview);
+      const pPrice = this.interpolateDynamicText(block.productPrice || '', state, steps, isPreview);
       blockHtml += '<div class="product-box">';
-      blockHtml += '<h4>' + this.escapeHtml(block.productTitle) + '</h4>';
-      if (block.productDescription) {
-        blockHtml += '<p>' + this.escapeHtml(block.productDescription) + '</p>';
+      blockHtml += '<h4>' + this.formatMarkdown(pTitle) + '</h4>';
+      if (pDesc) {
+        blockHtml += '<p>' + this.formatMarkdown(pDesc) + '</p>';
       }
-      if (block.productPrice) {
-        blockHtml += '<div style="margin-top: 8px; font-size: 18px; font-weight: 800; color: var(--accent);">' + this.escapeHtml(block.productPrice) + '</div>';
+      if (pPrice) {
+        blockHtml += '<div style="margin-top: 8px; font-size: 18px; font-weight: 800; color: var(--accent);">' + this.escapeHtml(pPrice) + '</div>';
       }
       blockHtml += '</div>';
     }
 
-    const ctaText = block.ctaText || 'Garantir Minha Oferta Exclusiva Agora →';
+    const ctaText = this.interpolateDynamicText(block.ctaText || 'Garantir Minha Oferta Exclusiva Agora →', state, steps, isPreview);
     const ctaUrl = block.ctaUrl || '#';
     blockHtml += '<div style="margin-top: 6px;">';
     blockHtml += '<a href="' + this.escapeHtml(ctaUrl) + '" target="_blank" class="cta-btn link-trackable ' + sizeClass + '" ' + customColor + ' style="text-align: center; text-decoration: none;">' + this.escapeHtml(ctaText) + '</a>';
@@ -374,10 +468,10 @@ const QuizTemplateEngine = {
     return blockHtml;
   },
 
-  renderGuaranteeBlockHtml(block) {
-    const tag = block.tag || 'RISCO ZERO';
-    const title = block.title || 'GARANTIA de 30 DIAS.';
-    const desc = block.description || '';
+  renderGuaranteeBlockHtml(block, state = {}, steps = [], isPreview = false) {
+    const tag = this.interpolateDynamicText(block.tag || 'RISCO ZERO', state, steps, isPreview);
+    const title = this.interpolateDynamicText(block.title || 'GARANTIA de 30 DIAS.', state, steps, isPreview);
+    const desc = this.interpolateDynamicText(block.description || '', state, steps, isPreview);
     const sealHtml = block.customSealUrl
       ? `<img src="${this.escapeHtml(block.customSealUrl)}" alt="Selo de Garantia" class="guarantee-seal-img" loading="lazy">`
       : this.getGuaranteeSealSvg();
@@ -2713,9 +2807,17 @@ const QuizTemplateEngine = {
   },
 
   // Renderiza o HTML da etapa combinando todos os seus BLOCOS
-  renderStepContentHtml(step, state = {}, isPreview = false) {
+  renderStepContentHtml(step, state = {}, isPreview = false, steps = []) {
     if (!step) return '';
     step = this.normalizeStep(step);
+
+    if (!steps || steps.length === 0) {
+      if (state && Array.isArray(state.steps)) steps = state.steps;
+      else if (typeof window !== 'undefined' && window.App && window.App.currentQuiz && Array.isArray(window.App.currentQuiz.steps)) {
+        steps = window.App.currentQuiz.steps;
+      }
+    }
+    steps = steps || [];
 
     const blocks = step.blocks || [];
     if (blocks.length === 0) {
@@ -2737,25 +2839,29 @@ const QuizTemplateEngine = {
     blocks.forEach((block, bIdx) => {
       let blockHtml = '';
 
-      // 1. Bloco de Título / Texto
+      // 1. Bloco de Título / Texto (com Interpolação Dinâmica de Variáveis)
       if (block.type === 'heading') {
         const align = block.align || 'center';
         const titleSize = block.titleSize || 'md';
         const subtitleSize = block.subtitleSize || 'sm';
         const titleStyle = block.textColor ? `style="color: ${block.textColor};"` : '';
 
+        const interpTag = this.interpolateDynamicText(block.tag || '', state, steps, isPreview);
+        const interpTitle = this.interpolateDynamicText(block.title || '', state, steps, isPreview);
+        const interpSub = this.interpolateDynamicText(block.subtitle || '', state, steps, isPreview);
+
         blockHtml += `<div class="step-header text-${align}">`;
         if (block.imageUrl) {
-          blockHtml += `<div class="quiz-image-card align-${align} quiz-image-${block.imageSize || 'medium'}"><img src="${this.escapeHtml(block.imageUrl)}" alt="${this.escapeHtml(block.title || '')}" loading="lazy"></div>`;
+          blockHtml += `<div class="quiz-image-card align-${align} quiz-image-${block.imageSize || 'medium'}"><img src="${this.escapeHtml(block.imageUrl)}" alt="${this.escapeHtml(interpTitle)}" loading="lazy"></div>`;
         }
-        if (block.tag) {
-          blockHtml += '<span class="step-tag">' + this.escapeHtml(block.tag) + '</span>';
+        if (interpTag) {
+          blockHtml += '<span class="step-tag">' + this.formatMarkdown(interpTag) + '</span>';
         }
-        if (block.title) {
-          blockHtml += `<h2 class="step-title title-${titleSize}" ${titleStyle}>` + this.escapeHtml(block.title) + '</h2>';
+        if (interpTitle) {
+          blockHtml += `<h2 class="step-title title-${titleSize}" ${titleStyle}>` + this.formatMarkdown(interpTitle) + '</h2>';
         }
-        if (block.subtitle) {
-          blockHtml += `<p class="step-subtitle sub-${subtitleSize}">` + this.escapeHtml(block.subtitle) + '</p>';
+        if (interpSub) {
+          blockHtml += `<p class="step-subtitle sub-${subtitleSize}">` + this.formatMarkdown(interpSub) + '</p>';
         }
         blockHtml += '</div>';
       }
@@ -2767,15 +2873,17 @@ const QuizTemplateEngine = {
         const titleSize = block.titleSize || 'md';
         const titleColor = block.titleColor || block.textColor || '';
         const titleStyle = titleColor ? `style="color: ${titleColor};"` : '';
+        const iTitle = this.interpolateDynamicText(block.title || '', state, steps, isPreview);
+        const iCap = this.interpolateDynamicText(block.caption || '', state, steps, isPreview);
         blockHtml += `<div class="quiz-image-card align-${align} quiz-image-${size}">`;
-        if (block.title) {
-          blockHtml += `<h3 class="quiz-image-title title-${titleSize}" ${titleStyle}>${this.escapeHtml(block.title)}</h3>`;
+        if (iTitle) {
+          blockHtml += `<h3 class="quiz-image-title title-${titleSize}" ${titleStyle}>${this.formatMarkdown(iTitle)}</h3>`;
         }
         if (block.imageUrl) {
-          blockHtml += `<img src="${this.escapeHtml(block.imageUrl)}" alt="${this.escapeHtml(block.altText || block.title || '')}" loading="lazy">`;
+          blockHtml += `<img src="${this.escapeHtml(block.imageUrl)}" alt="${this.escapeHtml(block.altText || iTitle || '')}" loading="lazy">`;
         }
-        if (block.caption) {
-          blockHtml += `<p class="quiz-image-caption">${this.escapeHtml(block.caption)}</p>`;
+        if (iCap) {
+          blockHtml += `<p class="quiz-image-caption">${this.formatMarkdown(iCap)}</p>`;
         }
         blockHtml += '</div>';
       }
@@ -2876,19 +2984,20 @@ const QuizTemplateEngine = {
         const fullClass = isFullWidth ? 'full-bleed' : '';
         const height = block.iframeHeight || '650px';
         const isIframe = block.iframeUrl || block.htmlMode === 'iframe' || (block.htmlMode !== 'inline' && this.isFullHtmlDoc(block.customHtml));
+        const customHtml = this.interpolateDynamicText(block.customHtml || '', state, steps, isPreview);
 
         if (block.iframeUrl && block.iframeUrl.trim() !== '') {
           blockHtml += `<div class="custom-html-container ${fullClass}">`;
           blockHtml += `<iframe src="${this.escapeHtml(block.iframeUrl)}" style="width:100%; min-height:${height}; border:none; border-radius:12px; display:block; background:transparent;" sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-modals" loading="lazy"></iframe>`;
           blockHtml += '</div>';
-        } else if (block.customHtml && block.customHtml.trim() !== '') {
+        } else if (customHtml && customHtml.trim() !== '') {
           if (isIframe) {
             const frameId = (isPreview ? 'preview-html-frame-' : 'quiz-html-frame-') + bIdx;
             blockHtml += `<div class="custom-html-container ${fullClass}">`;
-            blockHtml += `<iframe id="${frameId}" srcdoc="${this.escapeSrcdoc(block.customHtml)}" style="width:100%; min-height:${height}; border:none; border-radius:12px; display:block; background:transparent;" sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-modals" loading="lazy"></iframe>`;
+            blockHtml += `<iframe id="${frameId}" srcdoc="${this.escapeSrcdoc(customHtml)}" style="width:100%; min-height:${height}; border:none; border-radius:12px; display:block; background:transparent;" sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-modals" loading="lazy"></iframe>`;
             blockHtml += '</div>';
           } else {
-            blockHtml += `<div class="custom-html-container ${fullClass}">${block.customHtml}</div>`;
+            blockHtml += `<div class="custom-html-container ${fullClass}">${customHtml}</div>`;
           }
         }
       }
@@ -2936,7 +3045,8 @@ const QuizTemplateEngine = {
 
       // 5. Bloco de Botão com Ação / Próxima Etapa
       else if (block.type === 'delay_button') {
-        const buttonText = block.text || block.delayButtonText || 'Avançar para a próxima etapa →';
+        const rawBtnText = block.text || block.delayButtonText || 'Avançar para a próxima etapa →';
+        const buttonText = this.interpolateDynamicText(rawBtnText, state, steps, isPreview);
         const buttonUrl = block.url || block.delayButtonUrl || '';
         const btnSize = block.buttonSize || 'large';
         const customColor = block.buttonColor ? `style="background: ${block.buttonColor}; border-color: ${block.buttonColor};"` : '';
@@ -2954,6 +3064,7 @@ const QuizTemplateEngine = {
       // 6. Bloco de Captura de Lead
       else if (block.type === 'lead_form') {
         const lead = state.leadData || {};
+        const submitBtnText = this.interpolateDynamicText(block.submitButtonText || 'Ver Meu Resultado Agora →', state, steps, isPreview);
         blockHtml += '<form class="lead-form" onsubmit="' + formPrefix + '">';
         blockHtml += '<div class="form-group">';
         blockHtml += '<label class="form-label">Seu Nome Completo:</label>';
@@ -2972,41 +3083,44 @@ const QuizTemplateEngine = {
           blockHtml += '</div>';
         }
 
-        blockHtml += '<button type="submit" class="cta-btn" style="margin-top: 8px;">' + this.escapeHtml(block.submitButtonText || 'Ver Meu Resultado Agora →') + '</button>';
+        blockHtml += '<button type="submit" class="cta-btn" style="margin-top: 8px;">' + this.escapeHtml(submitBtnText) + '</button>';
         blockHtml += '</form>';
       }
 
       // 7. Bloco de Oferta / Checkout Final (Multi-Planos ou Oferta Simples)
       else if (block.type === 'offer') {
-        blockHtml += this.renderOfferBlockHtml(block, isPreview);
+        blockHtml += this.renderOfferBlockHtml(block, isPreview, state, steps);
       }
 
       // 7.1 Bloco de Garantia Incondicional / Risco Zero
       else if (block.type === 'guarantee') {
-        blockHtml += this.renderGuaranteeBlockHtml(block);
+        blockHtml += this.renderGuaranteeBlockHtml(block, state, steps, isPreview);
       }
 
       // 8. NOVO BLOCO: Barra de Carregamento e Análise (fake_loader)
       else if (block.type === 'fake_loader') {
+        const rawMsgs = block.messages || 'Analisando suas respostas...\nCruzando com nosso banco de dados...\nCalculando seu perfil ideal...\nDiagnóstico pronto!';
+        const messages = (Array.isArray(rawMsgs) ? rawMsgs : rawMsgs.split('\n')).map(m => this.interpolateDynamicText(m.trim(), state, steps, isPreview)).filter(Boolean);
+        const firstMsg = messages.length > 0 ? messages[0] : 'Iniciando análise...';
         blockHtml += '<div class="fake-loader-card">';
         blockHtml += '<div class="loader-spinner"></div>';
         blockHtml += '<div id="loader-percent" class="loader-percent">0%</div>';
         blockHtml += '<div class="loader-bar-wrapper">';
         blockHtml += '<div id="loader-bar" class="loader-bar-fill"></div>';
         blockHtml += '</div>';
-        blockHtml += '<div id="loader-msg" class="loader-msg">Iniciando análise...</div>';
+        blockHtml += '<div id="loader-msg" class="loader-msg">' + this.escapeHtml(firstMsg) + '</div>';
         blockHtml += '</div>';
       }
 
       // 9. NOVO BLOCO: Gráfico de Potencial e Projeção (potential_chart)
       else if (block.type === 'potential_chart') {
-        const title = block.chartTitle || 'Projeção de Evolução';
+        const title = this.interpolateDynamicText(block.chartTitle || 'Projeção de Evolução', state, steps, isPreview);
         const style = block.chartStyle || 'curve';
-        const startLabel = block.startLabel || 'Seu estágio hoje';
-        const endLabel = block.endLabel || 'Seu potencial com o método';
+        const startLabel = this.interpolateDynamicText(block.startLabel || 'Seu estágio hoje', state, steps, isPreview);
+        const endLabel = this.interpolateDynamicText(block.endLabel || 'Seu potencial com o método', state, steps, isPreview);
         const showValues = block.showValues !== false;
-        const startVal = block.startValue || '24%';
-        const endVal = block.endValue || '92%';
+        const startVal = this.interpolateDynamicText(block.startValue || '24%', state, steps, isPreview);
+        const endVal = this.interpolateDynamicText(block.endValue || '92%', state, steps, isPreview);
         const startColor = block.startColor || '#ef4444';
         const endColor = block.endColor || '#10b981';
         const duration = parseFloat(block.animationDuration) || 2.5;
@@ -3213,6 +3327,86 @@ const QuizTemplateEngine = {
         } catch (e) {
           return 's_' + Date.now().toString(36);
         }
+      },
+
+      interpolateDynamicText(text) {
+        if (!text || typeof text !== 'string') return text || '';
+        const steps = this.config.steps || [];
+        const state = {
+          userAnswers: this.userAnswers || {},
+          customAnswers: this.customAnswers || {},
+          leadData: this.leadData || {},
+          totalScore: this.totalScore || 0
+        };
+
+        return text.replace(/\\{([a-zA-Z0-9_]+)(?:\\|([^}]+))?\\}/g, (match, rawTag, fallback) => {
+          const tag = rawTag.toLowerCase();
+          const defaultVal = fallback !== undefined ? fallback : '';
+          const lead = state.leadData || {};
+
+          // 1. Lead
+          if (tag === 'nome' || tag === 'name') {
+            return lead.name || defaultVal || '';
+          }
+          if (tag === 'primeiro_nome' || tag === 'first_name') {
+            const pName = lead.name ? lead.name.trim().split(' ')[0] : '';
+            return pName || defaultVal || '';
+          }
+          if (tag === 'whatsapp' || tag === 'telefone' || tag === 'phone') {
+            return lead.whatsapp || defaultVal || '';
+          }
+          if (tag === 'email' || tag === 'e-mail') {
+            return lead.email || defaultVal || '';
+          }
+
+          // 2. Pontuação
+          if (tag === 'score' || tag === 'pontos') {
+            return (state.totalScore !== undefined && state.totalScore !== null) ? state.totalScore : (defaultVal || 0);
+          }
+
+          // 3. Respostas das Perguntas / Etapas
+          const respMatch = tag.match(/^(resposta|resp|pergunta|perg)(?:_etapa)?_(\\d+)$/);
+          if (respMatch) {
+            const type = respMatch[1];
+            const num = parseInt(respMatch[2], 10);
+            if (isNaN(num) || num <= 0) return match;
+
+            let targetStep = steps[num - 1];
+            const questionSteps = steps.filter(s => (s.blocks || []).some(b => b.type === 'question'));
+
+            if (!targetStep || !(targetStep.blocks || []).some(b => b.type === 'question')) {
+              if (questionSteps[num - 1]) {
+                targetStep = questionSteps[num - 1];
+              }
+            }
+
+            if (!targetStep) return defaultVal || '';
+
+            const qBlock = (targetStep.blocks || []).find(b => b.type === 'question');
+            const hBlock = (targetStep.blocks || []).find(b => b.type === 'heading');
+
+            if (type.startsWith('perg')) {
+              return (hBlock && (hBlock.title || hBlock.tag)) || targetStep.title || ('Pergunta ' + num);
+            }
+
+            const userAnswers = state.userAnswers || {};
+            const customAnswers = state.customAnswers || {};
+            const optIdx = userAnswers[targetStep.id];
+            const customVal = customAnswers[targetStep.id];
+
+            if (optIdx !== undefined && qBlock && qBlock.options && qBlock.options[optIdx]) {
+              const opt = qBlock.options[optIdx];
+              if (customVal && opt.allowCustomText) {
+                return customVal;
+              }
+              return opt.text || '';
+            }
+
+            return defaultVal || '';
+          }
+
+          return match;
+        });
       },
 
       captureUtms() {
@@ -3545,7 +3739,9 @@ const QuizTemplateEngine = {
         const durationSec = Math.max(1, parseInt(block.duration, 10) || 4);
         const totalMs = durationSec * 1000;
         const rawMsgs = block.messages || 'Analisando suas respostas...\\nCruzando com nosso banco de dados...\\nCalculando seu perfil ideal...\\nDiagnóstico pronto!';
-        const messages = Array.isArray(rawMsgs) ? rawMsgs : rawMsgs.split('\\n').map(m => m.trim()).filter(Boolean);
+        const messages = (Array.isArray(rawMsgs) ? rawMsgs : rawMsgs.split('\\n'))
+          .map(m => this.interpolateDynamicText(m.trim()))
+          .filter(Boolean);
 
         const barEl = document.getElementById('loader-bar');
         const pctEl = document.getElementById('loader-percent');
@@ -3613,17 +3809,39 @@ const QuizTemplateEngine = {
             const subtitleSize = block.subtitleSize || 'sm';
             const titleStyle = block.textColor ? 'style=\"color: ' + block.textColor + ';\"' : '';
 
+            const iTag = this.interpolateDynamicText(block.tag || '');
+            const iTitle = this.interpolateDynamicText(block.title || '');
+            const iSub = this.interpolateDynamicText(block.subtitle || '');
+
             bHtml += '<div class=\"step-header text-' + align + '\">';
             if (block.imageUrl) {
-              bHtml += '<div class=\"quiz-image-card align-' + align + ' quiz-image-' + (block.imageSize || 'medium') + '\"><img src=\"' + this.escapeHtml(block.imageUrl) + '\" alt=\"' + this.escapeHtml(block.title || '') + '\" loading=\"lazy\"></div>';
+              bHtml += '<div class=\"quiz-image-card align-' + align + ' quiz-image-' + (block.imageSize || 'medium') + '\"><img src=\"' + this.escapeHtml(block.imageUrl) + '\" alt=\"' + this.escapeHtml(iTitle) + '\" loading=\"lazy\"></div>';
             }
-            if (block.tag) bHtml += '<span class=\"step-tag\">' + this.escapeHtml(block.tag) + '</span>';
-            if (block.title) bHtml += '<h2 class=\"step-title title-' + titleSize + '\" ' + titleStyle + '>' + this.escapeHtml(block.title) + '</h2>';
-            if (block.subtitle) bHtml += '<p class=\"step-subtitle sub-' + subtitleSize + '\">' + this.escapeHtml(block.subtitle) + '</p>';
+            if (iTag) bHtml += '<span class=\"step-tag\">' + this.formatMarkdown(iTag) + '</span>';
+            if (iTitle) bHtml += '<h2 class=\"step-title title-' + titleSize + '\" ' + titleStyle + '>' + this.formatMarkdown(iTitle) + '</h2>';
+            if (iSub) bHtml += '<p class=\"step-subtitle sub-' + subtitleSize + '\">' + this.formatMarkdown(iSub) + '</p>';
             bHtml += '</div>';
           }
           else if (block.type === 'image') {
             const align = block.align || 'center';
+            const size = block.imageSize || 'medium';
+            const titleSize = block.titleSize || 'md';
+            const titleColor = block.titleColor || block.textColor || '';
+            const titleStyle = titleColor ? 'style=\"color: ' + titleColor + ';\"' : '';
+            const iTitle = this.interpolateDynamicText(block.title || '');
+            const iCap = this.interpolateDynamicText(block.caption || '');
+            bHtml += '<div class=\"quiz-image-card align-' + align + ' quiz-image-' + size + '\">';
+            if (iTitle) {
+              bHtml += '<h3 class=\"quiz-image-title title-' + titleSize + '\" ' + titleStyle + '>' + this.formatMarkdown(iTitle) + '</h3>';
+            }
+            if (block.imageUrl) {
+              bHtml += '<img src=\"' + this.escapeHtml(block.imageUrl) + '\" alt=\"' + this.escapeHtml(block.altText || iTitle) + '\" loading=\"lazy\">';
+            }
+            if (iCap) {
+              bHtml += '<p class=\"quiz-image-caption\">' + this.formatMarkdown(iCap) + '</p>';
+            }
+            bHtml += '</div>';
+          }
             const size = block.imageSize || 'medium';
             const titleSize = block.titleSize || 'md';
             const titleColor = block.titleColor || block.textColor || '';
@@ -3700,18 +3918,19 @@ const QuizTemplateEngine = {
             const fullClass = isFullWidth ? 'full-bleed' : '';
             const height = block.iframeHeight || '650px';
             const isIframe = block.iframeUrl || block.htmlMode === 'iframe' || (block.htmlMode !== 'inline' && this.isFullHtmlDoc(block.customHtml));
+            const customHtml = this.interpolateDynamicText(block.customHtml || '');
 
             if (block.iframeUrl && block.iframeUrl.trim() !== '') {
               bHtml += '<div class=\"custom-html-container ' + fullClass + '\">';
               bHtml += '<iframe src=\"' + this.escapeHtml(block.iframeUrl.trim()) + '\" style=\"width:100%; min-height:' + height + '; border:none; border-radius:12px; display:block; background:transparent;\" sandbox=\"allow-scripts allow-same-origin allow-forms allow-popups allow-modals\" loading=\"lazy\"></iframe>';
               bHtml += '</div>';
-            } else if (block.customHtml && block.customHtml.trim() !== '') {
+            } else if (customHtml && customHtml.trim() !== '') {
               if (isIframe) {
                 bHtml += '<div class=\"custom-html-container ' + fullClass + '\">';
-                bHtml += '<iframe id=\"quiz-html-frame-' + bIdx + '\" srcdoc=\"' + this.escapeSrcdoc(block.customHtml) + '\" style=\"width:100%; min-height:' + height + '; border:none; border-radius:12px; display:block; background:transparent;\" sandbox=\"allow-scripts allow-same-origin allow-forms allow-popups allow-modals\" loading=\"lazy\"></iframe>';
+                bHtml += '<iframe id=\"quiz-html-frame-' + bIdx + '\" srcdoc=\"' + this.escapeSrcdoc(customHtml) + '\" style=\"width:100%; min-height:' + height + '; border:none; border-radius:12px; display:block; background:transparent;\" sandbox=\"allow-scripts allow-same-origin allow-forms allow-popups allow-modals\" loading=\"lazy\"></iframe>';
                 bHtml += '</div>';
               } else {
-                bHtml += '<div class=\"custom-html-container ' + fullClass + '\">' + block.customHtml + '</div>';
+                bHtml += '<div class=\"custom-html-container ' + fullClass + '\">' + customHtml + '</div>';
               }
             }
           }
@@ -3747,7 +3966,8 @@ const QuizTemplateEngine = {
             }
           }
           else if (block.type === 'delay_button') {
-            const btnText = block.text || block.delayButtonText || 'Avançar para a próxima etapa →';
+            const rawBtn = block.text || block.delayButtonText || 'Avançar para a próxima etapa →';
+            const btnText = this.interpolateDynamicText(rawBtn);
             const btnUrl = block.url || block.delayButtonUrl || '';
             const btnSize = block.buttonSize || 'large';
             const customColor = block.buttonColor ? 'style=\"background: ' + block.buttonColor + '; border-color: ' + block.buttonColor + ';\"' : '';
@@ -3757,19 +3977,20 @@ const QuizTemplateEngine = {
             if (btnUrl) {
               bHtml += '<a href=\"' + btnUrl + '\" target=\"_blank\" class=\"cta-btn animate-appear link-trackable ' + sizeClass + '\" ' + customColor + '>' + this.escapeHtml(btnText) + '</a>';
             } else {
-              bHtml += '<button type=\"button\" class=\"cta-btn animate-appear ' + sizeClass + '\" ' + customColor + ' onclick=\"QuizApp.nextStep()\">' + this.escapeHtml(btnText) + '</button>';
+              bHtml += '<button type=\"button\" class=\"cta-btn animate-appear ' + sizeClass + '" ' + customColor + ' onclick=\"QuizApp.nextStep()\">' + this.escapeHtml(btnText) + '</button>';
             }
             bHtml += '</div>';
           }
           else if (block.type === 'lead_form') {
             const lead = this.leadData || {};
+            const submitBtnText = this.interpolateDynamicText(block.submitButtonText || 'Ver Meu Resultado Agora →');
             bHtml += '<form class=\"lead-form\" onsubmit=\"QuizApp.handleLeadSubmit(event)\">';
             bHtml += '<div class=\"form-group\"><label class=\"form-label\">Seu Nome Completo:</label><input type=\"text\" id=\"lead-name\" class=\"form-input\" placeholder=\"Como podemos te chamar?\" required value=\"' + (lead.name || '') + '\"></div>';
             bHtml += '<div class=\"form-group\"><label class=\"form-label\">Seu WhatsApp com DDD:</label><input type=\"tel\" id=\"lead-whatsapp\" class=\"form-input\" placeholder=\"(11) 99999-9999\" required value=\"' + (lead.whatsapp || '') + '\"></div>';
             if (block.requireEmail !== false) {
               bHtml += '<div class=\"form-group\"><label class=\"form-label\">Seu Melhor E-mail:</label><input type=\"email\" id=\"lead-email\" class=\"form-input\" placeholder=\"seuemail@exemplo.com\" required value=\"' + (lead.email || '') + '\"></div>';
             }
-            bHtml += '<button type=\"submit\" class=\"cta-btn\" style=\"margin-top: 8px;\">' + this.escapeHtml(block.submitButtonText || 'Ver Meu Resultado Agora →') + '</button>';
+            bHtml += '<button type=\"submit\" class=\"cta-btn\" style=\"margin-top: 8px;\">' + this.escapeHtml(submitBtnText) + '</button>';
             bHtml += '</form>';
           }
           else if (block.type === 'offer') {
@@ -3787,13 +4008,13 @@ const QuizTemplateEngine = {
             bHtml += '</div>';
           }
           else if (block.type === 'potential_chart') {
-            const title = block.chartTitle || 'Projeção de Evolução';
+            const title = this.interpolateDynamicText(block.chartTitle || 'Projeção de Evolução');
             const style = block.chartStyle || 'curve';
-            const startLabel = block.startLabel || 'Seu estágio hoje';
-            const endLabel = block.endLabel || 'Seu potencial com o método';
+            const startLabel = this.interpolateDynamicText(block.startLabel || 'Seu estágio hoje');
+            const endLabel = this.interpolateDynamicText(block.endLabel || 'Seu potencial com o método');
             const showValues = block.showValues !== false;
-            const startVal = block.startValue || '24%';
-            const endVal = block.endValue || '92%';
+            const startVal = this.interpolateDynamicText(block.startValue || '24%');
+            const endVal = this.interpolateDynamicText(block.endValue || '92%');
             const startColor = block.startColor || '#ef4444';
             const endColor = block.endColor || '#10b981';
             const duration = parseFloat(block.animationDuration) || 2.5;
@@ -3949,13 +4170,13 @@ const QuizTemplateEngine = {
           block.plans.forEach(plan => {
             const isFeatured = plan.featured === true;
             const featuredClass = isFeatured ? 'featured' : '';
-            const badgeText = plan.featuredBadge || (isFeatured ? '⭐ MELHOR CUSTO-BENEFÍCIO' : '');
-            const anchorPrice = plan.anchorPrice || '';
+            const badgeText = this.interpolateDynamicText(plan.featuredBadge || (isFeatured ? '⭐ MELHOR CUSTO-BENEFÍCIO' : ''));
+            const anchorPrice = this.interpolateDynamicText(plan.anchorPrice || '');
             const currency = plan.currency || 'R$';
-            const priceMain = plan.priceMain || '';
-            const priceCents = plan.priceCents || '';
-            const periodSub = plan.periodSub || '';
-            const ctaText = plan.ctaText || 'Quero Este Plano';
+            const priceMain = this.interpolateDynamicText(plan.priceMain || '');
+            const priceCents = this.interpolateDynamicText(plan.priceCents || '');
+            const periodSub = this.interpolateDynamicText(plan.periodSub || '');
+            const ctaText = this.interpolateDynamicText(plan.ctaText || 'Quero Este Plano');
             const ctaUrl = plan.ctaUrl || '#';
             const rawFeatures = Array.isArray(plan.features) ? plan.features : (plan.features ? String(plan.features).split('\\n') : []);
             const features = rawFeatures.map(f => f.trim()).filter(Boolean);
@@ -3964,7 +4185,7 @@ const QuizTemplateEngine = {
             if (isFeatured && badgeText) {
               gridHtml += '<div class=\"plan-badge-ribbon\">' + this.escapeHtml(badgeText) + '</div>';
             }
-            gridHtml += '<div class=\"plan-title\">' + this.escapeHtml(plan.title || 'PLANO') + '</div>';
+            gridHtml += '<div class=\"plan-title\">' + this.escapeHtml(this.interpolateDynamicText(plan.title || 'PLANO')) + '</div>';
             if (anchorPrice) {
               gridHtml += '<div class=\"plan-anchor-price\">' + this.escapeHtml(anchorPrice) + '</div>';
             }
@@ -3983,20 +4204,24 @@ const QuizTemplateEngine = {
             if (features.length > 0) {
               gridHtml += '<ul class=\"plan-features-list\">';
               features.forEach(feat => {
-                gridHtml += '<li class=\"plan-feature-item\"><svg class=\"plan-check-icon\" viewBox=\"0 0 20 20\" fill=\"currentColor\"><path fill-rule=\"evenodd\" d=\"M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z\" clip-rule=\"evenodd\"/></svg><span>' + this.formatMarkdown(feat) + '</span></li>';
+                const interpFeat = this.interpolateDynamicText(feat);
+                gridHtml += '<li class=\"plan-feature-item\"><svg class=\"plan-check-icon\" viewBox=\"0 0 20 20\" fill=\"currentColor\"><path fill-rule=\"evenodd\" d=\"M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z\" clip-rule=\"evenodd\"/></svg><span>' + this.formatMarkdown(interpFeat) + '</span></li>';
               });
               gridHtml += '</ul>';
             }
 
             if (plan.bonus && (plan.bonus.title || plan.bonus.desc)) {
+              const bTitle = this.interpolateDynamicText(plan.bonus.title || '');
+              const bDesc = this.interpolateDynamicText(plan.bonus.desc || '');
+              const bTag = this.interpolateDynamicText(plan.bonus.tag || '');
               gridHtml += '<div class=\"plan-bonus-box\">';
-              gridHtml += '<div class=\"plan-bonus-header\"><span class=\"plan-bonus-title\">' + this.escapeHtml(plan.bonus.title || '') + '</span>';
-              if (plan.bonus.tag) {
-                gridHtml += '<span class=\"plan-bonus-tag\">' + this.escapeHtml(plan.bonus.tag) + '</span>';
+              gridHtml += '<div class=\"plan-bonus-header\"><span class=\"plan-bonus-title\">' + this.escapeHtml(bTitle) + '</span>';
+              if (bTag) {
+                gridHtml += '<span class=\"plan-bonus-tag\">' + this.escapeHtml(bTag) + '</span>';
               }
               gridHtml += '</div>';
-              if (plan.bonus.desc) {
-                gridHtml += '<div class=\"plan-bonus-desc\">' + this.escapeHtml(plan.bonus.desc) + '</div>';
+              if (bDesc) {
+                gridHtml += '<div class=\"plan-bonus-desc\">' + this.escapeHtml(bDesc) + '</div>';
               }
               gridHtml += '</div>';
             }
@@ -4017,21 +4242,24 @@ const QuizTemplateEngine = {
           bHtml += '<div class=\"quiz-image-card align-center quiz-image-medium\"><img src=\"' + this.escapeHtml(block.imageUrl) + '\" alt=\"' + this.escapeHtml(block.productTitle || '') + '\"></div>';
         }
         if (block.productTitle) {
-          bHtml += '<div class=\"product-box\"><h4>' + this.escapeHtml(block.productTitle) + '</h4>';
-          if (block.productDescription) bHtml += '<p>' + this.escapeHtml(block.productDescription) + '</p>';
-          if (block.productPrice) bHtml += '<div style=\"margin-top: 8px; font-size: 18px; font-weight: 800; color: var(--accent);\">' + this.escapeHtml(block.productPrice) + '</div>';
+          const pTitle = this.interpolateDynamicText(block.productTitle);
+          const pDesc = this.interpolateDynamicText(block.productDescription || '');
+          const pPrice = this.interpolateDynamicText(block.productPrice || '');
+          bHtml += '<div class=\"product-box\"><h4>' + this.formatMarkdown(pTitle) + '</h4>';
+          if (pDesc) bHtml += '<p>' + this.formatMarkdown(pDesc) + '</p>';
+          if (pPrice) bHtml += '<div style=\"margin-top: 8px; font-size: 18px; font-weight: 800; color: var(--accent);\">' + this.escapeHtml(pPrice) + '</div>';
           bHtml += '</div>';
         }
-        const ctaText = block.ctaText || 'Garantir Minha Oferta Exclusiva Agora →';
+        const ctaText = this.interpolateDynamicText(block.ctaText || 'Garantir Minha Oferta Exclusiva Agora →');
         const ctaUrl = block.ctaUrl || '#';
         bHtml += '<div style=\"margin-top: 6px;\"><a href=\"' + this.escapeHtml(ctaUrl) + '\" target=\"_blank\" class=\"cta-btn link-trackable ' + sizeClass + '\" ' + customColor + ' style=\"text-align: center; text-decoration: none;\">' + this.escapeHtml(ctaText) + '</a></div></div>';
         return bHtml;
       },
 
       renderGuaranteeHtml(block) {
-        const tag = block.tag || 'RISCO ZERO';
-        const title = block.title || 'GARANTIA de 30 DIAS.';
-        const desc = block.description || '';
+        const tag = this.interpolateDynamicText(block.tag || 'RISCO ZERO');
+        const title = this.interpolateDynamicText(block.title || 'GARANTIA de 30 DIAS.');
+        const desc = this.interpolateDynamicText(block.description || '');
         const sealHtml = block.customSealUrl
           ? '<img src=\"' + this.escapeHtml(block.customSealUrl) + '\" alt=\"Selo de Garantia\" class=\"guarantee-seal-img\" loading=\"lazy\">'
           : this.getGuaranteeSealSvg();

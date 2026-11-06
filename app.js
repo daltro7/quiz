@@ -808,6 +808,93 @@ const App = {
     `;
   },
 
+  // Componente de Suporte a Variáveis Dinâmicas de Respostas
+  renderDynamicTagsHelper(stepIdx) {
+    if (!this.currentQuiz) return '';
+    const steps = this.currentQuiz.steps || [];
+    const questionItems = [];
+
+    steps.forEach((s, idx) => {
+      const qBlock = (s.blocks || []).find(b => b.type === 'question');
+      if (qBlock) {
+        const hBlock = (s.blocks || []).find(b => b.type === 'heading');
+        const title = (hBlock && (hBlock.title || hBlock.tag)) || s.title || `Etapa ${idx + 1}`;
+        const shortTitle = title.length > 25 ? title.substring(0, 25) + '...' : title;
+        questionItems.push({
+          stepNum: idx + 1,
+          title: shortTitle
+        });
+      }
+    });
+
+    let pillsHtml = '';
+    questionItems.forEach(item => {
+      pillsHtml += `
+        <button type="button" onclick="App.copyDynamicTag('{resposta_${item.stepNum}}')" title="Clique para copiar: {resposta_${item.stepNum}} (${this.escape(item.title)})" class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-indigo-500/20 hover:bg-indigo-500/35 border border-indigo-400/30 text-indigo-200 text-[11px] font-mono transition cursor-pointer active:scale-95 shadow-sm">
+          <span class="font-bold">{resposta_${item.stepNum}}</span>
+          <span class="text-[9px] text-slate-400 font-sans truncate max-w-[110px]">(${this.escape(item.title)})</span>
+        </button>
+      `;
+    });
+
+    return `
+      <div class="my-2 p-2.5 bg-gradient-to-r from-indigo-950/40 via-slate-900/60 to-indigo-950/30 border border-indigo-500/25 rounded-xl text-xs">
+        <div class="flex items-center justify-between gap-2 mb-2">
+          <span class="font-bold text-indigo-300 text-[11px] flex items-center gap-1.5">
+            <span>✨</span> Variáveis Dinâmicas Disponíveis
+          </span>
+          <span class="text-[10px] text-slate-400">Clique para copiar</span>
+        </div>
+        <div class="flex flex-wrap items-center gap-1.5">
+          ${pillsHtml || '<span class="text-[10px] text-slate-400 italic">Nenhuma pergunta encontrada nas etapas ainda.</span>'}
+          <button type="button" onclick="App.copyDynamicTag('{nome}')" title="Copia {nome} (Nome preenchido no formulário de lead)" class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-teal-500/20 hover:bg-teal-500/35 border border-teal-400/30 text-teal-200 text-[11px] font-mono transition cursor-pointer active:scale-95 shadow-sm">
+            <span class="font-bold">{nome}</span>
+            <span class="text-[9px] text-slate-400 font-sans">(Lead)</span>
+          </button>
+          <button type="button" onclick="App.copyDynamicTag('{primeiro_nome}')" title="Copia {primeiro_nome} (Apenas o primeiro nome do lead)" class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-teal-500/20 hover:bg-teal-500/35 border border-teal-400/30 text-teal-200 text-[11px] font-mono transition cursor-pointer active:scale-95 shadow-sm">
+            <span class="font-bold">{primeiro_nome}</span>
+          </button>
+          <button type="button" onclick="App.copyDynamicTag('{whatsapp}')" title="Copia {whatsapp} (WhatsApp do lead)" class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-teal-500/20 hover:bg-teal-500/35 border border-teal-400/30 text-teal-200 text-[11px] font-mono transition cursor-pointer active:scale-95 shadow-sm">
+            <span class="font-bold">{whatsapp}</span>
+          </button>
+          <button type="button" onclick="App.copyDynamicTag('{score}')" title="Copia {score} (Pontos somados nas respostas)" class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-500/20 hover:bg-amber-500/35 border border-amber-400/30 text-amber-200 text-[11px] font-mono transition cursor-pointer active:scale-95 shadow-sm">
+            <span class="font-bold">{score}</span>
+          </button>
+        </div>
+        <div class="mt-2 text-[10px] text-slate-400 leading-tight">
+          💡 <strong>Dica Pro:</strong> Cole no texto onde quiser. Suporta padrão opcional ex: <code>{nome|amigo}</code> ou <code>{resposta_1|seu desafio}</code>.
+        </div>
+      </div>
+    `;
+  },
+
+  copyDynamicTag(tag) {
+    if (!tag) return;
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(tag).then(() => {
+        this.showToast(`Variável ${tag} copiada! Cole no campo de texto desejado.`, 'success');
+      }).catch(() => {
+        this.fallbackCopyTag(tag);
+      });
+    } else {
+      this.fallbackCopyTag(tag);
+    }
+  },
+
+  fallbackCopyTag(tag) {
+    const input = document.createElement('input');
+    input.value = tag;
+    document.body.appendChild(input);
+    input.select();
+    try {
+      document.execCommand('copy');
+      this.showToast(`Variável ${tag} copiada!`, 'success');
+    } catch (e) {
+      prompt('Copie a variável abaixo:', tag);
+    }
+    document.body.removeChild(input);
+  },
+
   // Renderiza o Cartão de um Bloco Individual
   renderBlockCardHtml(stepIdx, block, bIdx, totalBlocks) {
     let blockBadge = '';
@@ -835,6 +922,8 @@ const App = {
             <label class="block text-[10px] font-bold text-slate-400 mb-1">Subtítulo Explicativo (Enter aceito)</label>
             <textarea rows="2" oninput="App.updateBlockProp(${stepIdx}, ${bIdx}, 'subtitle', this.value)" placeholder="Ex: Selecione uma das opções abaixo para prosseguir..." class="quiz-textarea w-full bg-slate-900 border border-slate-700 px-2.5 py-1.5 rounded-lg text-xs text-slate-300">${this.escape(block.subtitle || '')}</textarea>
           </div>
+
+          ${this.renderDynamicTagsHelper(stepIdx)}
 
           <!-- Barra de Controles: Alinhamento, Escala de Fontes e Cor -->
           <div class="bg-slate-900/80 p-2.5 rounded-xl border border-slate-800 flex flex-wrap items-center justify-between gap-3 text-xs">
@@ -1104,6 +1193,8 @@ const App = {
             </div>
           </div>
 
+          ${this.renderDynamicTagsHelper(stepIdx)}
+
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
             <div>
               <label class="block text-[10px] font-bold text-slate-400 mb-1">Link de Destino Opcional (vazio = avança quiz)</label>
@@ -1178,6 +1269,7 @@ const App = {
                 Inserir Modelo
               </button>
             </div>
+            ${this.renderDynamicTagsHelper(stepIdx)}
             <textarea oninput="App.updateBlockProp(${stepIdx}, ${bIdx}, 'customHtml', this.value)" placeholder="Cole código HTML, página completa com <!DOCTYPE> ou trechos interativos..." rows="4" class="w-full bg-slate-900 border border-slate-700 px-2.5 py-2 rounded-lg text-xs font-mono text-slate-200">${this.escape(block.customHtml || '')}</textarea>
           </div>
 
@@ -1348,6 +1440,7 @@ const App = {
                 Alternar p/ 3 Cartões Comparativos
               </button>
             </div>
+            ${this.renderDynamicTagsHelper(stepIdx)}
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
               <div>
                 <label class="block text-[10px] font-bold text-slate-400 mb-1">Nome do Produto / Serviço</label>
@@ -1436,8 +1529,9 @@ const App = {
           </div>
           <div>
             <label class="block text-[10px] font-bold text-slate-400 mb-1">Mensagens Dinâmicas de Status (uma por linha):</label>
+            ${this.renderDynamicTagsHelper(stepIdx)}
             <textarea rows="4" onchange="App.updateBlockProp(${stepIdx}, ${bIdx}, 'messages', this.value)" class="w-full bg-slate-900 border border-slate-700 p-2.5 rounded-xl text-xs text-slate-200 font-mono">${this.escape(typeof block.messages === 'string' ? block.messages : (block.messages || []).join('\n'))}</textarea>
-            <span class="text-[10px] text-slate-500">As frases se alternam automaticamente e suavemente enquanto a barra sobe de 0% até 100%.</span>
+            <span class="text-[10px] text-slate-500">As frases se alternam suavemente enquanto a barra sobe de 0% a 100%. Aceita variáveis dinâmicas!</span>
           </div>
         </div>
       `;
