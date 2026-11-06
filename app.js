@@ -3416,29 +3416,68 @@ const App = {
     const htmlContent = QuizTemplateEngine.generate(quiz, 0);
     this.lastExportedHtml = htmlContent;
 
-    const safeTitle = (quiz.title || 'quiz')
+    const safeTitle = ((quiz.title || 'quiz')
       .toLowerCase()
       .normalize('NFD')
       .replace(/[\u0300-\u036f]/g, '')
       .replace(/[^a-z0-9]/g, '-')
-      .replace(/-+/g, '-');
+      .replace(/-+/g, '-')
+      .replace(/^-+|-+$/g, '')) || 'meu-quiz';
 
     const filename = `${safeTitle}.html`;
-    this.downloadFile(filename, htmlContent, 'text/html');
+    this.downloadFile(filename, htmlContent, 'text/html;charset=utf-8');
 
     document.getElementById('modal-export-success').classList.remove('hidden');
   },
 
   downloadExportedHtmlAgain() {
     if (!this.lastExportedHtml) return;
-    this.downloadFile('meu-quiz-vendas.html', this.lastExportedHtml, 'text/html');
+    const safeTitle = (this.currentQuiz && this.currentQuiz.title ? this.currentQuiz.title.toLowerCase().replace(/[^a-z0-9]/g, '-') : 'meu-quiz') || 'meu-quiz';
+    this.downloadFile(`${safeTitle}.html`, this.lastExportedHtml, 'text/html;charset=utf-8');
+  },
+
+  copyExportedHtmlToClipboard() {
+    if (!this.lastExportedHtml) return;
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(this.lastExportedHtml).then(() => {
+        alert('Código HTML copiado com sucesso! Você pode colá-lo no seu editor ou bloco HTML.');
+      }).catch(() => {
+        this.fallbackCopyHtml();
+      });
+    } else {
+      this.fallbackCopyHtml();
+    }
+  },
+
+  fallbackCopyHtml() {
+    const t = document.createElement('textarea');
+    t.value = this.lastExportedHtml;
+    t.style.position = 'fixed';
+    t.style.opacity = '0';
+    document.body.appendChild(t);
+    t.focus();
+    t.select();
+    try {
+      document.execCommand('copy');
+      alert('Código HTML copiado com sucesso!');
+    } catch(err) {
+      alert('Não foi possível copiar automaticamente. Use a opção de download.');
+    }
+    document.body.removeChild(t);
+  },
+
+  openExportedHtmlInNewTab() {
+    if (!this.lastExportedHtml) return;
+    const blob = new Blob([this.lastExportedHtml], { type: 'text/html;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    window.open(url, '_blank');
   },
 
   exportCurrentQuizJson() {
     if (!this.currentQuiz) return;
     const jsonStr = JSON.stringify(this.currentQuiz, null, 2);
     const safeTitle = (this.currentQuiz.title || 'quiz').toLowerCase().replace(/\s+/g, '-');
-    this.downloadFile(`${safeTitle}-projeto.json`, jsonStr, 'application/json');
+    this.downloadFile(`${safeTitle}-projeto.json`, jsonStr, 'application/json;charset=utf-8');
   },
 
   handleImportProject(event) {
@@ -3475,18 +3514,49 @@ const App = {
     event.target.value = '';
   },
 
-  downloadFile(filename, content, mimeType) {
-    const blob = new Blob([content], { type: mimeType });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    setTimeout(() => {
-      document.body.removeChild(a);
-      window.URL.revokeObjectURL(url);
-    }, 100);
+  downloadFile(filename, content, mimeType = 'text/html;charset=utf-8') {
+    try {
+      const blob = new Blob([content], { type: mimeType });
+
+      // Suporte a navegadores antigos ou WebView
+      if (window.navigator && window.navigator.msSaveOrOpenBlob) {
+        window.navigator.msSaveOrOpenBlob(blob, filename);
+        return;
+      }
+
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.style.display = 'none';
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+
+      // Mantém a URL ativa por 60 segundos antes de revogar para que o Chrome/Edge termine a escrita em disco
+      setTimeout(() => {
+        try {
+          if (a.parentNode) document.body.removeChild(a);
+          window.URL.revokeObjectURL(url);
+        } catch(e) {}
+      }, 60000);
+    } catch(err) {
+      console.error('Erro no download padrão:', err);
+      // Fallback via data URI
+      try {
+        const dataUri = 'data:' + mimeType + ',' + encodeURIComponent(content);
+        const a = document.createElement('a');
+        a.style.display = 'none';
+        a.href = dataUri;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(() => {
+          if (a.parentNode) document.body.removeChild(a);
+        }, 2000);
+      } catch(fbErr) {
+        alert('O navegador bloqueou o download automático. Use o botão "Copiar Código HTML" para salvar.');
+      }
+    }
   },
 
   // ==========================================

@@ -1599,11 +1599,17 @@ function doPost(e) {
         </ul>
       </div>
 
-      <div class="pt-2 flex justify-center gap-3">
-        <button onclick="App.downloadExportedHtmlAgain()" class="px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold transition flex items-center gap-1.5">
+      <div class="pt-2 flex flex-wrap justify-center gap-2">
+        <button onclick="App.downloadExportedHtmlAgain()" class="px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold transition flex items-center gap-1.5 shadow-lg shadow-indigo-600/30">
           <i class="ph ph-download-simple"></i> Baixar Novamente
         </button>
-        <button onclick="App.closeModals()" class="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold transition">
+        <button onclick="App.copyExportedHtmlToClipboard()" class="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold border border-slate-700 transition flex items-center gap-1.5" title="Copia o código HTML completo para colar em qualquer hospedagem">
+          <i class="ph ph-copy"></i> Copiar Código HTML
+        </button>
+        <button onclick="App.openExportedHtmlInNewTab()" class="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold border border-slate-700 transition flex items-center gap-1.5">
+          <i class="ph ph-arrow-square-out"></i> Abrir em Nova Aba
+        </button>
+        <button onclick="App.closeModals()" class="px-4 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-white text-xs font-bold transition">
           Fechar
         </button>
       </div>
@@ -1793,7 +1799,7 @@ function doPost(e) {
   </div>
 
   <!-- Scripts do Construtor (Com cache-buster para atualização imediata na hospedagem) -->
-  <script src="template-engine.js?v=4.1.0"></script>
-  <script src="app.js?v=4.1.0"></script>
+  <script src="template-engine.js?v=4.2.0"></script>
+  <script src="app.js?v=4.2.0"></script>
 </body>
 </html>
