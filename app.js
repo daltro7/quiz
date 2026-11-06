@@ -334,7 +334,7 @@ const App = {
             // 6. Tabela com os 3 Planos Kirvano
             {
               id: 'b_pricing_plans',
-              type: 'pricing_table',
+              type: 'offer',
               headerTitle: 'Planos de Acesso NetFree',
               headerSubtitle: 'Internet ilimitada e 200 Mbps em todos os planos. Sem contrato.',
               plans: [

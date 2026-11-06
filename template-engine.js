@@ -20,7 +20,8 @@ const QuizTemplateEngine = {
         if (b.type === 'image') {
           if (!b.titleSize) b.titleSize = 'md';
         }
-        if (b.type === 'offer') {
+        if (b.type === 'offer' || b.type === 'pricing_table') {
+          b.type = 'offer';
           if (!b.plans && !b.productTitle) {
             b.plans = this.getDefaultPricingPlans();
           }
@@ -3088,7 +3089,7 @@ const QuizTemplateEngine = {
       }
 
       // 7. Bloco de Oferta / Checkout Final (Multi-Planos ou Oferta Simples)
-      else if (block.type === 'offer') {
+      else if (block.type === 'offer' || block.type === 'pricing_table') {
         blockHtml += this.renderOfferBlockHtml(block, isPreview, state, steps);
       }
 
@@ -3309,11 +3310,17 @@ const QuizTemplateEngine = {
       sessionId: null,
 
       init() {
-        this.sessionId = this.getOrCreateSessionId();
-        this.utmParams = this.captureUtms();
-        this.preloadVideos(this.config.steps);
-        const startStep = (typeof window.QUIZ_INITIAL_STEP === 'number' && window.QUIZ_INITIAL_STEP < this.config.steps.length) ? window.QUIZ_INITIAL_STEP : 0;
-        this.renderStep(startStep);
+        try {
+          this.sessionId = this.getOrCreateSessionId();
+          this.utmParams = this.captureUtms();
+          try { this.preloadVideos(this.config.steps); } catch(e) { console.warn('Preload warning:', e); }
+          const startStep = (typeof window.QUIZ_INITIAL_STEP === 'number' && window.QUIZ_INITIAL_STEP < this.config.steps.length) ? window.QUIZ_INITIAL_STEP : 0;
+          this.renderStep(startStep);
+        } catch(err) {
+          console.error('QuizApp init error:', err);
+          const c = document.getElementById('step-content');
+          if (c) c.innerHTML = '<div style="padding:24px;color:#ef4444;text-align:center;font-weight:600;">Ocorreu um erro ao carregar o quiz.<br><span style="font-size:12px;opacity:0.8;">' + (err && err.message ? err.message : err) + '</span></div>';
+        }
       },
 
       getOrCreateSessionId() {
@@ -3330,7 +3337,8 @@ const QuizTemplateEngine = {
       },
 
       interpolateDynamicText(text) {
-        if (!text || typeof text !== 'string') return text || '';
+        if (!text && text !== 0) return '';
+        if (typeof text !== 'string') text = String(text);
         const steps = this.config.steps || [];
         const state = {
           userAnswers: this.userAnswers || {},
@@ -3616,87 +3624,102 @@ const QuizTemplateEngine = {
       },
 
       renderStep(index) {
-        if (index < 0 || index >= this.config.steps.length) return;
-        
-        // Limpa timers anteriores
-        this.clearAllTimers();
-        this.currentStepIndex = index;
-        const step = this.config.steps[index];
-        const container = document.getElementById('step-content');
-        const totalSteps = this.config.steps.length;
+        try {
+          if (index < 0 || index >= this.config.steps.length) return;
+          
+          // Limpa timers anteriores
+          this.clearAllTimers();
+          this.currentStepIndex = index;
+          const step = this.config.steps[index];
+          const container = document.getElementById('step-content');
+          const totalSteps = this.config.steps.length;
 
-        // Atualiza Progresso Psicológico
-        const percent = this.calculateProgress(index, totalSteps);
-        const progressBar = document.getElementById('progress-bar');
-        const progressPercent = document.getElementById('progress-percent');
-        const stepIndicator = document.getElementById('step-indicator');
-        const progressSection = document.getElementById('progress-section');
+          // Atualiza Progresso Psicológico
+          const percent = this.calculateProgress(index, totalSteps);
+          const progressBar = document.getElementById('progress-bar');
+          const progressPercent = document.getElementById('progress-percent');
+          const stepIndicator = document.getElementById('step-indicator');
+          const progressSection = document.getElementById('progress-section');
 
-        const theme = this.config.theme || {};
-        const showProgress = (theme.showProgressBar !== false);
-        const hideUntilClick = (theme.hideUntilFirstClick !== false);
-        // Se "Ocultar até 1º clique" estiver ativo, a barra NUNCA aparece na primeira etapa (index === 0), surgindo apenas a partir da 2ª etapa!
-        const shouldShowProgress = showProgress && (!hideUntilClick || index > 0);
+          const theme = this.config.theme || {};
+          const showProgress = (theme.showProgressBar !== false);
+          const hideUntilClick = (theme.hideUntilFirstClick !== false);
+          // Se "Ocultar até 1º clique" estiver ativo, a barra NUNCA aparece na primeira etapa (index === 0), surgindo apenas a partir da 2ª etapa!
+          const shouldShowProgress = showProgress && (!hideUntilClick || index > 0);
 
-        if (progressSection) {
-          progressSection.style.display = shouldShowProgress ? 'block' : 'none';
-        }
+          if (progressSection) {
+            progressSection.style.display = shouldShowProgress ? 'block' : 'none';
+          }
 
-        const format = theme.progressTextFormat || 'full';
-        const progressTextWrapper = progressSection ? progressSection.querySelector('.progress-text') : null;
-        if (progressTextWrapper) {
-          progressTextWrapper.style.display = format === 'none' ? 'none' : 'flex';
-        }
+          const format = theme.progressTextFormat || 'full';
+          const progressTextWrapper = progressSection ? progressSection.querySelector('.progress-text') : null;
+          if (progressTextWrapper) {
+            progressTextWrapper.style.display = format === 'none' ? 'none' : 'flex';
+          }
 
-        if (progressBar) progressBar.style.width = percent + '%';
-        if (progressPercent) {
-          if (format === 'none' || format === 'simple') {
-            progressPercent.style.display = 'none';
-          } else {
-            progressPercent.style.display = 'inline';
-            progressPercent.innerText = percent + '%';
+          if (progressBar) progressBar.style.width = percent + '%';
+          if (progressPercent) {
+            if (format === 'none' || format === 'simple') {
+              progressPercent.style.display = 'none';
+            } else {
+              progressPercent.style.display = 'inline';
+              progressPercent.innerText = percent + '%';
+            }
+          }
+          if (stepIndicator) {
+            stepIndicator.innerText = this.getProgressText(index, totalSteps, percent);
+            stepIndicator.style.display = (format === 'none' || format === 'percent_only') ? 'none' : 'inline';
+          }
+
+          // Botão voltar visível se não for o primeiro
+          const backBtn = document.getElementById('btn-back');
+          if (backBtn) {
+            backBtn.style.display = index > 0 ? 'inline-flex' : 'none';
+          }
+
+          // Suporte a etapa com fundo transparente / sem moldura (bloco HTML borderless)
+          const cardEl = document.getElementById('quiz-card');
+          const hasBorderless = (step.blocks || []).some(b => b.type === 'html' && b.borderless);
+          if (cardEl) {
+            if (hasBorderless) cardEl.classList.add('card-borderless');
+            else cardEl.classList.remove('card-borderless');
+          }
+
+          try {
+            this.trackFunnelEvent('Quiz_Etapa_' + (index + 1), {
+              stepIndex: index + 1,
+              stepTitle: step.title || 'Sem título'
+            });
+          } catch(tErr) { console.warn('Track error:', tErr); }
+
+          // Renderiza conteúdo
+          const renderedContent = this.renderStepHtml(step);
+          if (container) {
+            container.innerHTML = renderedContent || '<div style="text-align: center; padding: 24px; color: var(--text-muted);">Etapa sem conteúdo visível.</div>';
+          }
+
+          // Ajusta a altura dos iframes na etapa
+          if (container) {
+            const htmlFrames = container.querySelectorAll('.custom-html-container iframe');
+            htmlFrames.forEach(frame => {
+              this.setupIframeAutoResize(frame);
+            });
+          }
+
+          // Preserva e repassa UTMs para links gerados
+          this.applyUtmsToLinks();
+
+          // Inicializa Universal Delays e Fake Loaders
+          this.initStepTimers(step);
+
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        } catch(renderErr) {
+          console.error('QuizApp.renderStep error:', renderErr);
+          const container = document.getElementById('step-content');
+          if (container) {
+            container.innerHTML = '<div style="padding: 24px; text-align: center; color: #ef4444; font-weight: 600;">Ocorreu um erro ao carregar esta etapa.<br><span style="font-size: 12px; opacity: 0.8; font-weight: normal;">' + (renderErr && renderErr.message ? renderErr.message : renderErr) + '</span></div>';
           }
         }
-        if (stepIndicator) {
-          stepIndicator.innerText = this.getProgressText(index, totalSteps, percent);
-          stepIndicator.style.display = (format === 'none' || format === 'percent_only') ? 'none' : 'inline';
-        }
-
-        // Botão voltar visível se não for o primeiro
-        const backBtn = document.getElementById('btn-back');
-        if (backBtn) {
-          backBtn.style.display = index > 0 ? 'inline-flex' : 'none';
-        }
-
-        // Suporte a etapa com fundo transparente / sem moldura (bloco HTML borderless)
-        const cardEl = document.getElementById('quiz-card');
-        const hasBorderless = (step.blocks || []).some(b => b.type === 'html' && b.borderless);
-        if (cardEl) {
-          if (hasBorderless) cardEl.classList.add('card-borderless');
-          else cardEl.classList.remove('card-borderless');
-        }
-
-        this.trackFunnelEvent('Quiz_Etapa_' + (index + 1), {
-          stepIndex: index + 1,
-          stepTitle: step.title || 'Sem título'
-        });
-
-        // Renderiza conteúdo
-        container.innerHTML = this.renderStepHtml(step);
-
-        // Ajusta a altura dos iframes na etapa
-        const htmlFrames = container.querySelectorAll('.custom-html-container iframe');
-        htmlFrames.forEach(frame => {
-          this.setupIframeAutoResize(frame);
-        });
-
-        // Preserva e repassa UTMs para links gerados
-        this.applyUtmsToLinks();
-
-        // Inicializa Universal Delays e Fake Loaders
-        this.initStepTimers(step);
-
-        window.scrollTo({ top: 0, behavior: 'smooth' });
       },
 
       clearAllTimers() {
@@ -3977,7 +4000,7 @@ const QuizTemplateEngine = {
             bHtml += '<button type=\"submit\" class=\"cta-btn\" style=\"margin-top: 8px;\">' + this.escapeHtml(submitBtnText) + '</button>';
             bHtml += '</form>';
           }
-          else if (block.type === 'offer') {
+          else if (block.type === 'offer' || block.type === 'pricing_table') {
             bHtml += this.renderOfferHtml(block);
           }
           else if (block.type === 'guarantee') {
@@ -4840,6 +4863,7 @@ const QuizTemplateEngine = {
         }
       }
     };
+    window.QuizApp = QuizApp;
 
     if (document.readyState === 'loading') {
       document.addEventListener('DOMContentLoaded', () => { 
