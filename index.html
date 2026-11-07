@@ -1552,8 +1552,8 @@ function doGet(e) {
       }
 
       // Funil e Métricas: Vendas (Mivvo, Kirvano, PerfectPay)
-      var isSaleApproved = (event === &apos;Venda_Aprovada&apos; || saleStatus === &apos;approved&apos; || saleStatus === &apos;aprovado&apos; || saleStatus === &apos;paid&apos;);
-      var isSalePending = (event === &apos;Aguardando_Pagamento&apos; || saleStatus === &apos;waiting_payment&apos; || saleStatus === &apos;pending&apos; || saleStatus === &apos;billet_printed&apos; || saleStatus === &apos;pix_generated&apos;);
+      var isSaleApproved = (event === &apos;Venda_Aprovada&apos; || event === &apos;sale.paid&apos; || saleStatus === &apos;approved&apos; || saleStatus === &apos;aprovado&apos; || saleStatus === &apos;paid&apos;);
+      var isSalePending = (event === &apos;Aguardando_Pagamento&apos; || event === &apos;sale.pending&apos; || saleStatus === &apos;waiting_payment&apos; || saleStatus === &apos;pending&apos; || saleStatus === &apos;billet_printed&apos; || saleStatus === &apos;pix_generated&apos;);
 
       if (isSaleApproved || isSalePending) {
         var ordKey = (rawSession ? (platform + &apos;_&apos; + rawSession) : &apos;&apos;) || ((leadPhone || leadEmail || leadName) + &apos;_&apos; + Math.round(saleVal) + &apos;_&apos; + (platform || &apos;gw&apos;));

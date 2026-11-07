@@ -562,8 +562,8 @@ function doGet(e) {
       }
 
       // Funil e Métricas: Vendas (Mivvo, Kirvano, PerfectPay)
-      var isSaleApproved = (event === 'Venda_Aprovada' || saleStatus === 'approved' || saleStatus === 'aprovado' || saleStatus === 'paid');
-      var isSalePending = (event === 'Aguardando_Pagamento' || saleStatus === 'waiting_payment' || saleStatus === 'pending' || saleStatus === 'billet_printed' || saleStatus === 'pix_generated');
+      var isSaleApproved = (event === 'Venda_Aprovada' || event === 'sale.paid' || saleStatus === 'approved' || saleStatus === 'aprovado' || saleStatus === 'paid');
+      var isSalePending = (event === 'Aguardando_Pagamento' || event === 'sale.pending' || saleStatus === 'waiting_payment' || saleStatus === 'pending' || saleStatus === 'billet_printed' || saleStatus === 'pix_generated');
 
       if (isSaleApproved || isSalePending) {
         var ordKey = (rawSession ? (platform + '_' + rawSession) : '') || ((leadPhone || leadEmail || leadName) + '_' + Math.round(saleVal) + '_' + (platform || 'gw'));
