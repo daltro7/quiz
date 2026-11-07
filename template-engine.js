@@ -4949,7 +4949,7 @@ const QuizTemplateEngine = {
 
         const searchStr = p.toString();
         if (searchStr) {
-          document.querySelectorAll('a[href*="kirvano.com"], a[href*="perfectpay.com.br"], a[href*="checkout.perfectpay"]').forEach(link => {
+          document.querySelectorAll('a[href*="mivvo.com"], a[href*="mivvo.com.br"], a[href*="kirvano.com"], a[href*="perfectpay.com.br"], a[href*="checkout.perfectpay"]').forEach(link => {
             const cur = link.getAttribute('href');
             if (cur && !cur.startsWith('#')) {
               link.setAttribute('href', cur + (cur.indexOf('?') > 0 ? '&' : '?') + searchStr);
