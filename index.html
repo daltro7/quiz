@@ -935,21 +935,28 @@
             <i class="ph ph-copy"></i> Copiar Código Completo
           </button>
           <pre id="sheets-script-code">// =====================================================================
-// SCRIPT INTEGRADO: QUIZFORGE + KIRVANO + PERFECTPAY + META CAPI
-// Métricas, Funil, Leads e Envio de Vendas Aprovadas para a Meta
+// SCRIPT INTEGRADO: QUIZFORGE + MIVVO + KIRVANO + PERFECTPAY + META CAPI + FIREBASE
+// Métricas, Funil, Leads, Envio de Vendas para Meta e Liberação de Acesso no App
 // =====================================================================
 
 // ==========================================
-// CONFIGURAÇÕES META CONVERSIONS API (CAPI)
-// Preencha para enviar Vendas Aprovadas direto para a Meta (Facebook Ads)
-// garantindo que Pix NÃO pago NUNCA seja contabilizado como compra!
+// 1. CONFIGURAÇÕES META CONVERSIONS API (CAPI)
 // ==========================================
-var META_PIXEL_ID = &quot;1375613420763965&quot;;        // Seu Pixel ID da Meta
+var META_PIXEL_ID = &quot;1432706854958021&quot;;        // Seu Pixel ID da Meta
 var META_API_TOKEN = &quot;&quot;;                       // Cole o Token de Acesso da Conversions API (gerado no Gerenciador de Eventos)
 var META_TEST_EVENT_CODE = &quot;&quot;;                 // Opcional: Cole aqui o código de teste da aba &quot;Testar Eventos&quot; da Meta (ex: TEST12345)
-var META_QUIZ_URL = &quot;https://seudominio.com&quot;;   // URL da sua página / quiz (ex: https://meusite.com.br)
+var META_QUIZ_URL = &quot;https://seudominio.com.br&quot;; // URL da sua página / quiz deste produto
 
-// Funções de Criptografia SHA-256 e Formatação para a Meta API
+// ==========================================
+// 2. CONFIGURAÇÕES FIREBASE (LIBERAÇÃO DO APP)
+// ==========================================
+var FIREBASE_PROJECT_ID = &quot;orcaora-pro&quot;;         // ID do projeto no Firebase (ex: orcaora-pro)
+var LIBERAR_FIREBASE_AUTOMATICO = true;        // true = libera 30 dias no app na hora que a venda for paga
+
+
+// ==========================================
+// FUNÇÕES DE CRIPTOGRAFIA E ENVIO META CAPI
+// ==========================================
 function sha256(input) {
   if (!input) return null;
   var clean = String(input).trim().toLowerCase();
@@ -1103,7 +1110,7 @@ function sendMetaCapiPurchase(params) {
       event_time: nowSec,
       event_id: String(params.orderId || (&apos;ord_&apos; + nowMs)),
       action_source: &apos;website&apos;,
-      event_source_url: (META_QUIZ_URL || &apos;https://orcaobra.site&apos;).trim(),
+      event_source_url: (META_QUIZ_URL || &apos;https://seudominio.com.br&apos;).trim(),
       user_data: userData,
       custom_data: {
         currency: &apos;BRL&apos;,
@@ -1137,11 +1144,127 @@ function sendMetaCapiPurchase(params) {
   }
 }
 
+
 // ==========================================
-// FUNÇÕES DE AUTORIZAÇÃO E TESTE NO APPS SCRIPT
+// FUNÇÕES DE LIBERAÇÃO FIREBASE FIRESTORE (30 DIAS)
+// ==========================================
+function liberarAcessoFirebase30Dias(email) {
+  if (!email || String(email).indexOf(&apos;@&apos;) === -1) return &quot;❌ E-mail inválido&quot;;
+  var cleanEmail = String(email).trim().toLowerCase();
+  var projectId = (FIREBASE_PROJECT_ID || &apos;&apos;).trim();
+  if (!projectId) return &quot;⚠️ FIREBASE_PROJECT_ID não configurado&quot;;
+
+  var dataExpiracao = new Date();
+  dataExpiracao.setDate(dataExpiracao.getDate() + 30);
+  var dataIso = dataExpiracao.toISOString();
+
+  var urlBusca = &quot;https://firestore.googleapis.com/v1/projects/&quot; + encodeURIComponent(projectId) + &quot;/databases/(default)/documents:runQuery&quot;;
+  var token = ScriptApp.getOAuthToken();
+
+  var queryPayload = {
+    &quot;structuredQuery&quot;: {
+      &quot;from&quot;: [{ &quot;collectionId&quot;: &quot;usuarios&quot; }],
+      &quot;where&quot;: {
+        &quot;fieldFilter&quot;: {
+          &quot;field&quot;: { &quot;fieldPath&quot;: &quot;email&quot; },
+          &quot;op&quot;: &quot;EQUAL&quot;,
+          &quot;value&quot;: { &quot;stringValue&quot;: cleanEmail }
+        }
+      }
+    }
+  };
+
+  var opcoesBusca = {
+    &quot;method&quot;: &quot;post&quot;,
+    &quot;contentType&quot;: &quot;application/json&quot;,
+    &quot;headers&quot;: { &quot;Authorization&quot;: &quot;Bearer &quot; + token },
+    &quot;payload&quot;: JSON.stringify(queryPayload),
+    &quot;muteHttpExceptions&quot;: true
+  };
+
+  try {
+    var respostaBusca = UrlFetchApp.fetch(urlBusca, opcoesBusca);
+    var dadosBusca = JSON.parse(respostaBusca.getContentText());
+
+    if (!dadosBusca || !dadosBusca[0] || !dadosBusca[0].document) {
+      return &quot;❌ E-mail não cadastrado no App&quot;;
+    }
+
+    var caminhoDocumento = dadosBusca[0].document.name;
+    var urlAtualizacao = &quot;https://firestore.googleapis.com/v1/&quot; + caminhoDocumento + &quot;?updateMask.fieldPaths=dataExpiracao&quot;;
+
+    var payloadAtualizacao = {
+      &quot;fields&quot;: { &quot;dataExpiracao&quot;: { &quot;stringValue&quot;: dataIso } }
+    };
+
+    var opcoesAtualizacao = {
+      &quot;method&quot;: &quot;patch&quot;,
+      &quot;contentType&quot;: &quot;application/json&quot;,
+      &quot;headers&quot;: { &quot;Authorization&quot;: &quot;Bearer &quot; + token },
+      &quot;payload&quot;: JSON.stringify(payloadAtualizacao),
+      &quot;muteHttpExceptions&quot;: true
+    };
+
+    var respostaAtualizacao = UrlFetchApp.fetch(urlAtualizacao, opcoesAtualizacao);
+    if (respostaAtualizacao.getResponseCode() === 200) {
+      var dFormatada = Utilities.formatDate(dataExpiracao, Session.getScriptTimeZone() || &quot;GMT-3&quot;, &quot;dd/MM/yyyy&quot;);
+      return &quot;✅ Liberado 30 dias (&quot; + dFormatada + &quot;)&quot;;
+    } else {
+      return &quot;❌ Erro Firebase: &quot; + respostaAtualizacao.getContentText().substring(0, 80);
+    }
+  } catch (erro) {
+    return &quot;❌ Erro Script: &quot; + erro.message;
+  }
+}
+
+// Permite liberar manualmente o Firebase clicando em uma linha da planilha
+function liberarFirebaseLinhaSelecionada() {
+  var ui = SpreadsheetApp.getUi();
+  var sheet = getTargetSheet();
+  var rowIdx = sheet.getActiveCell().getRow();
+  if (rowIdx &lt;= 1) {
+    ui.alert(&apos;Selecione uma linha de cliente (linha 2 em diante) para liberar no Firebase.&apos;);
+    return;
+  }
+  var lastCol = sheet.getLastColumn();
+  var headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
+  var rowVals = sheet.getRange(rowIdx, 1, 1, lastCol).getValues()[0];
+  var colMap = {};
+  for (var c = 0; c &lt; headers.length; c++) colMap[String(headers[c] || &apos;&apos;).trim().toLowerCase()] = c;
+
+  var emailIdx = colMap[&apos;email&apos;] !== undefined ? colMap[&apos;email&apos;] : colMap[&apos;e-mail&apos;];
+  var email = emailIdx !== undefined ? String(rowVals[emailIdx] || &apos;&apos;).trim() : &apos;&apos;;
+
+  if (!email || email.indexOf(&apos;@&apos;) === -1) {
+    ui.alert(&apos;Linha &apos; + rowIdx + &apos; não contém um e-mail válido.&apos;);
+    return;
+  }
+
+  var res = liberarAcessoFirebase30Dias(email);
+  var appColIdx = colMap[&apos;acesso app&apos;] !== undefined ? colMap[&apos;acesso app&apos;] : colMap[&apos;status app&apos;];
+  if (appColIdx !== undefined) {
+    sheet.getRange(rowIdx, appColIdx + 1).setValue(res);
+  }
+
+  ui.alert(&apos;Resultado da Liberação no Firebase:\n\nE-mail: &apos; + email + &apos;\nStatus: &apos; + res);
+}
+
+
+// ==========================================
+// FUNÇÕES DE SUPORTE E SEGURANÇA DA PLANILHA
 // ==========================================
 
-// Execute esta função UMA VEZ no Apps Script se o Google pedir permissão de rede (script.external_request)
+// Obtém com segurança a aba correta da planilha (busca &apos;Respostas&apos;, &apos;Dados&apos;, &apos;Vendas&apos;, a aba ativa ou a 1ª aba)
+function getTargetSheet() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  return ss.getSheetByName(&apos;Respostas&apos;) || 
+         ss.getSheetByName(&apos;Dados&apos;) || 
+         ss.getSheetByName(&apos;Vendas&apos;) || 
+         ss.getActiveSheet() || 
+         ss.getSheets()[0];
+}
+
+// Execute esta função UMA VEZ no Apps Script se o Google pedir permissão de rede
 function autorizarPermissoes() {
   SpreadsheetApp.getActiveSpreadsheet();
   UrlFetchApp.fetch(&quot;https://graph.facebook.com&quot;, { muteHttpExceptions: true });
@@ -1154,6 +1277,7 @@ function onOpen() {
       .createMenu(&apos;🚀 QuizForge&apos;)
       .addItem(&apos;🧪 Testar Conexão com Meta CAPI&apos;, &apos;testarEnvioMetaCapi&apos;)
       .addItem(&apos;📤 Enviar Linha Selecionada para a Meta&apos;, &apos;enviarLinhaSelecionadaParaMeta&apos;)
+      .addItem(&apos;🔑 Liberar 30 Dias no Firebase (Linha Selecionada)&apos;, &apos;liberarFirebaseLinhaSelecionada&apos;)
       .addToUi();
   } catch(e) {}
 }
@@ -1173,20 +1297,6 @@ function testarEnvioMetaCapi() {
     SpreadsheetApp.getUi().alert(&apos;Resultado do Envio para a Meta:\n\n&apos; + JSON.stringify(res, null, 2));
   } catch(e) {}
   return res;
-}
-
-// ==========================================
-// FUNÇÕES DE SUPORTE E SEGURANÇA DA PLANILHA
-// ==========================================
-
-// Obtém com segurança a aba correta da planilha (busca &apos;Respostas&apos;, &apos;Dados&apos;, &apos;Vendas&apos;, a aba ativa ou a 1ª aba)
-function getTargetSheet() {
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
-  return ss.getSheetByName(&apos;Respostas&apos;) || 
-         ss.getSheetByName(&apos;Dados&apos;) || 
-         ss.getSheetByName(&apos;Vendas&apos;) || 
-         ss.getActiveSheet() || 
-         ss.getSheets()[0];
 }
 
 // Permite que qualquer venda colocada manualmente na planilha seja enviada para a Meta!
@@ -1236,7 +1346,10 @@ function enviarLinhaSelecionadaParaMeta() {
   ui.alert(&apos;Status do Envio para Meta:\n\n&apos; + JSON.stringify(res, null, 2));
 }
 
+
+// ==========================================
 // 1. LEITURA DOS DADOS (QuizForge ➔ Planilha: Funil, Leads e Vendas)
+// ==========================================
 function doGet(e) {
   try {
     var sheet = getTargetSheet();
@@ -1378,7 +1491,7 @@ function doGet(e) {
         uniqueCheckouts[sessionKey] = true;
       }
 
-      // Funil e Métricas: Vendas Kirvano &amp; PerfectPay
+      // Funil e Métricas: Vendas (Mivvo, Kirvano, PerfectPay)
       var isSaleApproved = (event === &apos;Venda_Aprovada&apos; || saleStatus === &apos;approved&apos; || saleStatus === &apos;aprovado&apos; || saleStatus === &apos;paid&apos;);
       var isSalePending = (event === &apos;Aguardando_Pagamento&apos; || saleStatus === &apos;waiting_payment&apos; || saleStatus === &apos;pending&apos; || saleStatus === &apos;billet_printed&apos; || saleStatus === &apos;pix_generated&apos;);
 
@@ -1398,7 +1511,7 @@ function doGet(e) {
             amountFormatted: formattedVal,
             method: payMethod || &apos;PIX&apos;,
             status: isSaleApproved ? &apos;approved&apos; : &apos;waiting_payment&apos;,
-            platform: platform || (event.indexOf(&apos;Kirvano&apos;) !== -1 ? &apos;Kirvano&apos; : &apos;PerfectPay&apos;),
+            platform: platform || (event.indexOf(&apos;Kirvano&apos;) !== -1 ? &apos;Kirvano&apos; : (event.indexOf(&apos;Mivvo&apos;) !== -1 ? &apos;Mivvo&apos; : &apos;PerfectPay&apos;)),
             product: product || &apos;Oferta&apos;,
             src: src || &apos;-&apos;,
             utm: originTag || &apos;-&apos;,
@@ -1474,12 +1587,20 @@ function doGet(e) {
   }
 }
 
-// 2. GRAVAÇÃO DOS DADOS (Receptor Universal: QuizForge + Webhook Kirvano + Webhook PerfectPay)
+
+// ==========================================
+// 2. GRAVAÇÃO DOS DADOS (Receptor Universal: Mivvo + Kirvano + PerfectPay + QuizForge)
+// ==========================================
 function doPost(e) {
   try {
     var sheet = getTargetSheet();
     var lastCol = sheet.getLastColumn();
-    var expectedHeaders = [&apos;Data/Hora&apos;, &apos;Sessão (ID)&apos;, &apos;Evento&apos;, &apos;Quiz / Produto&apos;, &apos;Etapa&apos;, &apos;Status Venda&apos;, &apos;Valor (R$)&apos;, &apos;Método&apos;, &apos;Plataforma&apos;, &apos;Nome&apos;, &apos;WhatsApp&apos;, &apos;Email&apos;, &apos;SRC&apos;, &apos;UTM_Source&apos;, &apos;UTM_Campaign&apos;, &apos;UTM_Medium&apos;, &apos;UTM_Content&apos;, &apos;Meta CAPI&apos;];
+    var expectedHeaders = [
+      &apos;Data/Hora&apos;, &apos;Sessão (ID)&apos;, &apos;Evento&apos;, &apos;Quiz / Produto&apos;, &apos;Etapa&apos;, 
+      &apos;Status Venda&apos;, &apos;Valor (R$)&apos;, &apos;Método&apos;, &apos;Plataforma&apos;, &apos;Nome&apos;, 
+      &apos;WhatsApp&apos;, &apos;Email&apos;, &apos;Documento&apos;, &apos;SRC&apos;, &apos;UTM_Source&apos;, 
+      &apos;UTM_Campaign&apos;, &apos;UTM_Medium&apos;, &apos;UTM_Content&apos;, &apos;Meta CAPI&apos;, &apos;Acesso App&apos;
+    ];
 
     if (lastCol === 0) {
       sheet.appendRow(expectedHeaders);
@@ -1524,48 +1645,118 @@ function doPost(e) {
 
     setVal([&apos;data/hora&apos;, &apos;data&apos;, &apos;timestamp&apos;], new Date());
 
-    // CASO A: WEBHOOK DA KIRVANO
+
+    // ==========================================
+    // CASO A: WEBHOOK MIVVO / NOVA PLATAFORMA (sale.paid ou sale.pending)
+    // ==========================================
+    if ((data.event &amp;&amp; String(data.event).indexOf(&apos;sale.&apos;) === 0) || (data.data &amp;&amp; data.data.sale_id &amp;&amp; data.data.charged_amount !== undefined)) {
+      var dM = data.data || {};
+      var isAppM = (data.event === &apos;sale.paid&apos; || dM.status === &apos;paid&apos; || dM.status === &apos;approved&apos;);
+      var isWaitM = (data.event === &apos;sale.pending&apos; || dM.status === &apos;pending&apos; || dM.status === &apos;waiting_payment&apos;);
+      var statusStrM = isAppM ? &apos;approved&apos; : (isWaitM ? &apos;waiting_payment&apos; : (dM.status || &apos;&apos;));
+      var eventStrM = isAppM ? &apos;Venda_Aprovada&apos; : &apos;Aguardando_Pagamento&apos;;
+      var custM = dM.customer || {};
+      var utmsM = dM.utms || dM.utm || {};
+      var amountValM = Number(dM.charged_amount !== undefined ? dM.charged_amount : dM.amount) || 0;
+      var prodNameM = (dM.product &amp;&amp; dM.product.name) || (dM.offer &amp;&amp; dM.offer.name) || &apos;Oferta&apos;;
+
+      // Se comprou order bump, adiciona ao nome do produto
+      if (dM.order_bumps &amp;&amp; dM.order_bumps.length &gt; 0) {
+        var bumpNames = dM.order_bumps.map(function(b) { return b.product_name || b.offer_name || &apos;Bump&apos;; }).join(&apos; + &apos;);
+        prodNameM += &apos; (+ &apos; + bumpNames + &apos;)&apos;;
+      }
+
+      setVal([&apos;sessão (id)&apos;, &apos;sessão&apos;, &apos;sessao&apos;], dM.sale_id || (&apos;miv_&apos; + Date.now()));
+      setVal([&apos;evento&apos;, &apos;event&apos;], eventStrM);
+      setVal([&apos;quiz / produto&apos;, &apos;produto&apos;], prodNameM);
+      setVal([&apos;status venda&apos;, &apos;status_venda&apos;, &apos;status&apos;], statusStrM);
+      setVal([&apos;valor (r$)&apos;, &apos;valor&apos;], amountValM);
+      setVal([&apos;método&apos;, &apos;metodo&apos;], dM.payment_method || &apos;PIX&apos;);
+      setVal([&apos;plataforma&apos;, &apos;platform&apos;], &apos;Mivvo&apos;);
+      setVal([&apos;nome&apos;, &apos;cliente&apos;], custM.name || &apos;&apos;);
+      setVal([&apos;whatsapp&apos;, &apos;telefone&apos;], custM.phone || &apos;&apos;);
+      setVal([&apos;email&apos;, &apos;e-mail&apos;], custM.email || &apos;&apos;);
+      setVal([&apos;documento&apos;, &apos;cpf&apos;], custM.document || &apos;&apos;);
+      setVal([&apos;src&apos;, &apos;sck&apos;], utmsM.src || utmsM.sck || &apos;&apos;);
+      setVal([&apos;utm_source&apos;, &apos;source&apos;], utmsM.source || utmsM.utm_source || &apos;&apos;);
+      setVal([&apos;utm_campaign&apos;, &apos;campaign&apos;], utmsM.campaign || utmsM.utm_campaign || &apos;&apos;);
+      setVal([&apos;utm_medium&apos;, &apos;medium&apos;], utmsM.medium || utmsM.utm_medium || &apos;&apos;);
+      setVal([&apos;utm_content&apos;, &apos;content&apos;], utmsM.content || utmsM.utm_content || &apos;&apos;);
+
+      // 1. Disparo Meta CAPI para vendas aprovadas
+      if (isAppM) {
+        var capiResM = sendMetaCapiPurchase({
+          orderId: dM.sale_id || (&apos;miv_&apos; + Date.now()),
+          amount: amountValM,
+          productName: prodNameM,
+          name: custM.name || &apos;&apos;,
+          email: custM.email || &apos;&apos;,
+          phone: custM.phone || &apos;&apos;,
+          clientIp: dM.client_ip || utmsM.client_ip || &apos;&apos;,
+          clientUserAgent: dM.client_user_agent || utmsM.client_user_agent || &apos;&apos;,
+          fbc: utmsM.fbc || utmsM.fbclid || &apos;&apos;,
+          fbp: utmsM.fbp || &apos;&apos;,
+          externalId: utmsM.external_id || dM.sale_id || (&apos;miv_&apos; + Date.now())
+        });
+        setVal([&apos;meta capi&apos;, &apos;capi&apos;], capiResM.success ? &apos;Enviado (Purchase)&apos; : (&apos;Erro: &apos; + (capiResM.error || capiResM.code || capiResM.reason)));
+
+        // 2. Liberação Automática no Firebase (30 dias)
+        if (LIBERAR_FIREBASE_AUTOMATICO &amp;&amp; custM.email) {
+          var fbResM = liberarAcessoFirebase30Dias(custM.email);
+          setVal([&apos;acesso app&apos;, &apos;firebase&apos;, &apos;status app&apos;], fbResM);
+        }
+      }
+
+      sheet.appendRow(newRow);
+      return ContentService.createTextOutput(JSON.stringify({ status: &apos;success&apos;, platform: &apos;Mivvo&apos; })).setMimeType(ContentService.MimeType.JSON);
+    }
+
+
+    // ==========================================
+    // CASO B: WEBHOOK DA KIRVANO
+    // ==========================================
     if (data.sale_id || data.checkout_id || data.event === &apos;SALE_APPROVED&apos; || (data.fiscal &amp;&amp; data.fiscal.total_value !== undefined)) {
-      var isApproved = (data.status === &apos;APPROVED&apos; || data.event === &apos;SALE_APPROVED&apos; || data.event === &apos;ORDER_PAID&apos;);
-      var isWaiting = (data.status === &apos;WAITING_PAYMENT&apos; || data.event === &apos;WAITING_PAYMENT&apos; || data.event === &apos;PIX_GENERATED&apos; || data.event === &apos;ORDER_WAITING_PAYMENT&apos;);
-      var statusStr = isApproved ? &apos;approved&apos; : (isWaiting ? &apos;waiting_payment&apos; : (data.status || &apos;&apos;));
-      var eventStr = isApproved ? &apos;Venda_Aprovada&apos; : &apos;Aguardando_Pagamento&apos;;
-      var cust = data.customer || {};
+      var isApprovedK = (data.status === &apos;APPROVED&apos; || data.event === &apos;SALE_APPROVED&apos; || data.event === &apos;ORDER_PAID&apos;);
+      var isWaitingK = (data.status === &apos;WAITING_PAYMENT&apos; || data.event === &apos;WAITING_PAYMENT&apos; || data.event === &apos;PIX_GENERATED&apos; || data.event === &apos;ORDER_WAITING_PAYMENT&apos;);
+      var statusStrK = isApprovedK ? &apos;approved&apos; : (isWaitingK ? &apos;waiting_payment&apos; : (data.status || &apos;&apos;));
+      var eventStrK = isApprovedK ? &apos;Venda_Aprovada&apos; : &apos;Aguardando_Pagamento&apos;;
+      var custK = data.customer || {};
       var utmsK = data.utm || {};
-      var amountVal = (data.fiscal &amp;&amp; data.fiscal.total_value) || (data.total_price ? parseFloat(String(data.total_price).replace(/[^\d,\.]/g, &apos;&apos;).replace(&apos;,&apos;, &apos;.&apos;)) : 0);
-      var prodName = (data.products &amp;&amp; data.products[0] &amp;&amp; data.products[0].name) || &apos;Kirvano Oferta&apos;;
+      var amountValK = (data.fiscal &amp;&amp; data.fiscal.total_value) || (data.total_price ? parseFloat(String(data.total_price).replace(/[^\d,\.]/g, &apos;&apos;).replace(&apos;,&apos;, &apos;.&apos;)) : 0);
+      var prodNameK = (data.products &amp;&amp; data.products[0] &amp;&amp; data.products[0].name) || &apos;Kirvano Oferta&apos;;
 
       setVal([&apos;sessão (id)&apos;, &apos;sessão&apos;, &apos;sessao&apos;], data.sale_id || (&apos;kirv_&apos; + Date.now()));
-      setVal([&apos;evento&apos;, &apos;event&apos;], eventStr);
-      setVal([&apos;quiz / produto&apos;, &apos;produto&apos;], prodName);
-      setVal([&apos;status venda&apos;, &apos;status_venda&apos;, &apos;status&apos;], statusStr);
-      setVal([&apos;valor (r$)&apos;, &apos;valor&apos;], amountVal);
+      setVal([&apos;evento&apos;, &apos;event&apos;], eventStrK);
+      setVal([&apos;quiz / produto&apos;, &apos;produto&apos;], prodNameK);
+      setVal([&apos;status venda&apos;, &apos;status_venda&apos;, &apos;status&apos;], statusStrK);
+      setVal([&apos;valor (r$)&apos;, &apos;valor&apos;], amountValK);
       setVal([&apos;método&apos;, &apos;metodo&apos;], data.payment_method || (data.payment &amp;&amp; data.payment.method) || &apos;PIX&apos;);
       setVal([&apos;plataforma&apos;, &apos;platform&apos;], &apos;Kirvano&apos;);
-      setVal([&apos;nome&apos;, &apos;cliente&apos;], cust.name || &apos;&apos;);
-      setVal([&apos;whatsapp&apos;, &apos;telefone&apos;], cust.phone_number || &apos;&apos;);
-      setVal([&apos;email&apos;, &apos;e-mail&apos;], cust.email || &apos;&apos;);
+      setVal([&apos;nome&apos;, &apos;cliente&apos;], custK.name || &apos;&apos;);
+      setVal([&apos;whatsapp&apos;, &apos;telefone&apos;], custK.phone_number || &apos;&apos;);
+      setVal([&apos;email&apos;, &apos;e-mail&apos;], custK.email || &apos;&apos;);
+      setVal([&apos;documento&apos;, &apos;cpf&apos;], custK.document || &apos;&apos;);
       setVal([&apos;src&apos;, &apos;sck&apos;], utmsK.src || utmsK.sck || &apos;&apos;);
       setVal([&apos;utm_source&apos;, &apos;source&apos;], utmsK.utm_source || &apos;&apos;);
       setVal([&apos;utm_campaign&apos;, &apos;campaign&apos;], utmsK.utm_campaign || &apos;&apos;);
       setVal([&apos;utm_medium&apos;, &apos;medium&apos;], utmsK.utm_medium || &apos;&apos;);
       setVal([&apos;utm_content&apos;, &apos;content&apos;], utmsK.utm_content || &apos;&apos;);
 
-      // Disparo Meta CAPI exclusivo para vendas aprovadas (Elimina Pix pendente)
-      if (isApproved) {
-        var addrK = data.address || cust.address || {};
+      // Disparo Meta CAPI para vendas aprovadas
+      if (isApprovedK) {
+        var addrK = data.address || custK.address || {};
         var metaK = data.metadata || data.custom_fields || {};
         var trackingK = data.tracking || {};
         var capiResK = sendMetaCapiPurchase({
           orderId: data.sale_id || (&apos;kirv_&apos; + Date.now()),
-          amount: amountVal,
-          productName: prodName,
-          name: cust.name || &apos;&apos;,
-          email: cust.email || &apos;&apos;,
-          phone: cust.phone_number || &apos;&apos;,
-          zipCode: addrK.zip_code || addrK.cep || cust.zip_code || cust.cep || utmsK.cep || &apos;&apos;,
-          city: addrK.city || cust.city || utmsK.city || &apos;&apos;,
-          state: addrK.state || cust.state || utmsK.state || utmsK.uf || &apos;&apos;,
+          amount: amountValK,
+          productName: prodNameK,
+          name: custK.name || &apos;&apos;,
+          email: custK.email || &apos;&apos;,
+          phone: custK.phone_number || &apos;&apos;,
+          zipCode: addrK.zip_code || addrK.cep || custK.zip_code || custK.cep || utmsK.cep || &apos;&apos;,
+          city: addrK.city || custK.city || utmsK.city || &apos;&apos;,
+          state: addrK.state || custK.state || utmsK.state || utmsK.uf || &apos;&apos;,
           clientIp: data.client_ip || data.ip || trackingK.ip || utmsK.ip || &apos;&apos;,
           clientUserAgent: data.client_user_agent || data.user_agent || trackingK.user_agent || utmsK.user_agent || &apos;&apos;,
           fbc: utmsK.fbc || utmsK.fbclid || metaK.fbc || metaK.fbclid || data.fbc || &apos;&apos;,
@@ -1573,13 +1764,22 @@ function doPost(e) {
           externalId: utmsK.external_id || metaK.external_id || data.sale_id || (&apos;kirv_&apos; + Date.now())
         });
         setVal([&apos;meta capi&apos;, &apos;capi&apos;], capiResK.success ? &apos;Enviado (Purchase)&apos; : (&apos;Erro: &apos; + (capiResK.error || capiResK.code || capiResK.reason)));
+
+        // Liberação Automática no Firebase (30 dias)
+        if (LIBERAR_FIREBASE_AUTOMATICO &amp;&amp; custK.email) {
+          var fbResK = liberarAcessoFirebase30Dias(custK.email);
+          setVal([&apos;acesso app&apos;, &apos;firebase&apos;, &apos;status app&apos;], fbResK);
+        }
       }
 
       sheet.appendRow(newRow);
       return ContentService.createTextOutput(JSON.stringify({ status: &apos;success&apos;, platform: &apos;Kirvano&apos; })).setMimeType(ContentService.MimeType.JSON);
     }
 
-    // CASO B: WEBHOOK DA PERFECTPAY
+
+    // ==========================================
+    // CASO C: WEBHOOK DA PERFECTPAY
+    // ==========================================
     if (data.sale_status_enum_key !== undefined || data.sale_amount !== undefined || (data.code &amp;&amp; String(data.code).indexOf(&apos;PP&apos;) === 0) || data.webhook_owner) {
       var isAppP = (data.sale_status_enum === 2 || data.sale_status_enum_key === &apos;approved&apos; || data.sale_status_detail === &apos;approved&apos;);
       var isWaitP = (data.sale_status_enum === 1 || data.sale_status_enum_key === &apos;waiting_payment&apos; || data.sale_status_enum_key === &apos;billet_printed&apos; || data.sale_status_detail === &apos;waiting_payment&apos;);
@@ -1601,13 +1801,14 @@ function doPost(e) {
       setVal([&apos;nome&apos;, &apos;cliente&apos;], custP.full_name || custP.name || &apos;&apos;);
       setVal([&apos;whatsapp&apos;, &apos;telefone&apos;], phoneP);
       setVal([&apos;email&apos;, &apos;e-mail&apos;], custP.email || &apos;&apos;);
+      setVal([&apos;documento&apos;, &apos;cpf&apos;], custP.identification_number || &apos;&apos;);
       setVal([&apos;src&apos;, &apos;sck&apos;], metaP.src || metaP.sck || &apos;&apos;);
       setVal([&apos;utm_source&apos;, &apos;source&apos;], metaP.utm_source || &apos;&apos;);
       setVal([&apos;utm_campaign&apos;, &apos;campaign&apos;], metaP.utm_campaign || &apos;&apos;);
       setVal([&apos;utm_medium&apos;, &apos;medium&apos;], metaP.utm_medium || &apos;&apos;);
       setVal([&apos;utm_content&apos;, &apos;content&apos;], metaP.utm_content || &apos;&apos;);
 
-      // Disparo Meta CAPI exclusivo para vendas aprovadas (Elimina Pix pendente)
+      // Disparo Meta CAPI para vendas aprovadas
       if (isAppP) {
         var paramsP = data.params || data.query_params || {};
         var capiResP = sendMetaCapiPurchase({
@@ -1628,13 +1829,22 @@ function doPost(e) {
           externalId: metaP.external_id || metaP.session_id || metaP.sessionId || paramsP.external_id || data.code || (&apos;pp_&apos; + Date.now())
         });
         setVal([&apos;meta capi&apos;, &apos;capi&apos;], capiResP.success ? &apos;Enviado (Purchase)&apos; : (&apos;Erro: &apos; + (capiResP.error || capiResP.code || capiResP.reason)));
+
+        // Liberação Automática no Firebase (30 dias)
+        if (LIBERAR_FIREBASE_AUTOMATICO &amp;&amp; custP.email) {
+          var fbResP = liberarAcessoFirebase30Dias(custP.email);
+          setVal([&apos;acesso app&apos;, &apos;firebase&apos;, &apos;status app&apos;], fbResP);
+        }
       }
 
       sheet.appendRow(newRow);
       return ContentService.createTextOutput(JSON.stringify({ status: &apos;success&apos;, platform: &apos;PerfectPay&apos; })).setMimeType(ContentService.MimeType.JSON);
     }
 
-    // CASO C: DISPARO PADRÃO DO QUIZFORGE
+
+    // ==========================================
+    // CASO D: DISPARO PADRÃO DO QUIZFORGE
+    // ==========================================
     var utms = data.utms || {};
     var src = data.src || utms.src || utms.sck || utms.SRC || utms.SCK || &apos;&apos;;
     setVal([&apos;sessão (id)&apos;, &apos;sessão&apos;, &apos;sessao&apos;], data.sessionId || &apos;&apos;);

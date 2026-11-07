@@ -1,19 +1,26 @@
 // =====================================================================
-// SCRIPT INTEGRADO: QUIZFORGE + KIRVANO + PERFECTPAY + META CAPI
-// Métricas, Funil, Leads e Envio de Vendas Aprovadas para a Meta
+// SCRIPT INTEGRADO: QUIZFORGE + MIVVO + KIRVANO + PERFECTPAY + META CAPI + FIREBASE
+// Métricas, Funil, Leads, Envio de Vendas para Meta e Liberação de Acesso no App
 // =====================================================================
 
 // ==========================================
-// CONFIGURAÇÕES META CONVERSIONS API (CAPI)
-// Preencha para enviar Vendas Aprovadas direto para a Meta (Facebook Ads)
-// garantindo que Pix NÃO pago NUNCA seja contabilizado como compra!
+// 1. CONFIGURAÇÕES META CONVERSIONS API (CAPI)
 // ==========================================
-var META_PIXEL_ID = "1375613420763965";        // Seu Pixel ID da Meta
+var META_PIXEL_ID = "1432706854958021";        // Seu Pixel ID da Meta
 var META_API_TOKEN = "";                       // Cole o Token de Acesso da Conversions API (gerado no Gerenciador de Eventos)
 var META_TEST_EVENT_CODE = "";                 // Opcional: Cole aqui o código de teste da aba "Testar Eventos" da Meta (ex: TEST12345)
-var META_QUIZ_URL = "https://seudominio.com";   // URL da sua página / quiz (ex: https://meusite.com.br)
+var META_QUIZ_URL = "https://seudominio.com.br"; // URL da sua página / quiz deste produto
 
-// Funções de Criptografia SHA-256 e Formatação para a Meta API
+// ==========================================
+// 2. CONFIGURAÇÕES FIREBASE (LIBERAÇÃO DO APP)
+// ==========================================
+var FIREBASE_PROJECT_ID = "orcaora-pro";         // ID do projeto no Firebase (ex: orcaora-pro)
+var LIBERAR_FIREBASE_AUTOMATICO = true;        // true = libera 30 dias no app na hora que a venda for paga
+
+
+// ==========================================
+// FUNÇÕES DE CRIPTOGRAFIA E ENVIO META CAPI
+// ==========================================
 function sha256(input) {
   if (!input) return null;
   var clean = String(input).trim().toLowerCase();
@@ -79,7 +86,7 @@ function sendMetaCapiPurchase(params) {
     // 4. País (country)
     userData.country = [sha256('br')];
 
-    // 5. Código Postal / CEP (zp) - +13% qualidade de correspondência
+    // 5. Código Postal / CEP (zp) - +13% qualidade
     if (params.zipCode || params.cep || params.postalCode) {
       var cleanZp = String(params.zipCode || params.cep || params.postalCode).replace(/\D/g, '');
       if (cleanZp) {
@@ -88,7 +95,7 @@ function sendMetaCapiPurchase(params) {
       }
     }
 
-    // 6. Cidade (ct) - +13% qualidade de correspondência
+    // 6. Cidade (ct) - +13% qualidade
     if (params.city || params.cidade) {
       var cleanCt = String(params.city || params.cidade)
         .toLowerCase()
@@ -102,7 +109,7 @@ function sendMetaCapiPurchase(params) {
       }
     }
 
-    // 7. Estado / UF (st) - +13% qualidade de correspondência
+    // 7. Estado / UF (st) - +13% qualidade
     if (params.state || params.estado || params.uf) {
       var cleanSt = String(params.state || params.estado || params.uf)
         .toLowerCase()
@@ -115,7 +122,7 @@ function sendMetaCapiPurchase(params) {
       }
     }
 
-    // 8. Data de Nascimento (dob) - +13% qualidade de correspondência (formato YYYYMMDD)
+    // 8. Data de Nascimento (dob) - +13% qualidade
     if (params.dob || params.birthDate || params.dataNascimento) {
       var cleanDob = String(params.dob || params.birthDate || params.dataNascimento).replace(/\D/g, '');
       if (cleanDob && cleanDob.length === 8) {
@@ -127,13 +134,13 @@ function sendMetaCapiPurchase(params) {
       }
     }
 
-    // 9. Identificador Externo (external_id) - +22% qualidade de correspondência
+    // 9. Identificador Externo (external_id) - +22% qualidade
     var extId = params.externalId || params.sessionId || params.orderId || '';
     if (extId) {
       userData.external_id = [String(extId)];
     }
 
-    // 10. Click ID da Meta (fbc) - +28% qualidade de correspondência (NÃO hasheado)
+    // 10. Click ID da Meta (fbc) - +28% qualidade (NÃO hasheado)
     var rawFbc = params.fbc || params.fbclid || '';
     if (rawFbc) {
       rawFbc = String(rawFbc).trim();
@@ -144,19 +151,19 @@ function sendMetaCapiPurchase(params) {
       }
     }
 
-    // 11. Browser ID da Meta (fbp) - +22% qualidade de correspondência (NÃO hasheado)
+    // 11. Browser ID da Meta (fbp) - +22% qualidade (NÃO hasheado)
     if (params.fbp) {
       var rawFbp = String(params.fbp).trim();
       if (rawFbp) userData.fbp = rawFbp;
     }
 
-    // 12. Endereço IP do Cliente (client_ip_address) - +28% qualidade de correspondência (NÃO hasheado)
+    // 12. Endereço IP do Cliente (client_ip_address) - +28% qualidade (NÃO hasheado)
     if (params.clientIp || params.ip) {
       var rawIp = String(params.clientIp || params.ip).trim();
       if (rawIp) userData.client_ip_address = rawIp;
     }
 
-    // 13. Agente do Usuário (client_user_agent) - +28% qualidade de correspondência (NÃO hasheado)
+    // 13. Agente do Usuário (client_user_agent) - +28% qualidade (NÃO hasheado)
     if (params.clientUserAgent || params.userAgent) {
       var rawUa = String(params.clientUserAgent || params.userAgent).trim();
       if (rawUa) userData.client_user_agent = rawUa;
@@ -167,7 +174,7 @@ function sendMetaCapiPurchase(params) {
       event_time: nowSec,
       event_id: String(params.orderId || ('ord_' + nowMs)),
       action_source: 'website',
-      event_source_url: (META_QUIZ_URL || 'https://orcaobra.site').trim(),
+      event_source_url: (META_QUIZ_URL || 'https://seudominio.com.br').trim(),
       user_data: userData,
       custom_data: {
         currency: 'BRL',
@@ -201,11 +208,127 @@ function sendMetaCapiPurchase(params) {
   }
 }
 
+
 // ==========================================
-// FUNÇÕES DE AUTORIZAÇÃO E TESTE NO APPS SCRIPT
+// FUNÇÕES DE LIBERAÇÃO FIREBASE FIRESTORE (30 DIAS)
+// ==========================================
+function liberarAcessoFirebase30Dias(email) {
+  if (!email || String(email).indexOf('@') === -1) return "❌ E-mail inválido";
+  var cleanEmail = String(email).trim().toLowerCase();
+  var projectId = (FIREBASE_PROJECT_ID || '').trim();
+  if (!projectId) return "⚠️ FIREBASE_PROJECT_ID não configurado";
+
+  var dataExpiracao = new Date();
+  dataExpiracao.setDate(dataExpiracao.getDate() + 30);
+  var dataIso = dataExpiracao.toISOString();
+
+  var urlBusca = "https://firestore.googleapis.com/v1/projects/" + encodeURIComponent(projectId) + "/databases/(default)/documents:runQuery";
+  var token = ScriptApp.getOAuthToken();
+
+  var queryPayload = {
+    "structuredQuery": {
+      "from": [{ "collectionId": "usuarios" }],
+      "where": {
+        "fieldFilter": {
+          "field": { "fieldPath": "email" },
+          "op": "EQUAL",
+          "value": { "stringValue": cleanEmail }
+        }
+      }
+    }
+  };
+
+  var opcoesBusca = {
+    "method": "post",
+    "contentType": "application/json",
+    "headers": { "Authorization": "Bearer " + token },
+    "payload": JSON.stringify(queryPayload),
+    "muteHttpExceptions": true
+  };
+
+  try {
+    var respostaBusca = UrlFetchApp.fetch(urlBusca, opcoesBusca);
+    var dadosBusca = JSON.parse(respostaBusca.getContentText());
+
+    if (!dadosBusca || !dadosBusca[0] || !dadosBusca[0].document) {
+      return "❌ E-mail não cadastrado no App";
+    }
+
+    var caminhoDocumento = dadosBusca[0].document.name;
+    var urlAtualizacao = "https://firestore.googleapis.com/v1/" + caminhoDocumento + "?updateMask.fieldPaths=dataExpiracao";
+
+    var payloadAtualizacao = {
+      "fields": { "dataExpiracao": { "stringValue": dataIso } }
+    };
+
+    var opcoesAtualizacao = {
+      "method": "patch",
+      "contentType": "application/json",
+      "headers": { "Authorization": "Bearer " + token },
+      "payload": JSON.stringify(payloadAtualizacao),
+      "muteHttpExceptions": true
+    };
+
+    var respostaAtualizacao = UrlFetchApp.fetch(urlAtualizacao, opcoesAtualizacao);
+    if (respostaAtualizacao.getResponseCode() === 200) {
+      var dFormatada = Utilities.formatDate(dataExpiracao, Session.getScriptTimeZone() || "GMT-3", "dd/MM/yyyy");
+      return "✅ Liberado 30 dias (" + dFormatada + ")";
+    } else {
+      return "❌ Erro Firebase: " + respostaAtualizacao.getContentText().substring(0, 80);
+    }
+  } catch (erro) {
+    return "❌ Erro Script: " + erro.message;
+  }
+}
+
+// Permite liberar manualmente o Firebase clicando em uma linha da planilha
+function liberarFirebaseLinhaSelecionada() {
+  var ui = SpreadsheetApp.getUi();
+  var sheet = getTargetSheet();
+  var rowIdx = sheet.getActiveCell().getRow();
+  if (rowIdx <= 1) {
+    ui.alert('Selecione uma linha de cliente (linha 2 em diante) para liberar no Firebase.');
+    return;
+  }
+  var lastCol = sheet.getLastColumn();
+  var headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
+  var rowVals = sheet.getRange(rowIdx, 1, 1, lastCol).getValues()[0];
+  var colMap = {};
+  for (var c = 0; c < headers.length; c++) colMap[String(headers[c] || '').trim().toLowerCase()] = c;
+
+  var emailIdx = colMap['email'] !== undefined ? colMap['email'] : colMap['e-mail'];
+  var email = emailIdx !== undefined ? String(rowVals[emailIdx] || '').trim() : '';
+
+  if (!email || email.indexOf('@') === -1) {
+    ui.alert('Linha ' + rowIdx + ' não contém um e-mail válido.');
+    return;
+  }
+
+  var res = liberarAcessoFirebase30Dias(email);
+  var appColIdx = colMap['acesso app'] !== undefined ? colMap['acesso app'] : colMap['status app'];
+  if (appColIdx !== undefined) {
+    sheet.getRange(rowIdx, appColIdx + 1).setValue(res);
+  }
+
+  ui.alert('Resultado da Liberação no Firebase:\n\nE-mail: ' + email + '\nStatus: ' + res);
+}
+
+
+// ==========================================
+// FUNÇÕES DE SUPORTE E SEGURANÇA DA PLANILHA
 // ==========================================
 
-// Execute esta função UMA VEZ no Apps Script se o Google pedir permissão de rede (script.external_request)
+// Obtém com segurança a aba correta da planilha (busca 'Respostas', 'Dados', 'Vendas', a aba ativa ou a 1ª aba)
+function getTargetSheet() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  return ss.getSheetByName('Respostas') || 
+         ss.getSheetByName('Dados') || 
+         ss.getSheetByName('Vendas') || 
+         ss.getActiveSheet() || 
+         ss.getSheets()[0];
+}
+
+// Execute esta função UMA VEZ no Apps Script se o Google pedir permissão de rede
 function autorizarPermissoes() {
   SpreadsheetApp.getActiveSpreadsheet();
   UrlFetchApp.fetch("https://graph.facebook.com", { muteHttpExceptions: true });
@@ -218,6 +341,7 @@ function onOpen() {
       .createMenu('🚀 QuizForge')
       .addItem('🧪 Testar Conexão com Meta CAPI', 'testarEnvioMetaCapi')
       .addItem('📤 Enviar Linha Selecionada para a Meta', 'enviarLinhaSelecionadaParaMeta')
+      .addItem('🔑 Liberar 30 Dias no Firebase (Linha Selecionada)', 'liberarFirebaseLinhaSelecionada')
       .addToUi();
   } catch(e) {}
 }
@@ -237,20 +361,6 @@ function testarEnvioMetaCapi() {
     SpreadsheetApp.getUi().alert('Resultado do Envio para a Meta:\n\n' + JSON.stringify(res, null, 2));
   } catch(e) {}
   return res;
-}
-
-// ==========================================
-// FUNÇÕES DE SUPORTE E SEGURANÇA DA PLANILHA
-// ==========================================
-
-// Obtém com segurança a aba correta da planilha (busca 'Respostas', 'Dados', 'Vendas', a aba ativa ou a 1ª aba)
-function getTargetSheet() {
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
-  return ss.getSheetByName('Respostas') || 
-         ss.getSheetByName('Dados') || 
-         ss.getSheetByName('Vendas') || 
-         ss.getActiveSheet() || 
-         ss.getSheets()[0];
 }
 
 // Permite que qualquer venda colocada manualmente na planilha seja enviada para a Meta!
@@ -300,7 +410,10 @@ function enviarLinhaSelecionadaParaMeta() {
   ui.alert('Status do Envio para Meta:\n\n' + JSON.stringify(res, null, 2));
 }
 
+
+// ==========================================
 // 1. LEITURA DOS DADOS (QuizForge ➔ Planilha: Funil, Leads e Vendas)
+// ==========================================
 function doGet(e) {
   try {
     var sheet = getTargetSheet();
@@ -442,7 +555,7 @@ function doGet(e) {
         uniqueCheckouts[sessionKey] = true;
       }
 
-      // Funil e Métricas: Vendas Kirvano & PerfectPay
+      // Funil e Métricas: Vendas (Mivvo, Kirvano, PerfectPay)
       var isSaleApproved = (event === 'Venda_Aprovada' || saleStatus === 'approved' || saleStatus === 'aprovado' || saleStatus === 'paid');
       var isSalePending = (event === 'Aguardando_Pagamento' || saleStatus === 'waiting_payment' || saleStatus === 'pending' || saleStatus === 'billet_printed' || saleStatus === 'pix_generated');
 
@@ -462,7 +575,7 @@ function doGet(e) {
             amountFormatted: formattedVal,
             method: payMethod || 'PIX',
             status: isSaleApproved ? 'approved' : 'waiting_payment',
-            platform: platform || (event.indexOf('Kirvano') !== -1 ? 'Kirvano' : 'PerfectPay'),
+            platform: platform || (event.indexOf('Kirvano') !== -1 ? 'Kirvano' : (event.indexOf('Mivvo') !== -1 ? 'Mivvo' : 'PerfectPay')),
             product: product || 'Oferta',
             src: src || '-',
             utm: originTag || '-',
@@ -538,12 +651,20 @@ function doGet(e) {
   }
 }
 
-// 2. GRAVAÇÃO DOS DADOS (Receptor Universal: QuizForge + Webhook Kirvano + Webhook PerfectPay)
+
+// ==========================================
+// 2. GRAVAÇÃO DOS DADOS (Receptor Universal: Mivvo + Kirvano + PerfectPay + QuizForge)
+// ==========================================
 function doPost(e) {
   try {
     var sheet = getTargetSheet();
     var lastCol = sheet.getLastColumn();
-    var expectedHeaders = ['Data/Hora', 'Sessão (ID)', 'Evento', 'Quiz / Produto', 'Etapa', 'Status Venda', 'Valor (R$)', 'Método', 'Plataforma', 'Nome', 'WhatsApp', 'Email', 'SRC', 'UTM_Source', 'UTM_Campaign', 'UTM_Medium', 'UTM_Content', 'Meta CAPI'];
+    var expectedHeaders = [
+      'Data/Hora', 'Sessão (ID)', 'Evento', 'Quiz / Produto', 'Etapa', 
+      'Status Venda', 'Valor (R$)', 'Método', 'Plataforma', 'Nome', 
+      'WhatsApp', 'Email', 'Documento', 'SRC', 'UTM_Source', 
+      'UTM_Campaign', 'UTM_Medium', 'UTM_Content', 'Meta CAPI', 'Acesso App'
+    ];
 
     if (lastCol === 0) {
       sheet.appendRow(expectedHeaders);
@@ -588,48 +709,118 @@ function doPost(e) {
 
     setVal(['data/hora', 'data', 'timestamp'], new Date());
 
-    // CASO A: WEBHOOK DA KIRVANO
+
+    // ==========================================
+    // CASO A: WEBHOOK MIVVO / NOVA PLATAFORMA (sale.paid ou sale.pending)
+    // ==========================================
+    if ((data.event && String(data.event).indexOf('sale.') === 0) || (data.data && data.data.sale_id && data.data.charged_amount !== undefined)) {
+      var dM = data.data || {};
+      var isAppM = (data.event === 'sale.paid' || dM.status === 'paid' || dM.status === 'approved');
+      var isWaitM = (data.event === 'sale.pending' || dM.status === 'pending' || dM.status === 'waiting_payment');
+      var statusStrM = isAppM ? 'approved' : (isWaitM ? 'waiting_payment' : (dM.status || ''));
+      var eventStrM = isAppM ? 'Venda_Aprovada' : 'Aguardando_Pagamento';
+      var custM = dM.customer || {};
+      var utmsM = dM.utms || dM.utm || {};
+      var amountValM = Number(dM.charged_amount !== undefined ? dM.charged_amount : dM.amount) || 0;
+      var prodNameM = (dM.product && dM.product.name) || (dM.offer && dM.offer.name) || 'Oferta';
+
+      // Se comprou order bump, adiciona ao nome do produto
+      if (dM.order_bumps && dM.order_bumps.length > 0) {
+        var bumpNames = dM.order_bumps.map(function(b) { return b.product_name || b.offer_name || 'Bump'; }).join(' + ');
+        prodNameM += ' (+ ' + bumpNames + ')';
+      }
+
+      setVal(['sessão (id)', 'sessão', 'sessao'], dM.sale_id || ('miv_' + Date.now()));
+      setVal(['evento', 'event'], eventStrM);
+      setVal(['quiz / produto', 'produto'], prodNameM);
+      setVal(['status venda', 'status_venda', 'status'], statusStrM);
+      setVal(['valor (r$)', 'valor'], amountValM);
+      setVal(['método', 'metodo'], dM.payment_method || 'PIX');
+      setVal(['plataforma', 'platform'], 'Mivvo');
+      setVal(['nome', 'cliente'], custM.name || '');
+      setVal(['whatsapp', 'telefone'], custM.phone || '');
+      setVal(['email', 'e-mail'], custM.email || '');
+      setVal(['documento', 'cpf'], custM.document || '');
+      setVal(['src', 'sck'], utmsM.src || utmsM.sck || '');
+      setVal(['utm_source', 'source'], utmsM.source || utmsM.utm_source || '');
+      setVal(['utm_campaign', 'campaign'], utmsM.campaign || utmsM.utm_campaign || '');
+      setVal(['utm_medium', 'medium'], utmsM.medium || utmsM.utm_medium || '');
+      setVal(['utm_content', 'content'], utmsM.content || utmsM.utm_content || '');
+
+      // 1. Disparo Meta CAPI para vendas aprovadas
+      if (isAppM) {
+        var capiResM = sendMetaCapiPurchase({
+          orderId: dM.sale_id || ('miv_' + Date.now()),
+          amount: amountValM,
+          productName: prodNameM,
+          name: custM.name || '',
+          email: custM.email || '',
+          phone: custM.phone || '',
+          clientIp: dM.client_ip || utmsM.client_ip || '',
+          clientUserAgent: dM.client_user_agent || utmsM.client_user_agent || '',
+          fbc: utmsM.fbc || utmsM.fbclid || '',
+          fbp: utmsM.fbp || '',
+          externalId: utmsM.external_id || dM.sale_id || ('miv_' + Date.now())
+        });
+        setVal(['meta capi', 'capi'], capiResM.success ? 'Enviado (Purchase)' : ('Erro: ' + (capiResM.error || capiResM.code || capiResM.reason)));
+
+        // 2. Liberação Automática no Firebase (30 dias)
+        if (LIBERAR_FIREBASE_AUTOMATICO && custM.email) {
+          var fbResM = liberarAcessoFirebase30Dias(custM.email);
+          setVal(['acesso app', 'firebase', 'status app'], fbResM);
+        }
+      }
+
+      sheet.appendRow(newRow);
+      return ContentService.createTextOutput(JSON.stringify({ status: 'success', platform: 'Mivvo' })).setMimeType(ContentService.MimeType.JSON);
+    }
+
+
+    // ==========================================
+    // CASO B: WEBHOOK DA KIRVANO
+    // ==========================================
     if (data.sale_id || data.checkout_id || data.event === 'SALE_APPROVED' || (data.fiscal && data.fiscal.total_value !== undefined)) {
-      var isApproved = (data.status === 'APPROVED' || data.event === 'SALE_APPROVED' || data.event === 'ORDER_PAID');
-      var isWaiting = (data.status === 'WAITING_PAYMENT' || data.event === 'WAITING_PAYMENT' || data.event === 'PIX_GENERATED' || data.event === 'ORDER_WAITING_PAYMENT');
-      var statusStr = isApproved ? 'approved' : (isWaiting ? 'waiting_payment' : (data.status || ''));
-      var eventStr = isApproved ? 'Venda_Aprovada' : 'Aguardando_Pagamento';
-      var cust = data.customer || {};
+      var isApprovedK = (data.status === 'APPROVED' || data.event === 'SALE_APPROVED' || data.event === 'ORDER_PAID');
+      var isWaitingK = (data.status === 'WAITING_PAYMENT' || data.event === 'WAITING_PAYMENT' || data.event === 'PIX_GENERATED' || data.event === 'ORDER_WAITING_PAYMENT');
+      var statusStrK = isApprovedK ? 'approved' : (isWaitingK ? 'waiting_payment' : (data.status || ''));
+      var eventStrK = isApprovedK ? 'Venda_Aprovada' : 'Aguardando_Pagamento';
+      var custK = data.customer || {};
       var utmsK = data.utm || {};
-      var amountVal = (data.fiscal && data.fiscal.total_value) || (data.total_price ? parseFloat(String(data.total_price).replace(/[^\d,\.]/g, '').replace(',', '.')) : 0);
-      var prodName = (data.products && data.products[0] && data.products[0].name) || 'Kirvano Oferta';
+      var amountValK = (data.fiscal && data.fiscal.total_value) || (data.total_price ? parseFloat(String(data.total_price).replace(/[^\d,\.]/g, '').replace(',', '.')) : 0);
+      var prodNameK = (data.products && data.products[0] && data.products[0].name) || 'Kirvano Oferta';
 
       setVal(['sessão (id)', 'sessão', 'sessao'], data.sale_id || ('kirv_' + Date.now()));
-      setVal(['evento', 'event'], eventStr);
-      setVal(['quiz / produto', 'produto'], prodName);
-      setVal(['status venda', 'status_venda', 'status'], statusStr);
-      setVal(['valor (r$)', 'valor'], amountVal);
+      setVal(['evento', 'event'], eventStrK);
+      setVal(['quiz / produto', 'produto'], prodNameK);
+      setVal(['status venda', 'status_venda', 'status'], statusStrK);
+      setVal(['valor (r$)', 'valor'], amountValK);
       setVal(['método', 'metodo'], data.payment_method || (data.payment && data.payment.method) || 'PIX');
       setVal(['plataforma', 'platform'], 'Kirvano');
-      setVal(['nome', 'cliente'], cust.name || '');
-      setVal(['whatsapp', 'telefone'], cust.phone_number || '');
-      setVal(['email', 'e-mail'], cust.email || '');
+      setVal(['nome', 'cliente'], custK.name || '');
+      setVal(['whatsapp', 'telefone'], custK.phone_number || '');
+      setVal(['email', 'e-mail'], custK.email || '');
+      setVal(['documento', 'cpf'], custK.document || '');
       setVal(['src', 'sck'], utmsK.src || utmsK.sck || '');
       setVal(['utm_source', 'source'], utmsK.utm_source || '');
       setVal(['utm_campaign', 'campaign'], utmsK.utm_campaign || '');
       setVal(['utm_medium', 'medium'], utmsK.utm_medium || '');
       setVal(['utm_content', 'content'], utmsK.utm_content || '');
 
-      // Disparo Meta CAPI exclusivo para vendas aprovadas (Elimina Pix pendente)
-      if (isApproved) {
-        var addrK = data.address || cust.address || {};
+      // Disparo Meta CAPI para vendas aprovadas
+      if (isApprovedK) {
+        var addrK = data.address || custK.address || {};
         var metaK = data.metadata || data.custom_fields || {};
         var trackingK = data.tracking || {};
         var capiResK = sendMetaCapiPurchase({
           orderId: data.sale_id || ('kirv_' + Date.now()),
-          amount: amountVal,
-          productName: prodName,
-          name: cust.name || '',
-          email: cust.email || '',
-          phone: cust.phone_number || '',
-          zipCode: addrK.zip_code || addrK.cep || cust.zip_code || cust.cep || utmsK.cep || '',
-          city: addrK.city || cust.city || utmsK.city || '',
-          state: addrK.state || cust.state || utmsK.state || utmsK.uf || '',
+          amount: amountValK,
+          productName: prodNameK,
+          name: custK.name || '',
+          email: custK.email || '',
+          phone: custK.phone_number || '',
+          zipCode: addrK.zip_code || addrK.cep || custK.zip_code || custK.cep || utmsK.cep || '',
+          city: addrK.city || custK.city || utmsK.city || '',
+          state: addrK.state || custK.state || utmsK.state || utmsK.uf || '',
           clientIp: data.client_ip || data.ip || trackingK.ip || utmsK.ip || '',
           clientUserAgent: data.client_user_agent || data.user_agent || trackingK.user_agent || utmsK.user_agent || '',
           fbc: utmsK.fbc || utmsK.fbclid || metaK.fbc || metaK.fbclid || data.fbc || '',
@@ -637,13 +828,22 @@ function doPost(e) {
           externalId: utmsK.external_id || metaK.external_id || data.sale_id || ('kirv_' + Date.now())
         });
         setVal(['meta capi', 'capi'], capiResK.success ? 'Enviado (Purchase)' : ('Erro: ' + (capiResK.error || capiResK.code || capiResK.reason)));
+
+        // Liberação Automática no Firebase (30 dias)
+        if (LIBERAR_FIREBASE_AUTOMATICO && custK.email) {
+          var fbResK = liberarAcessoFirebase30Dias(custK.email);
+          setVal(['acesso app', 'firebase', 'status app'], fbResK);
+        }
       }
 
       sheet.appendRow(newRow);
       return ContentService.createTextOutput(JSON.stringify({ status: 'success', platform: 'Kirvano' })).setMimeType(ContentService.MimeType.JSON);
     }
 
-    // CASO B: WEBHOOK DA PERFECTPAY
+
+    // ==========================================
+    // CASO C: WEBHOOK DA PERFECTPAY
+    // ==========================================
     if (data.sale_status_enum_key !== undefined || data.sale_amount !== undefined || (data.code && String(data.code).indexOf('PP') === 0) || data.webhook_owner) {
       var isAppP = (data.sale_status_enum === 2 || data.sale_status_enum_key === 'approved' || data.sale_status_detail === 'approved');
       var isWaitP = (data.sale_status_enum === 1 || data.sale_status_enum_key === 'waiting_payment' || data.sale_status_enum_key === 'billet_printed' || data.sale_status_detail === 'waiting_payment');
@@ -665,13 +865,14 @@ function doPost(e) {
       setVal(['nome', 'cliente'], custP.full_name || custP.name || '');
       setVal(['whatsapp', 'telefone'], phoneP);
       setVal(['email', 'e-mail'], custP.email || '');
+      setVal(['documento', 'cpf'], custP.identification_number || '');
       setVal(['src', 'sck'], metaP.src || metaP.sck || '');
       setVal(['utm_source', 'source'], metaP.utm_source || '');
       setVal(['utm_campaign', 'campaign'], metaP.utm_campaign || '');
       setVal(['utm_medium', 'medium'], metaP.utm_medium || '');
       setVal(['utm_content', 'content'], metaP.utm_content || '');
 
-      // Disparo Meta CAPI exclusivo para vendas aprovadas (Elimina Pix pendente)
+      // Disparo Meta CAPI para vendas aprovadas
       if (isAppP) {
         var paramsP = data.params || data.query_params || {};
         var capiResP = sendMetaCapiPurchase({
@@ -692,13 +893,22 @@ function doPost(e) {
           externalId: metaP.external_id || metaP.session_id || metaP.sessionId || paramsP.external_id || data.code || ('pp_' + Date.now())
         });
         setVal(['meta capi', 'capi'], capiResP.success ? 'Enviado (Purchase)' : ('Erro: ' + (capiResP.error || capiResP.code || capiResP.reason)));
+
+        // Liberação Automática no Firebase (30 dias)
+        if (LIBERAR_FIREBASE_AUTOMATICO && custP.email) {
+          var fbResP = liberarAcessoFirebase30Dias(custP.email);
+          setVal(['acesso app', 'firebase', 'status app'], fbResP);
+        }
       }
 
       sheet.appendRow(newRow);
       return ContentService.createTextOutput(JSON.stringify({ status: 'success', platform: 'PerfectPay' })).setMimeType(ContentService.MimeType.JSON);
     }
 
-    // CASO C: DISPARO PADRÃO DO QUIZFORGE
+
+    // ==========================================
+    // CASO D: DISPARO PADRÃO DO QUIZFORGE
+    // ==========================================
     var utms = data.utms || {};
     var src = data.src || utms.src || utms.sck || utms.SRC || utms.SCK || '';
     setVal(['sessão (id)', 'sessão', 'sessao'], data.sessionId || '');
