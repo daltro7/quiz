@@ -11,7 +11,7 @@
 var META_PIXEL_ID = "1375613420763965";        // Seu Pixel ID da Meta
 var META_API_TOKEN = "";                       // Cole o Token de Acesso da Conversions API (gerado no Gerenciador de Eventos)
 var META_TEST_EVENT_CODE = "";                 // Opcional: Cole aqui o código de teste da aba "Testar Eventos" da Meta (ex: TEST12345)
-var META_QUIZ_URL = "https://orcaobra.site";   // URL da sua página / quiz
+var META_QUIZ_URL = "https://seudominio.com";   // URL da sua página / quiz (ex: https://meusite.com.br)
 
 // Funções de Criptografia SHA-256 e Formatação para a Meta API
 function sha256(input) {
@@ -239,10 +239,24 @@ function testarEnvioMetaCapi() {
   return res;
 }
 
+// ==========================================
+// FUNÇÕES DE SUPORTE E SEGURANÇA DA PLANILHA
+// ==========================================
+
+// Obtém com segurança a aba correta da planilha (busca 'Respostas', 'Dados', 'Vendas', a aba ativa ou a 1ª aba)
+function getTargetSheet() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  return ss.getSheetByName('Respostas') || 
+         ss.getSheetByName('Dados') || 
+         ss.getSheetByName('Vendas') || 
+         ss.getActiveSheet() || 
+         ss.getSheets()[0];
+}
+
 // Permite que qualquer venda colocada manualmente na planilha seja enviada para a Meta!
 function enviarLinhaSelecionadaParaMeta() {
   var ui = SpreadsheetApp.getUi();
-  var sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
+  var sheet = getTargetSheet();
   var rowIdx = sheet.getActiveCell().getRow();
   if (rowIdx <= 1) {
     ui.alert('Selecione uma linha de venda (linha 2 em diante) para enviar à Meta.');
@@ -289,7 +303,7 @@ function enviarLinhaSelecionadaParaMeta() {
 // 1. LEITURA DOS DADOS (QuizForge ➔ Planilha: Funil, Leads e Vendas)
 function doGet(e) {
   try {
-    var sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
+    var sheet = getTargetSheet();
     var lastRow = sheet.getLastRow();
     if (lastRow <= 1) {
       return ContentService.createTextOutput(JSON.stringify({
@@ -527,7 +541,7 @@ function doGet(e) {
 // 2. GRAVAÇÃO DOS DADOS (Receptor Universal: QuizForge + Webhook Kirvano + Webhook PerfectPay)
 function doPost(e) {
   try {
-    var sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
+    var sheet = getTargetSheet();
     var lastCol = sheet.getLastColumn();
     var expectedHeaders = ['Data/Hora', 'Sessão (ID)', 'Evento', 'Quiz / Produto', 'Etapa', 'Status Venda', 'Valor (R$)', 'Método', 'Plataforma', 'Nome', 'WhatsApp', 'Email', 'SRC', 'UTM_Source', 'UTM_Campaign', 'UTM_Medium', 'UTM_Content', 'Meta CAPI'];
 

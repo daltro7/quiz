@@ -2645,6 +2645,7 @@ const App = {
     if (document.getElementById('tracking-ga4')) document.getElementById('tracking-ga4').value = tracking.ga4Id || '';
 
     // Meta Conversions API (CAPI) & Checkout Tracking
+    if (document.getElementById('tracking-quiz-url')) document.getElementById('tracking-quiz-url').value = tracking.quizUrl || tracking.metaQuizUrl || '';
     if (document.getElementById('tracking-meta-token')) document.getElementById('tracking-meta-token').value = tracking.metaApiToken || '';
     if (document.getElementById('tracking-meta-test-code')) document.getElementById('tracking-meta-test-code').value = tracking.metaTestCode || '';
     if (document.getElementById('tracking-send-initiate-checkout')) {
@@ -5229,6 +5230,10 @@ const App = {
       }
       if (tracking.metaTestCode) {
         code = code.replace(/var META_TEST_EVENT_CODE = ".*?";/, `var META_TEST_EVENT_CODE = "${tracking.metaTestCode.trim()}";`);
+      }
+      if (tracking.quizUrl || tracking.metaQuizUrl) {
+        const qUrl = (tracking.quizUrl || tracking.metaQuizUrl).trim();
+        code = code.replace(/var META_QUIZ_URL = ".*?";/, `var META_QUIZ_URL = "${qUrl}";`);
       }
     }
     navigator.clipboard.writeText(code).then(() => {

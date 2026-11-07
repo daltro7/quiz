@@ -573,6 +573,14 @@
                 <span class="px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-400 border border-blue-500/20 text-[10px] font-bold">Oficial Meta</span>
               </div>
 
+              <div class="space-y-1.5">
+                <label class="block text-xs font-semibold text-slate-300">
+                  Domínio / URL do Quiz (Meta CAPI & Rastreamento):
+                </label>
+                <input type="url" id="tracking-quiz-url" onchange="App.updateTrackingProp('quizUrl', this.value)" placeholder="https://meudominio.com.br" class="w-full bg-slate-900 border border-slate-700 px-3 py-2 rounded-xl text-xs text-white focus:border-blue-500 outline-none">
+                <p class="text-[10px] text-slate-400">URL onde o quiz está publicado (ex: <code>https://seusite.com.br</code>). A Meta exige este domínio para validar a origem das compras.</p>
+              </div>
+
               <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
                 <div class="space-y-1.5">
                   <label class="block text-xs font-semibold text-slate-300">
@@ -939,7 +947,7 @@
 var META_PIXEL_ID = &quot;1375613420763965&quot;;        // Seu Pixel ID da Meta
 var META_API_TOKEN = &quot;&quot;;                       // Cole o Token de Acesso da Conversions API (gerado no Gerenciador de Eventos)
 var META_TEST_EVENT_CODE = &quot;&quot;;                 // Opcional: Cole aqui o código de teste da aba &quot;Testar Eventos&quot; da Meta (ex: TEST12345)
-var META_QUIZ_URL = &quot;https://orcaobra.site&quot;;   // URL da sua página / quiz
+var META_QUIZ_URL = &quot;https://seudominio.com&quot;;   // URL da sua página / quiz (ex: https://meusite.com.br)
 
 // Funções de Criptografia SHA-256 e Formatação para a Meta API
 function sha256(input) {
@@ -1167,10 +1175,24 @@ function testarEnvioMetaCapi() {
   return res;
 }
 
+// ==========================================
+// FUNÇÕES DE SUPORTE E SEGURANÇA DA PLANILHA
+// ==========================================
+
+// Obtém com segurança a aba correta da planilha (busca &apos;Respostas&apos;, &apos;Dados&apos;, &apos;Vendas&apos;, a aba ativa ou a 1ª aba)
+function getTargetSheet() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  return ss.getSheetByName(&apos;Respostas&apos;) || 
+         ss.getSheetByName(&apos;Dados&apos;) || 
+         ss.getSheetByName(&apos;Vendas&apos;) || 
+         ss.getActiveSheet() || 
+         ss.getSheets()[0];
+}
+
 // Permite que qualquer venda colocada manualmente na planilha seja enviada para a Meta!
 function enviarLinhaSelecionadaParaMeta() {
   var ui = SpreadsheetApp.getUi();
-  var sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
+  var sheet = getTargetSheet();
   var rowIdx = sheet.getActiveCell().getRow();
   if (rowIdx &lt;= 1) {
     ui.alert(&apos;Selecione uma linha de venda (linha 2 em diante) para enviar à Meta.&apos;);
@@ -1217,7 +1239,7 @@ function enviarLinhaSelecionadaParaMeta() {
 // 1. LEITURA DOS DADOS (QuizForge ➔ Planilha: Funil, Leads e Vendas)
 function doGet(e) {
   try {
-    var sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
+    var sheet = getTargetSheet();
     var lastRow = sheet.getLastRow();
     if (lastRow &lt;= 1) {
       return ContentService.createTextOutput(JSON.stringify({
@@ -1455,7 +1477,7 @@ function doGet(e) {
 // 2. GRAVAÇÃO DOS DADOS (Receptor Universal: QuizForge + Webhook Kirvano + Webhook PerfectPay)
 function doPost(e) {
   try {
-    var sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
+    var sheet = getTargetSheet();
     var lastCol = sheet.getLastColumn();
     var expectedHeaders = [&apos;Data/Hora&apos;, &apos;Sessão (ID)&apos;, &apos;Evento&apos;, &apos;Quiz / Produto&apos;, &apos;Etapa&apos;, &apos;Status Venda&apos;, &apos;Valor (R$)&apos;, &apos;Método&apos;, &apos;Plataforma&apos;, &apos;Nome&apos;, &apos;WhatsApp&apos;, &apos;Email&apos;, &apos;SRC&apos;, &apos;UTM_Source&apos;, &apos;UTM_Campaign&apos;, &apos;UTM_Medium&apos;, &apos;UTM_Content&apos;, &apos;Meta CAPI&apos;];
 
