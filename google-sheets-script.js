@@ -47,15 +47,23 @@ function sendMetaCapiPurchase(params) {
     return { success: false, reason: 'META_PIXEL_ID ou META_API_TOKEN não preenchidos no topo do script.' };
   }
   try {
+    var nowSec = Math.floor(Date.now() / 1000);
+    var nowMs = Date.now();
     var userData = {};
+
+    // 1. Email (em)
     if (params.email) {
       var hEm = sha256(params.email);
       if (hEm) userData.em = [hEm];
     }
+
+    // 2. Telefone (ph)
     if (params.phone) {
       var hPh = sha256(normalizePhoneForMeta(params.phone));
       if (hPh) userData.ph = [hPh];
     }
+
+    // 3. Nome (fn) e Sobrenome (ln)
     if (params.name) {
       var parts = String(params.name).trim().split(/\s+/);
       if (parts[0]) {
@@ -67,12 +75,97 @@ function sendMetaCapiPurchase(params) {
         if (hLn) userData.ln = [hLn];
       }
     }
+
+    // 4. País (country)
     userData.country = [sha256('br')];
+
+    // 5. Código Postal / CEP (zp) - +13% qualidade de correspondência
+    if (params.zipCode || params.cep || params.postalCode) {
+      var cleanZp = String(params.zipCode || params.cep || params.postalCode).replace(/\D/g, '');
+      if (cleanZp) {
+        var hZp = sha256(cleanZp);
+        if (hZp) userData.zp = [hZp];
+      }
+    }
+
+    // 6. Cidade (ct) - +13% qualidade de correspondência
+    if (params.city || params.cidade) {
+      var cleanCt = String(params.city || params.cidade)
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^a-z0-9]/g, '')
+        .trim();
+      if (cleanCt) {
+        var hCt = sha256(cleanCt);
+        if (hCt) userData.ct = [hCt];
+      }
+    }
+
+    // 7. Estado / UF (st) - +13% qualidade de correspondência
+    if (params.state || params.estado || params.uf) {
+      var cleanSt = String(params.state || params.estado || params.uf)
+        .toLowerCase()
+        .trim()
+        .replace(/[^a-z]/g, '');
+      if (cleanSt.length > 2) cleanSt = cleanSt.substring(0, 2);
+      if (cleanSt) {
+        var hSt = sha256(cleanSt);
+        if (hSt) userData.st = [hSt];
+      }
+    }
+
+    // 8. Data de Nascimento (dob) - +13% qualidade de correspondência (formato YYYYMMDD)
+    if (params.dob || params.birthDate || params.dataNascimento) {
+      var cleanDob = String(params.dob || params.birthDate || params.dataNascimento).replace(/\D/g, '');
+      if (cleanDob && cleanDob.length === 8) {
+        if (parseInt(cleanDob.substring(4, 8), 10) > 1900) {
+          cleanDob = cleanDob.substring(4, 8) + cleanDob.substring(2, 4) + cleanDob.substring(0, 2);
+        }
+        var hDob = sha256(cleanDob);
+        if (hDob) userData.dob = [hDob];
+      }
+    }
+
+    // 9. Identificador Externo (external_id) - +22% qualidade de correspondência
+    var extId = params.externalId || params.sessionId || params.orderId || '';
+    if (extId) {
+      userData.external_id = [String(extId)];
+    }
+
+    // 10. Click ID da Meta (fbc) - +28% qualidade de correspondência (NÃO hasheado)
+    var rawFbc = params.fbc || params.fbclid || '';
+    if (rawFbc) {
+      rawFbc = String(rawFbc).trim();
+      if (rawFbc.indexOf('fb.1.') === 0) {
+        userData.fbc = rawFbc;
+      } else {
+        userData.fbc = 'fb.1.' + nowMs + '.' + rawFbc;
+      }
+    }
+
+    // 11. Browser ID da Meta (fbp) - +22% qualidade de correspondência (NÃO hasheado)
+    if (params.fbp) {
+      var rawFbp = String(params.fbp).trim();
+      if (rawFbp) userData.fbp = rawFbp;
+    }
+
+    // 12. Endereço IP do Cliente (client_ip_address) - +28% qualidade de correspondência (NÃO hasheado)
+    if (params.clientIp || params.ip) {
+      var rawIp = String(params.clientIp || params.ip).trim();
+      if (rawIp) userData.client_ip_address = rawIp;
+    }
+
+    // 13. Agente do Usuário (client_user_agent) - +28% qualidade de correspondência (NÃO hasheado)
+    if (params.clientUserAgent || params.userAgent) {
+      var rawUa = String(params.clientUserAgent || params.userAgent).trim();
+      if (rawUa) userData.client_user_agent = rawUa;
+    }
 
     var evt = {
       event_name: 'Purchase',
-      event_time: Math.floor(Date.now() / 1000),
-      event_id: String(params.orderId || ('ord_' + Date.now())),
+      event_time: nowSec,
+      event_id: String(params.orderId || ('ord_' + nowMs)),
       action_source: 'website',
       event_source_url: (META_QUIZ_URL || 'https://orcaobra.site').trim(),
       user_data: userData,
@@ -510,13 +603,24 @@ function doPost(e) {
 
       // Disparo Meta CAPI exclusivo para vendas aprovadas (Elimina Pix pendente)
       if (isApproved) {
+        var addrK = data.address || cust.address || {};
+        var metaK = data.metadata || data.custom_fields || {};
+        var trackingK = data.tracking || {};
         var capiResK = sendMetaCapiPurchase({
           orderId: data.sale_id || ('kirv_' + Date.now()),
           amount: amountVal,
           productName: prodName,
           name: cust.name || '',
           email: cust.email || '',
-          phone: cust.phone_number || ''
+          phone: cust.phone_number || '',
+          zipCode: addrK.zip_code || addrK.cep || cust.zip_code || cust.cep || utmsK.cep || '',
+          city: addrK.city || cust.city || utmsK.city || '',
+          state: addrK.state || cust.state || utmsK.state || utmsK.uf || '',
+          clientIp: data.client_ip || data.ip || trackingK.ip || utmsK.ip || '',
+          clientUserAgent: data.client_user_agent || data.user_agent || trackingK.user_agent || utmsK.user_agent || '',
+          fbc: utmsK.fbc || utmsK.fbclid || metaK.fbc || metaK.fbclid || data.fbc || '',
+          fbp: utmsK.fbp || metaK.fbp || data.fbp || '',
+          externalId: utmsK.external_id || metaK.external_id || data.sale_id || ('kirv_' + Date.now())
         });
         setVal(['meta capi', 'capi'], capiResK.success ? 'Enviado (Purchase)' : ('Erro: ' + (capiResK.error || capiResK.code || capiResK.reason)));
       }
@@ -555,13 +659,23 @@ function doPost(e) {
 
       // Disparo Meta CAPI exclusivo para vendas aprovadas (Elimina Pix pendente)
       if (isAppP) {
+        var paramsP = data.params || data.query_params || {};
         var capiResP = sendMetaCapiPurchase({
           orderId: data.code || ('pp_' + Date.now()),
           amount: amountValP,
           productName: prodNameP,
           name: custP.full_name || custP.name || '',
           email: custP.email || '',
-          phone: phoneP
+          phone: phoneP,
+          zipCode: custP.address_zip_code || custP.zip_code || custP.cep || metaP.zip_code || metaP.cep || '',
+          city: custP.address_city || custP.city || metaP.city || '',
+          state: custP.address_state || custP.state || custP.uf || metaP.state || '',
+          dob: custP.birth_date || custP.dob || custP.data_nascimento || '',
+          clientIp: data.client_ip || data.ip || metaP.client_ip || metaP.ip || '',
+          clientUserAgent: data.client_user_agent || data.user_agent || metaP.client_user_agent || metaP.user_agent || '',
+          fbc: metaP.fbc || metaP.fbclid || paramsP.fbc || paramsP.fbclid || data.fbc || '',
+          fbp: metaP.fbp || paramsP.fbp || data.fbp || '',
+          externalId: metaP.external_id || metaP.session_id || metaP.sessionId || paramsP.external_id || data.code || ('pp_' + Date.now())
         });
         setVal(['meta capi', 'capi'], capiResP.success ? 'Enviado (Purchase)' : ('Erro: ' + (capiResP.error || capiResP.code || capiResP.reason)));
       }

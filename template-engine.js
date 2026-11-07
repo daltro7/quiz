@@ -3417,6 +3417,28 @@ const QuizTemplateEngine = {
         });
       },
 
+      getCookie(name) {
+        try {
+          const match = document.cookie.match(new RegExp('(?:^|;\\s*)' + name + '=([^;]+)'));
+          return match ? decodeURIComponent(match[1]) : '';
+        } catch(e) { return ''; }
+      },
+
+      refreshMetaCookies() {
+        try {
+          if (!this.utmParams) this.utmParams = {};
+          const fbpCookie = this.getCookie('_fbp');
+          if (fbpCookie && !this.utmParams.fbp) this.utmParams.fbp = fbpCookie;
+
+          let fbcCookie = this.getCookie('_fbc');
+          if (!fbcCookie && this.utmParams.fbclid) {
+            fbcCookie = 'fb.1.' + Date.now() + '.' + this.utmParams.fbclid;
+          }
+          if (fbcCookie && !this.utmParams.fbc) this.utmParams.fbc = fbcCookie;
+          if (this.sessionId && !this.utmParams.external_id) this.utmParams.external_id = this.sessionId;
+        } catch(e) {}
+      },
+
       captureUtms() {
         const utms = {};
         try {
@@ -3425,6 +3447,23 @@ const QuizTemplateEngine = {
             utms[key] = value;
           }
         } catch (e) {}
+
+        // Identificadores Avançados de Correspondência da Meta (fbc, fbp, external_id)
+        try {
+          const fbpCookie = this.getCookie('_fbp');
+          if (fbpCookie) utms.fbp = fbpCookie;
+
+          let fbcCookie = this.getCookie('_fbc');
+          if (!fbcCookie && utms.fbclid) {
+            fbcCookie = 'fb.1.' + Date.now() + '.' + utms.fbclid;
+          }
+          if (fbcCookie) utms.fbc = fbcCookie;
+        } catch(e) {}
+
+        if (this.sessionId) {
+          utms.external_id = this.sessionId;
+        }
+
         return utms;
       },
 
@@ -3569,6 +3608,7 @@ const QuizTemplateEngine = {
         if (!link) return;
         const href = link.getAttribute('href');
         if (href && href !== '#' && !href.startsWith('javascript:')) {
+          this.refreshMetaCookies();
           if (this.utmParams && Object.keys(this.utmParams).length > 0) {
             link.setAttribute('href', this.appendUtmsToUrl(href));
           }
@@ -3576,6 +3616,8 @@ const QuizTemplateEngine = {
             link.dataset.checkoutBound = 'true';
             link.addEventListener('click', () => {
               try {
+                this.refreshMetaCookies();
+                link.setAttribute('href', this.appendUtmsToUrl(link.getAttribute('href') || href));
                 this.trackFunnelEvent('Checkout_Iniciado', {
                   checkoutUrl: link.getAttribute('href') || href,
                   stepIndex: this.currentStepIndex,
@@ -4777,6 +4819,7 @@ const QuizTemplateEngine = {
       },
 
       trackFunnelEvent(eventName, eventData) {
+        this.refreshMetaCookies();
         const utms = this.utmParams || {};
         const srcVal = utms.src || utms.sck || utms.SRC || utms.SCK || '';
         const payload = {
@@ -4786,6 +4829,10 @@ const QuizTemplateEngine = {
           quizTitle: this.config.title || 'Quiz de Vendas',
           timestamp: new Date().toISOString(),
           src: srcVal,
+          fbc: utms.fbc || this.getCookie('_fbc') || '',
+          fbp: utms.fbp || this.getCookie('_fbp') || '',
+          external_id: this.sessionId,
+          client_user_agent: (typeof navigator !== 'undefined' && navigator.userAgent) || '',
           utm_source: utms.utm_source || utms.source || '',
           utm_campaign: utms.utm_campaign || utms.campaign || '',
           utm_medium: utms.utm_medium || utms.medium || '',
@@ -4804,6 +4851,9 @@ const QuizTemplateEngine = {
 
         if (window.fbq) {
           try {
+            if (this.sessionId) {
+              try { fbq('setUserProperties', { external_id: this.sessionId }); } catch(upErr) {}
+            }
             if (eventName === 'Lead') {
               fbq('track', 'Lead');
             } else if (isCheckoutEvent) {
@@ -4876,12 +4926,30 @@ const QuizTemplateEngine = {
     }
 
     function initSalesPageEnhancements() {
-      // 1. Propaga automaticamente UTMs e SRC para links de checkout (Kirvano e PerfectPay)
+      // 1. Propaga automaticamente UTMs, SRC, fbc, fbp e external_id para links de checkout (Kirvano e PerfectPay)
       try {
         const p = new URLSearchParams(window.location.search);
+
+        // Captura e repassa cookies da Meta para o checkout
+        try {
+          const matchFbp = document.cookie.match(/(?:^|;\s*)_fbp=([^;]+)/);
+          if (matchFbp && !p.has('fbp')) p.set('fbp', decodeURIComponent(matchFbp[1]));
+
+          let matchFbc = document.cookie.match(/(?:^|;\s*)_fbc=([^;]+)/);
+          if (!matchFbc && p.has('fbclid')) {
+            p.set('fbc', 'fb.1.' + Date.now() + '.' + p.get('fbclid'));
+          } else if (matchFbc && !p.has('fbc')) {
+            p.set('fbc', decodeURIComponent(matchFbc[1]));
+          }
+
+          if (window.QuizApp && window.QuizApp.sessionId && !p.has('external_id')) {
+            p.set('external_id', window.QuizApp.sessionId);
+          }
+        } catch(metaCookieErr) {}
+
         const searchStr = p.toString();
         if (searchStr) {
-          document.querySelectorAll('a[href*="kirvano.com"], a[href*="checkout.perfectpay"]').forEach(link => {
+          document.querySelectorAll('a[href*="kirvano.com"], a[href*="perfectpay.com.br"], a[href*="checkout.perfectpay"]').forEach(link => {
             const cur = link.getAttribute('href');
             if (cur && !cur.startsWith('#')) {
               link.setAttribute('href', cur + (cur.indexOf('?') > 0 ? '&' : '?') + searchStr);

@@ -975,15 +975,23 @@ function sendMetaCapiPurchase(params) {
     return { success: false, reason: &apos;META_PIXEL_ID ou META_API_TOKEN não preenchidos no topo do script.&apos; };
   }
   try {
+    var nowSec = Math.floor(Date.now() / 1000);
+    var nowMs = Date.now();
     var userData = {};
+
+    // 1. Email (em)
     if (params.email) {
       var hEm = sha256(params.email);
       if (hEm) userData.em = [hEm];
     }
+
+    // 2. Telefone (ph)
     if (params.phone) {
       var hPh = sha256(normalizePhoneForMeta(params.phone));
       if (hPh) userData.ph = [hPh];
     }
+
+    // 3. Nome (fn) e Sobrenome (ln)
     if (params.name) {
       var parts = String(params.name).trim().split(/\s+/);
       if (parts[0]) {
@@ -995,12 +1003,97 @@ function sendMetaCapiPurchase(params) {
         if (hLn) userData.ln = [hLn];
       }
     }
+
+    // 4. País (country)
     userData.country = [sha256(&apos;br&apos;)];
+
+    // 5. Código Postal / CEP (zp) - +13% qualidade
+    if (params.zipCode || params.cep || params.postalCode) {
+      var cleanZp = String(params.zipCode || params.cep || params.postalCode).replace(/\D/g, &apos;&apos;);
+      if (cleanZp) {
+        var hZp = sha256(cleanZp);
+        if (hZp) userData.zp = [hZp];
+      }
+    }
+
+    // 6. Cidade (ct) - +13% qualidade
+    if (params.city || params.cidade) {
+      var cleanCt = String(params.city || params.cidade)
+        .toLowerCase()
+        .normalize(&apos;NFD&apos;)
+        .replace(/[\u0300-\u036f]/g, &apos;&apos;)
+        .replace(/[^a-z0-9]/g, &apos;&apos;)
+        .trim();
+      if (cleanCt) {
+        var hCt = sha256(cleanCt);
+        if (hCt) userData.ct = [hCt];
+      }
+    }
+
+    // 7. Estado / UF (st) - +13% qualidade
+    if (params.state || params.estado || params.uf) {
+      var cleanSt = String(params.state || params.estado || params.uf)
+        .toLowerCase()
+        .trim()
+        .replace(/[^a-z]/g, &apos;&apos;);
+      if (cleanSt.length &gt; 2) cleanSt = cleanSt.substring(0, 2);
+      if (cleanSt) {
+        var hSt = sha256(cleanSt);
+        if (hSt) userData.st = [hSt];
+      }
+    }
+
+    // 8. Data de Nascimento (dob) - +13% qualidade
+    if (params.dob || params.birthDate || params.dataNascimento) {
+      var cleanDob = String(params.dob || params.birthDate || params.dataNascimento).replace(/\D/g, &apos;&apos;);
+      if (cleanDob &amp;&amp; cleanDob.length === 8) {
+        if (parseInt(cleanDob.substring(4, 8), 10) &gt; 1900) {
+          cleanDob = cleanDob.substring(4, 8) + cleanDob.substring(2, 4) + cleanDob.substring(0, 2);
+        }
+        var hDob = sha256(cleanDob);
+        if (hDob) userData.dob = [hDob];
+      }
+    }
+
+    // 9. Identificador Externo (external_id) - +22% qualidade
+    var extId = params.externalId || params.sessionId || params.orderId || &apos;&apos;;
+    if (extId) {
+      userData.external_id = [String(extId)];
+    }
+
+    // 10. Click ID da Meta (fbc) - +28% qualidade (NÃO hasheado)
+    var rawFbc = params.fbc || params.fbclid || &apos;&apos;;
+    if (rawFbc) {
+      rawFbc = String(rawFbc).trim();
+      if (rawFbc.indexOf(&apos;fb.1.&apos;) === 0) {
+        userData.fbc = rawFbc;
+      } else {
+        userData.fbc = &apos;fb.1.&apos; + nowMs + &apos;.&apos; + rawFbc;
+      }
+    }
+
+    // 11. Browser ID da Meta (fbp) - +22% qualidade (NÃO hasheado)
+    if (params.fbp) {
+      var rawFbp = String(params.fbp).trim();
+      if (rawFbp) userData.fbp = rawFbp;
+    }
+
+    // 12. Endereço IP do Cliente (client_ip_address) - +28% qualidade (NÃO hasheado)
+    if (params.clientIp || params.ip) {
+      var rawIp = String(params.clientIp || params.ip).trim();
+      if (rawIp) userData.client_ip_address = rawIp;
+    }
+
+    // 13. Agente do Usuário (client_user_agent) - +28% qualidade (NÃO hasheado)
+    if (params.clientUserAgent || params.userAgent) {
+      var rawUa = String(params.clientUserAgent || params.userAgent).trim();
+      if (rawUa) userData.client_user_agent = rawUa;
+    }
 
     var evt = {
       event_name: &apos;Purchase&apos;,
-      event_time: Math.floor(Date.now() / 1000),
-      event_id: String(params.orderId || (&apos;ord_&apos; + Date.now())),
+      event_time: nowSec,
+      event_id: String(params.orderId || (&apos;ord_&apos; + nowMs)),
       action_source: &apos;website&apos;,
       event_source_url: (META_QUIZ_URL || &apos;https://orcaobra.site&apos;).trim(),
       user_data: userData,
@@ -1438,13 +1531,24 @@ function doPost(e) {
 
       // Disparo Meta CAPI exclusivo para vendas aprovadas (Elimina Pix pendente)
       if (isApproved) {
+        var addrK = data.address || cust.address || {};
+        var metaK = data.metadata || data.custom_fields || {};
+        var trackingK = data.tracking || {};
         var capiResK = sendMetaCapiPurchase({
           orderId: data.sale_id || (&apos;kirv_&apos; + Date.now()),
           amount: amountVal,
           productName: prodName,
           name: cust.name || &apos;&apos;,
           email: cust.email || &apos;&apos;,
-          phone: cust.phone_number || &apos;&apos;
+          phone: cust.phone_number || &apos;&apos;,
+          zipCode: addrK.zip_code || addrK.cep || cust.zip_code || cust.cep || utmsK.cep || &apos;&apos;,
+          city: addrK.city || cust.city || utmsK.city || &apos;&apos;,
+          state: addrK.state || cust.state || utmsK.state || utmsK.uf || &apos;&apos;,
+          clientIp: data.client_ip || data.ip || trackingK.ip || utmsK.ip || &apos;&apos;,
+          clientUserAgent: data.client_user_agent || data.user_agent || trackingK.user_agent || utmsK.user_agent || &apos;&apos;,
+          fbc: utmsK.fbc || utmsK.fbclid || metaK.fbc || metaK.fbclid || data.fbc || &apos;&apos;,
+          fbp: utmsK.fbp || metaK.fbp || data.fbp || &apos;&apos;,
+          externalId: utmsK.external_id || metaK.external_id || data.sale_id || (&apos;kirv_&apos; + Date.now())
         });
         setVal([&apos;meta capi&apos;, &apos;capi&apos;], capiResK.success ? &apos;Enviado (Purchase)&apos; : (&apos;Erro: &apos; + (capiResK.error || capiResK.code || capiResK.reason)));
       }
@@ -1483,13 +1587,23 @@ function doPost(e) {
 
       // Disparo Meta CAPI exclusivo para vendas aprovadas (Elimina Pix pendente)
       if (isAppP) {
+        var paramsP = data.params || data.query_params || {};
         var capiResP = sendMetaCapiPurchase({
           orderId: data.code || (&apos;pp_&apos; + Date.now()),
           amount: amountValP,
           productName: prodNameP,
           name: custP.full_name || custP.name || &apos;&apos;,
           email: custP.email || &apos;&apos;,
-          phone: phoneP
+          phone: phoneP,
+          zipCode: custP.address_zip_code || custP.zip_code || custP.cep || metaP.zip_code || metaP.cep || &apos;&apos;,
+          city: custP.address_city || custP.city || metaP.city || &apos;&apos;,
+          state: custP.address_state || custP.state || custP.uf || metaP.state || &apos;&apos;,
+          dob: custP.birth_date || custP.dob || custP.data_nascimento || &apos;&apos;,
+          clientIp: data.client_ip || data.ip || metaP.client_ip || metaP.ip || &apos;&apos;,
+          clientUserAgent: data.client_user_agent || data.user_agent || metaP.client_user_agent || metaP.user_agent || &apos;&apos;,
+          fbc: metaP.fbc || metaP.fbclid || paramsP.fbc || paramsP.fbclid || data.fbc || &apos;&apos;,
+          fbp: metaP.fbp || paramsP.fbp || data.fbp || &apos;&apos;,
+          externalId: metaP.external_id || metaP.session_id || metaP.sessionId || paramsP.external_id || data.code || (&apos;pp_&apos; + Date.now())
         });
         setVal([&apos;meta capi&apos;, &apos;capi&apos;], capiResP.success ? &apos;Enviado (Purchase)&apos; : (&apos;Erro: &apos; + (capiResP.error || capiResP.code || capiResP.reason)));
       }
@@ -1799,7 +1913,7 @@ function doPost(e) {
   </div>
 
   <!-- Scripts do Construtor (Com cache-buster para atualização imediata na hospedagem) -->
-  <script src="template-engine.js?v=4.2.0"></script>
-  <script src="app.js?v=4.2.0"></script>
+  <script src="template-engine.js?v=4.3.0"></script>
+  <script src="app.js?v=4.3.0"></script>
 </body>
 </html>
