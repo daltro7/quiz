@@ -15,7 +15,9 @@ var META_QUIZ_URL = "https://seudominio.com.br"; // URL da sua página / quiz de
 // 2. CONFIGURAÇÕES FIREBASE (LIBERAÇÃO DO APP)
 // ==========================================
 var FIREBASE_PROJECT_ID = "orcaora-pro";         // ID do projeto no Firebase (ex: orcaora-pro)
-var LIBERAR_FIREBASE_AUTOMATICO = true;        // true = libera 30 dias no app na hora que a venda for paga
+var FIREBASE_API_KEY = "";                      // Chave de Acesso / Token do Firebase (Opcional - se vazio usa OAuth nativo do Google)
+var FIREBASE_DIAS_ACESSO = 30;                  // Quantidade de dias de acesso concedidos (padrão: 30)
+var LIBERAR_FIREBASE_AUTOMATICO = true;        // true = ativa liberação no app | false = desativa para produtos sem app
 
 
 // ==========================================
@@ -210,20 +212,22 @@ function sendMetaCapiPurchase(params) {
 
 
 // ==========================================
-// FUNÇÕES DE LIBERAÇÃO FIREBASE FIRESTORE (30 DIAS)
+// FUNÇÕES DE LIBERAÇÃO FIREBASE FIRESTORE
 // ==========================================
 function liberarAcessoFirebase30Dias(email) {
+  if (!LIBERAR_FIREBASE_AUTOMATICO) return "Desativado";
   if (!email || String(email).indexOf('@') === -1) return "❌ E-mail inválido";
   var cleanEmail = String(email).trim().toLowerCase();
   var projectId = (FIREBASE_PROJECT_ID || '').trim();
   if (!projectId) return "⚠️ FIREBASE_PROJECT_ID não configurado";
 
+  var dias = Number(FIREBASE_DIAS_ACESSO) || 30;
   var dataExpiracao = new Date();
-  dataExpiracao.setDate(dataExpiracao.getDate() + 30);
+  dataExpiracao.setDate(dataExpiracao.getDate() + dias);
   var dataIso = dataExpiracao.toISOString();
 
   var urlBusca = "https://firestore.googleapis.com/v1/projects/" + encodeURIComponent(projectId) + "/databases/(default)/documents:runQuery";
-  var token = ScriptApp.getOAuthToken();
+  var token = (FIREBASE_API_KEY || '').trim() || ScriptApp.getOAuthToken();
 
   var queryPayload = {
     "structuredQuery": {
@@ -305,7 +309,9 @@ function liberarFirebaseLinhaSelecionada() {
   }
 
   var res = liberarAcessoFirebase30Dias(email);
-  var appColIdx = colMap['acesso app'] !== undefined ? colMap['acesso app'] : colMap['status app'];
+  var appColIdx = colMap['acesso app'] !== undefined ? colMap['acesso app'] : 
+                  (colMap['resultado'] !== undefined ? colMap['resultado'] : 
+                  (colMap['firebase'] !== undefined ? colMap['firebase'] : colMap['status app']));
   if (appColIdx !== undefined) {
     sheet.getRange(rowIdx, appColIdx + 1).setValue(res);
   }
@@ -767,7 +773,7 @@ function doPost(e) {
         // 2. Liberação Automática no Firebase (30 dias)
         if (LIBERAR_FIREBASE_AUTOMATICO && custM.email) {
           var fbResM = liberarAcessoFirebase30Dias(custM.email);
-          setVal(['acesso app', 'firebase', 'status app'], fbResM);
+          setVal(['acesso app', 'resultado', 'firebase', 'status app'], fbResM);
         }
       }
 
@@ -832,7 +838,7 @@ function doPost(e) {
         // Liberação Automática no Firebase (30 dias)
         if (LIBERAR_FIREBASE_AUTOMATICO && custK.email) {
           var fbResK = liberarAcessoFirebase30Dias(custK.email);
-          setVal(['acesso app', 'firebase', 'status app'], fbResK);
+          setVal(['acesso app', 'resultado', 'firebase', 'status app'], fbResK);
         }
       }
 
@@ -897,7 +903,7 @@ function doPost(e) {
         // Liberação Automática no Firebase (30 dias)
         if (LIBERAR_FIREBASE_AUTOMATICO && custP.email) {
           var fbResP = liberarAcessoFirebase30Dias(custP.email);
-          setVal(['acesso app', 'firebase', 'status app'], fbResP);
+          setVal(['acesso app', 'resultado', 'firebase', 'status app'], fbResP);
         }
       }
 

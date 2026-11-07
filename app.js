@@ -2652,6 +2652,26 @@ const App = {
       document.getElementById('tracking-send-initiate-checkout').checked = tracking.sendInitiateCheckout !== false;
     }
 
+    // Firebase Firestore (Liberação de App)
+    const fbEnabled = tracking.firebaseEnabled === true;
+    if (document.getElementById('tracking-firebase-enabled')) {
+      document.getElementById('tracking-firebase-enabled').checked = fbEnabled;
+    }
+    const fbFields = document.getElementById('tracking-firebase-fields');
+    if (fbFields) {
+      if (fbEnabled) fbFields.classList.remove('hidden');
+      else fbFields.classList.add('hidden');
+    }
+    if (document.getElementById('tracking-firebase-project-id')) {
+      document.getElementById('tracking-firebase-project-id').value = tracking.firebaseProjectId || 'orcaora-pro';
+    }
+    if (document.getElementById('tracking-firebase-days')) {
+      document.getElementById('tracking-firebase-days').value = tracking.firebaseDays || 30;
+    }
+    if (document.getElementById('tracking-firebase-api-key')) {
+      document.getElementById('tracking-firebase-api-key').value = tracking.firebaseApiKey || '';
+    }
+
     // Demanda 6: Injeção de Scripts em 3 posições
     if (document.getElementById('tracking-head-scripts')) document.getElementById('tracking-head-scripts').value = tracking.customHeadScripts || '';
     if (document.getElementById('tracking-body-top-scripts')) document.getElementById('tracking-body-top-scripts').value = tracking.customBodyTopScripts || '';
@@ -2665,6 +2685,19 @@ const App = {
     this.currentQuiz.updatedAt = new Date().toISOString();
     this.saveQuizzesToStorage();
     this.refreshPreview();
+  },
+
+  toggleFirebaseTracking(checked) {
+    if (!this.currentQuiz) return;
+    if (!this.currentQuiz.tracking) this.currentQuiz.tracking = {};
+    this.currentQuiz.tracking.firebaseEnabled = checked;
+    const fbFields = document.getElementById('tracking-firebase-fields');
+    if (fbFields) {
+      if (checked) fbFields.classList.remove('hidden');
+      else fbFields.classList.add('hidden');
+    }
+    this.currentQuiz.updatedAt = new Date().toISOString();
+    this.saveQuizzesToStorage();
   },
 
   setMobileScreen(screen) {
@@ -5234,6 +5267,19 @@ const App = {
       if (tracking.quizUrl || tracking.metaQuizUrl) {
         const qUrl = (tracking.quizUrl || tracking.metaQuizUrl).trim();
         code = code.replace(/var META_QUIZ_URL = ".*?";/, `var META_QUIZ_URL = "${qUrl}";`);
+      }
+
+      // Configurações do Firebase Firestore
+      const fbEnabled = tracking.firebaseEnabled === true;
+      code = code.replace(/var LIBERAR_FIREBASE_AUTOMATICO = .*?;/, `var LIBERAR_FIREBASE_AUTOMATICO = ${fbEnabled};`);
+      if (tracking.firebaseProjectId) {
+        code = code.replace(/var FIREBASE_PROJECT_ID = ".*?";/, `var FIREBASE_PROJECT_ID = "${tracking.firebaseProjectId.trim()}";`);
+      }
+      if (tracking.firebaseApiKey !== undefined) {
+        code = code.replace(/var FIREBASE_API_KEY = ".*?";/, `var FIREBASE_API_KEY = "${tracking.firebaseApiKey.trim()}";`);
+      }
+      if (tracking.firebaseDays) {
+        code = code.replace(/var FIREBASE_DIAS_ACESSO = .*?;/, `var FIREBASE_DIAS_ACESSO = ${Number(tracking.firebaseDays) || 30};`);
       }
     }
     navigator.clipboard.writeText(code).then(() => {

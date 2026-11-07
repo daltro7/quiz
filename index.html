@@ -610,6 +610,60 @@
               </div>
             </div>
 
+            <!-- Integração Firebase / Liberação de App -->
+            <div class="bg-gradient-to-r from-amber-950/30 via-slate-800/80 to-slate-800/80 p-4 sm:p-5 rounded-2xl border border-amber-500/30 space-y-4">
+              <div class="flex items-center justify-between">
+                <div class="flex items-center gap-2.5">
+                  <div class="w-8 h-8 rounded-lg bg-amber-500/20 text-amber-400 flex items-center justify-center">
+                    <i class="ph ph-fire text-xl"></i>
+                  </div>
+                  <div>
+                    <h4 class="font-bold text-white text-xs sm:text-sm">Liberação de Acesso no App (Firebase Firestore)</h4>
+                    <p class="text-[11px] text-slate-400">Ativa acesso no banco de dados automaticamente quando o Pix/venda for aprovada.</p>
+                  </div>
+                </div>
+                <span class="px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20 text-[10px] font-bold">App & SaaS</span>
+              </div>
+
+              <div class="pt-1 flex items-start gap-2.5">
+                <input type="checkbox" id="tracking-firebase-enabled" onchange="App.toggleFirebaseTracking(this.checked)" class="mt-0.5 rounded text-amber-500 focus:ring-0 bg-slate-900 border-slate-700 w-4 h-4 cursor-pointer">
+                <label for="tracking-firebase-enabled" class="text-xs text-slate-300 cursor-pointer">
+                  <b>Ativar liberação automática de acesso neste produto (Firebase)</b>
+                  <span class="block text-[11px] text-slate-400 mt-0.5">
+                    Marque apenas se este produto for um aplicativo/sistema conectado ao Firebase. Se for e-book, curso ou infoproduto sem app, deixe desmarcado.
+                  </span>
+                </label>
+              </div>
+
+              <div id="tracking-firebase-fields" class="hidden space-y-3 pt-3 border-t border-slate-700/60">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div class="space-y-1.5">
+                    <label class="block text-xs font-semibold text-slate-300">
+                      ID do Projeto Firebase:
+                    </label>
+                    <input type="text" id="tracking-firebase-project-id" onchange="App.updateTrackingProp('firebaseProjectId', this.value)" placeholder="ex: orcaora-pro" class="w-full bg-slate-900 border border-slate-700 px-3 py-2 rounded-xl text-xs text-white focus:border-amber-500 outline-none">
+                    <p class="text-[10px] text-slate-400">O ID do seu projeto no Firebase Console.</p>
+                  </div>
+
+                  <div class="space-y-1.5">
+                    <label class="block text-xs font-semibold text-slate-300">
+                      Dias de Acesso Liberados:
+                    </label>
+                    <input type="number" id="tracking-firebase-days" onchange="App.updateTrackingProp('firebaseDays', this.value)" placeholder="30" value="30" min="1" class="w-full bg-slate-900 border border-slate-700 px-3 py-2 rounded-xl text-xs text-white focus:border-amber-500 outline-none">
+                    <p class="text-[10px] text-slate-400">Tempo de acesso concedido (padrão: 30 dias).</p>
+                  </div>
+                </div>
+
+                <div class="space-y-1.5">
+                  <label class="block text-xs font-semibold text-slate-300">
+                    Chave de Acesso / Token do Firebase (Opcional):
+                  </label>
+                  <input type="password" id="tracking-firebase-api-key" onchange="App.updateTrackingProp('firebaseApiKey', this.value)" placeholder="Deixe em branco para usar o Google OAuth nativo (recomendado)" class="w-full bg-slate-900 border border-slate-700 px-3 py-2 rounded-xl text-xs text-white focus:border-amber-500 outline-none">
+                  <p class="text-[10px] text-slate-400">Se deixar em branco, o script usa a autorização nativa do Google OAuth (<code>ScriptApp.getOAuthToken()</code>), que é a mais segura e não expõe senhas.</p>
+                </div>
+              </div>
+            </div>
+
             <!-- Injeção de Scripts em 3 Posições (Demanda 6) -->
             <div class="bg-slate-800/80 p-5 rounded-2xl border border-slate-700 space-y-4">
               <div class="flex items-center gap-2">
@@ -951,7 +1005,9 @@ var META_QUIZ_URL = &quot;https://seudominio.com.br&quot;; // URL da sua página
 // 2. CONFIGURAÇÕES FIREBASE (LIBERAÇÃO DO APP)
 // ==========================================
 var FIREBASE_PROJECT_ID = &quot;orcaora-pro&quot;;         // ID do projeto no Firebase (ex: orcaora-pro)
-var LIBERAR_FIREBASE_AUTOMATICO = true;        // true = libera 30 dias no app na hora que a venda for paga
+var FIREBASE_API_KEY = &quot;&quot;;                      // Chave de Acesso / Token do Firebase (Opcional - se vazio usa OAuth nativo do Google)
+var FIREBASE_DIAS_ACESSO = 30;                  // Quantidade de dias de acesso concedidos (padrão: 30)
+var LIBERAR_FIREBASE_AUTOMATICO = true;        // true = ativa liberação no app | false = desativa para produtos sem app
 
 
 // ==========================================
@@ -1146,20 +1202,22 @@ function sendMetaCapiPurchase(params) {
 
 
 // ==========================================
-// FUNÇÕES DE LIBERAÇÃO FIREBASE FIRESTORE (30 DIAS)
+// FUNÇÕES DE LIBERAÇÃO FIREBASE FIRESTORE
 // ==========================================
 function liberarAcessoFirebase30Dias(email) {
+  if (!LIBERAR_FIREBASE_AUTOMATICO) return &quot;Desativado&quot;;
   if (!email || String(email).indexOf(&apos;@&apos;) === -1) return &quot;❌ E-mail inválido&quot;;
   var cleanEmail = String(email).trim().toLowerCase();
   var projectId = (FIREBASE_PROJECT_ID || &apos;&apos;).trim();
   if (!projectId) return &quot;⚠️ FIREBASE_PROJECT_ID não configurado&quot;;
 
+  var dias = Number(FIREBASE_DIAS_ACESSO) || 30;
   var dataExpiracao = new Date();
-  dataExpiracao.setDate(dataExpiracao.getDate() + 30);
+  dataExpiracao.setDate(dataExpiracao.getDate() + dias);
   var dataIso = dataExpiracao.toISOString();
 
   var urlBusca = &quot;https://firestore.googleapis.com/v1/projects/&quot; + encodeURIComponent(projectId) + &quot;/databases/(default)/documents:runQuery&quot;;
-  var token = ScriptApp.getOAuthToken();
+  var token = (FIREBASE_API_KEY || &apos;&apos;).trim() || ScriptApp.getOAuthToken();
 
   var queryPayload = {
     &quot;structuredQuery&quot;: {
@@ -1241,7 +1299,9 @@ function liberarFirebaseLinhaSelecionada() {
   }
 
   var res = liberarAcessoFirebase30Dias(email);
-  var appColIdx = colMap[&apos;acesso app&apos;] !== undefined ? colMap[&apos;acesso app&apos;] : colMap[&apos;status app&apos;];
+  var appColIdx = colMap[&apos;acesso app&apos;] !== undefined ? colMap[&apos;acesso app&apos;] : 
+                  (colMap[&apos;resultado&apos;] !== undefined ? colMap[&apos;resultado&apos;] : 
+                  (colMap[&apos;firebase&apos;] !== undefined ? colMap[&apos;firebase&apos;] : colMap[&apos;status app&apos;]));
   if (appColIdx !== undefined) {
     sheet.getRange(rowIdx, appColIdx + 1).setValue(res);
   }
@@ -1703,7 +1763,7 @@ function doPost(e) {
         // 2. Liberação Automática no Firebase (30 dias)
         if (LIBERAR_FIREBASE_AUTOMATICO &amp;&amp; custM.email) {
           var fbResM = liberarAcessoFirebase30Dias(custM.email);
-          setVal([&apos;acesso app&apos;, &apos;firebase&apos;, &apos;status app&apos;], fbResM);
+          setVal([&apos;acesso app&apos;, &apos;resultado&apos;, &apos;firebase&apos;, &apos;status app&apos;], fbResM);
         }
       }
 
@@ -1768,7 +1828,7 @@ function doPost(e) {
         // Liberação Automática no Firebase (30 dias)
         if (LIBERAR_FIREBASE_AUTOMATICO &amp;&amp; custK.email) {
           var fbResK = liberarAcessoFirebase30Dias(custK.email);
-          setVal([&apos;acesso app&apos;, &apos;firebase&apos;, &apos;status app&apos;], fbResK);
+          setVal([&apos;acesso app&apos;, &apos;resultado&apos;, &apos;firebase&apos;, &apos;status app&apos;], fbResK);
         }
       }
 
@@ -1833,7 +1893,7 @@ function doPost(e) {
         // Liberação Automática no Firebase (30 dias)
         if (LIBERAR_FIREBASE_AUTOMATICO &amp;&amp; custP.email) {
           var fbResP = liberarAcessoFirebase30Dias(custP.email);
-          setVal([&apos;acesso app&apos;, &apos;firebase&apos;, &apos;status app&apos;], fbResP);
+          setVal([&apos;acesso app&apos;, &apos;resultado&apos;, &apos;firebase&apos;, &apos;status app&apos;], fbResP);
         }
       }
 
