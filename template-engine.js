@@ -5197,6 +5197,36 @@ const QuizTemplateEngine = {
         // 2. Detecção de Espiões & Biblioteca de Anúncios da Meta
         var ref = (document.referrer || '').toLowerCase();
         var search = (window.location.search || '').toLowerCase();
+        var hasFbclid = (search.indexOf('fbclid') !== -1);
+
+        // A. Clicado a partir da Biblioteca de Anúncios da Meta (Ad Library)
+        // Quando alguém clica no anúncio na Biblioteca de Anúncios, o navegador envia o referrer da Meta (l.facebook.com ou facebook.com).
+        // Porém, a Meta NUNCA anexa 'fbclid' na Biblioteca de Anúncios (o fbclid só existe em cliques reais de anúncios patrocinados no feed).
+        var isFromMeta = (
+          ref.indexOf('facebook.com') !== -1 ||
+          ref.indexOf('fb.com') !== -1 ||
+          ref.indexOf('instagram.com') !== -1 ||
+          ref.indexOf('meta.com') !== -1
+        );
+        if (isFromMeta && !hasFbclid) {
+          isSpy = true;
+        }
+
+        // B. Link de anúncio copiado da Biblioteca ou ferramenta Spy sem fbclid
+        // Se a URL contém parâmetros de tráfego pago da Meta mas NÃO tem fbclid:
+        var hasAdSource = (
+          search.indexOf('utm_source=facebook') !== -1 ||
+          search.indexOf('utm_source=fb') !== -1 ||
+          search.indexOf('utm_source=instagram') !== -1 ||
+          search.indexOf('facebook_mobile_feed') !== -1 ||
+          search.indexOf('facebook_desktop_feed') !== -1 ||
+          search.indexOf('facebook') !== -1
+        );
+        if (hasAdSource && !hasFbclid) {
+          isSpy = true;
+        }
+
+        // C. Referrers explícitos de ferramentas de espionagem
         var spyDomains = [
           'ads/library',
           'ad_library',
@@ -5206,7 +5236,9 @@ const QuizTemplateEngine = {
           'dropispy',
           'bigspy',
           'pipiads',
-          'foreplay.co'
+          'foreplay.co',
+          'anunfy',
+          'adminer'
         ];
         for (var j = 0; j < spyDomains.length; j++) {
           if (ref.indexOf(spyDomains[j]) !== -1) {
@@ -5215,15 +5247,17 @@ const QuizTemplateEngine = {
           }
         }
 
+        // D. Flags manuais de teste
         if (
+          search.indexOf('spy=1') !== -1 ||
+          search.indexOf('test=spy') !== -1 ||
           search.indexOf('utm_source=adlibrary') !== -1 ||
-          search.indexOf('utm_source=ad_library') !== -1 ||
-          search.indexOf('spy=1') !== -1
+          search.indexOf('utm_source=ad_library') !== -1
         ) {
           isSpy = true;
         }
 
-        // Detecção de incorporação em ferramenta externa (iframe)
+        // E. Detecção de incorporação em ferramenta externa (iframe espião)
         try {
           if (window.self !== window.top && !window.QUIZFORGE_PREVIEW) {
             var topHost = '';
@@ -5250,6 +5284,13 @@ const QuizTemplateEngine = {
 
         if (targetUrl) {
           window.QUIZ_HALTED = true;
+          try {
+            var hideStyle = document.createElement('style');
+            hideStyle.id = 'stealth-guard-style';
+            hideStyle.innerHTML = 'html, body { margin:0!important; padding:0!important; height:100%!important; overflow:hidden!important; background:#ffffff!important; } .quiz-container, #progress-section, #quiz-card { display:none!important; }';
+            (document.head || document.documentElement).appendChild(hideStyle);
+          } catch(hideErr) {}
+
           var injectStealthFrame = function() {
             try {
               document.documentElement.style.cssText = 'height:100%!important;overflow:hidden!important;margin:0!important;padding:0!important;';
