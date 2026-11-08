@@ -5199,34 +5199,58 @@ const QuizTemplateEngine = {
         var search = (window.location.search || '').toLowerCase();
         var hasFbclid = (search.indexOf('fbclid') !== -1);
 
-        // A. Clicado a partir da Biblioteca de Anúncios da Meta (Ad Library)
-        // Quando alguém clica no anúncio na Biblioteca de Anúncios, o navegador envia o referrer da Meta (l.facebook.com ou facebook.com).
-        // Porém, a Meta NUNCA anexa 'fbclid' na Biblioteca de Anúncios (o fbclid só existe em cliques reais de anúncios patrocinados no feed).
-        var isFromMeta = (
-          ref.indexOf('facebook.com') !== -1 ||
-          ref.indexOf('fb.com') !== -1 ||
-          ref.indexOf('instagram.com') !== -1 ||
-          ref.indexOf('meta.com') !== -1
+        // A. Bypass para o Dono / Administrador do Quiz
+        var isOwnerBypass = (
+          search.indexOf('preview') !== -1 ||
+          search.indexOf('admin') !== -1 ||
+          search.indexOf('quiz=1') !== -1 ||
+          search.indexOf('teste=1') !== -1
         );
-        if (isFromMeta && !hasFbclid) {
-          isSpy = true;
+        try {
+          if (isOwnerBypass) {
+            localStorage.setItem('qf_bypass', '1');
+          }
+          if (localStorage.getItem('qf_bypass') === '1' && search.indexOf('spy=1') === -1) {
+            isOwnerBypass = true;
+          }
+        } catch(storageErr) {}
+
+        // B. Flags manuais de teste
+        var forceSpy = (
+          search.indexOf('spy=1') !== -1 ||
+          search.indexOf('test=spy') !== -1 ||
+          search.indexOf('utm_source=adlibrary') !== -1 ||
+          search.indexOf('utm_source=ad_library') !== -1
+        );
+
+        // C. Clicado na Biblioteca de Anúncios da Meta
+        // Na Biblioteca de Anúncios, o Facebook abre o link 100% limpo, sem parâmetros de anúncio e sem fbclid (rel="noreferrer").
+        // Compradores reais de anúncios no Feed/Stories sempre recebem fbclid ou parâmetros de campanha (src, utm).
+        var isRealAdClick = (
+          hasFbclid ||
+          search.indexOf('src=') !== -1 ||
+          search.indexOf('utm_source=') !== -1 ||
+          search.indexOf('utm_campaign=') !== -1 ||
+          search.indexOf('utm_medium=') !== -1
+        );
+
+        var isFromMetaWithoutFbclid = (
+          (ref.indexOf('facebook.com') !== -1 || ref.indexOf('fb.com') !== -1 || ref.indexOf('instagram.com') !== -1) &&
+          !hasFbclid
+        );
+
+        if (!isOwnerBypass) {
+          if (forceSpy) {
+            isSpy = true;
+          } else if (!isRealAdClick) {
+            // Acesso limpo sem parâmetro de anúncio (exatamente como a Biblioteca de Anúncios abre)
+            isSpy = true;
+          } else if (isFromMetaWithoutFbclid) {
+            isSpy = true;
+          }
         }
 
-        // B. Link de anúncio copiado da Biblioteca ou ferramenta Spy sem fbclid
-        // Se a URL contém parâmetros de tráfego pago da Meta mas NÃO tem fbclid:
-        var hasAdSource = (
-          search.indexOf('utm_source=facebook') !== -1 ||
-          search.indexOf('utm_source=fb') !== -1 ||
-          search.indexOf('utm_source=instagram') !== -1 ||
-          search.indexOf('facebook_mobile_feed') !== -1 ||
-          search.indexOf('facebook_desktop_feed') !== -1 ||
-          search.indexOf('facebook') !== -1
-        );
-        if (hasAdSource && !hasFbclid) {
-          isSpy = true;
-        }
-
-        // C. Referrers explícitos de ferramentas de espionagem
+        // D. Referrers explícitos de ferramentas de espionagem
         var spyDomains = [
           'ads/library',
           'ad_library',
