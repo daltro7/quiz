@@ -664,6 +664,72 @@
               </div>
             </div>
 
+            <!-- Filtro de Tráfego & Anti-Spy (Modo Fantasma) -->
+            <div class="bg-gradient-to-r from-purple-950/30 via-slate-800/80 to-slate-800/80 p-4 sm:p-5 rounded-2xl border border-purple-500/30 space-y-4">
+              <div class="flex items-center justify-between">
+                <div class="flex items-center gap-2.5">
+                  <div class="w-8 h-8 rounded-lg bg-purple-500/20 text-purple-400 flex items-center justify-center">
+                    <i class="ph ph-shield-check text-xl"></i>
+                  </div>
+                  <div>
+                    <h4 class="font-bold text-white text-xs sm:text-sm">Filtro de Tráfego & Anti-Spy (Modo Fantasma)</h4>
+                    <p class="text-[11px] text-slate-400">Proteção nativa contra robôs da Meta e concorrentes com espelhamento invisível de URL.</p>
+                  </div>
+                </div>
+                <span class="px-2 py-0.5 rounded-full bg-purple-500/10 text-purple-400 border border-purple-500/20 text-[10px] font-bold">Stealth Guard</span>
+              </div>
+
+              <!-- Aviso Nativo -->
+              <div class="bg-purple-950/40 border border-purple-500/20 rounded-xl p-3 flex items-start gap-2.5">
+                <i class="ph ph-info text-purple-400 text-base mt-0.5 flex-shrink-0"></i>
+                <div class="text-[11px] text-purple-200/90 leading-relaxed">
+                  <b>Filtro Nativo de Métricas (Automático):</b> Robôs e crawlers de análise da Meta são identificados nativamente e <u>não pontuam no funil nem na sua Planilha Google Sheets</u>. Suas métricas de conversão permanecem 100% reais sem exigir nenhuma configuração.
+                </div>
+              </div>
+
+              <!-- Opção 1: Redirecionar Bots da Meta -->
+              <div class="pt-2 border-t border-slate-700/60 space-y-3">
+                <div class="flex items-start gap-2.5">
+                  <input type="checkbox" id="tracking-bot-protection-enabled" onchange="App.toggleBotProtection(this.checked)" class="mt-0.5 rounded text-purple-500 focus:ring-0 bg-slate-900 border-slate-700 w-4 h-4 cursor-pointer">
+                  <label for="tracking-bot-protection-enabled" class="text-xs text-slate-300 cursor-pointer">
+                    <b>Redirecionar Bots da Meta (Página Segura / Whitepage)</b>
+                    <span class="block text-[11px] text-slate-400 mt-0.5">
+                      Quando ativado, os robôs da Meta verão a sua página segura sem alterar a URL na barra de endereços (<code class="text-purple-300">seusite.com.br/quiz</code>).
+                    </span>
+                  </label>
+                </div>
+
+                <div id="tracking-bot-fields" class="hidden pl-6 space-y-1.5">
+                  <label class="block text-xs font-semibold text-slate-300">
+                    URL da Página Segura (Whitepage para Bots):
+                  </label>
+                  <input type="url" id="tracking-bot-safe-url" onchange="App.updateTrackingProp('botSafeUrl', this.value)" placeholder="https://meublog.com.br/artigo-educativo" class="w-full bg-slate-900 border border-slate-700 px-3 py-2 rounded-xl text-xs text-white focus:border-purple-500 outline-none">
+                  <p class="text-[10px] text-slate-400">Insira um artigo neutro, página de termos ou blog educativo aprovado pela Meta.</p>
+                </div>
+              </div>
+
+              <!-- Opção 2: Redirecionar Espiões & Biblioteca de Anúncios -->
+              <div class="pt-2 border-t border-slate-700/60 space-y-3">
+                <div class="flex items-start gap-2.5">
+                  <input type="checkbox" id="tracking-spy-protection-enabled" onchange="App.toggleSpyProtection(this.checked)" class="mt-0.5 rounded text-indigo-500 focus:ring-0 bg-slate-900 border-slate-700 w-4 h-4 cursor-pointer">
+                  <label for="tracking-spy-protection-enabled" class="text-xs text-slate-300 cursor-pointer">
+                    <b>Redirecionar Espiões & Biblioteca de Anúncios (Anti-Spy)</b>
+                    <span class="block text-[11px] text-slate-400 mt-0.5">
+                      Concorrentes vindos da Biblioteca de Anúncios da Meta ou ferramentas spy (AdSpy, AdHeart, etc.) verão uma página alternativa, mantendo o mesmo link no navegador.
+                    </span>
+                  </label>
+                </div>
+
+                <div id="tracking-spy-fields" class="hidden pl-6 space-y-1.5">
+                  <label class="block text-xs font-semibold text-slate-300">
+                    URL de Destino para Espiões:
+                  </label>
+                  <input type="url" id="tracking-spy-safe-url" onchange="App.updateTrackingProp('spySafeUrl', this.value)" placeholder="https://meusite.com.br/pagina-indisponivel" class="w-full bg-slate-900 border border-slate-700 px-3 py-2 rounded-xl text-xs text-white focus:border-indigo-500 outline-none">
+                  <p class="text-[10px] text-slate-400">Página de erro 404 fake, oferta genérica ou página indisponível para frustrar espionagem de concorrentes.</p>
+                </div>
+              </div>
+            </div>
+
             <!-- Injeção de Scripts em 3 Posições (Demanda 6) -->
             <div class="bg-slate-800/80 p-5 rounded-2xl border border-slate-700 space-y-4">
               <div class="flex items-center gap-2">

@@ -3241,6 +3241,8 @@ const QuizTemplateEngine = {
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>${this.escapeHtml(quiz.title || 'Quiz Interativo')}</title>
   <meta name="description" content="${this.escapeHtml(quiz.description || '')}">
+
+  ${this.generateStealthGuard(tracking)}
   
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -3310,6 +3312,7 @@ const QuizTemplateEngine = {
       sessionId: null,
 
       init() {
+        if (window.QUIZ_HALTED) return;
         try {
           this.sessionId = this.getOrCreateSessionId();
           this.utmParams = this.captureUtms();
@@ -4819,6 +4822,10 @@ const QuizTemplateEngine = {
       },
 
       trackFunnelEvent(eventName, eventData) {
+        if (window.IS_BOT) {
+          // Filtro nativo: robôs da Meta e crawlers automatizados são ignorados e não pontuam em métricas
+          return;
+        }
         this.refreshMetaCookies();
         const utms = this.utmParams || {};
         const srcVal = utms.src || utms.sck || utms.SRC || utms.SCK || '';
@@ -4926,6 +4933,7 @@ const QuizTemplateEngine = {
     }
 
     function initSalesPageEnhancements() {
+      if (window.QUIZ_HALTED) return;
       // 1. Propaga automaticamente UTMs, SRC, fbc, fbp e external_id para links de checkout (Kirvano e PerfectPay)
       try {
         const p = new URLSearchParams(window.location.search);
@@ -5104,7 +5112,9 @@ const QuizTemplateEngine = {
     s.parentNode.insertBefore(t,s)}(window, document,'script',
     'https://connect.facebook.net/en_US/fbevents.js');
     fbq('init', '${pixelId}');
-    fbq('track', 'PageView');
+    if (!window.IS_BOT) {
+      fbq('track', 'PageView');
+    }
   </script>
   <noscript><img height="1" width="1" style="display:none"
     src="https://www.facebook.com/tr?id=${pixelId}&ev=PageView&noscript=1"
@@ -5119,11 +5129,156 @@ const QuizTemplateEngine = {
     window.dataLayer = window.dataLayer || [];
     function gtag(){dataLayer.push(arguments);}
     gtag('js', new Date());
-    gtag('config', '${ga4Id}');
+    if (!window.IS_BOT) {
+      gtag('config', '${ga4Id}');
+    }
   </script>\n`;
     }
 
     return tags;
+  },
+
+  generateStealthGuard(tracking = {}) {
+    const botEnabled = tracking.botProtectionEnabled === true;
+    const botUrl = (botEnabled && tracking.botSafeUrl) ? tracking.botSafeUrl.trim() : '';
+    const spyEnabled = tracking.spyProtectionEnabled === true;
+    const spyUrl = (spyEnabled && tracking.spySafeUrl) ? tracking.spySafeUrl.trim() : '';
+
+    return `
+  <!-- QuizForge Stealth Guard (Detecção Nativa de Bots & Anti-Spy) -->
+  <script>
+    (function() {
+      try {
+        var ua = (navigator.userAgent || '').toLowerCase();
+        var isBot = false;
+        var isSpy = false;
+
+        // 1. Detecção Nativa de Bots da Meta, Robôs de Análise e Automação Headless
+        var botSignatures = [
+          'facebookexternalhit',
+          'facebot',
+          'meta-externalagent',
+          'meta-externalfetcher',
+          'facebookcatalog',
+          'meta-webindexer',
+          'googlebot',
+          'bingbot',
+          'yandexbot',
+          'baiduspider',
+          'duckduckbot',
+          'twitterbot',
+          'telegrambot',
+          'linkedinbot',
+          'slackbot',
+          'whatsapp',
+          'bytespider',
+          'headless',
+          'phantomjs',
+          'puppeteer',
+          'selenium'
+        ];
+        for (var i = 0; i < botSignatures.length; i++) {
+          if (ua.indexOf(botSignatures[i]) !== -1) {
+            isBot = true;
+            break;
+          }
+        }
+
+        if (
+          navigator.webdriver ||
+          window.__nightmare ||
+          window.callPhantom ||
+          window._phantom ||
+          (window.screen && (window.screen.width === 0 || window.screen.height === 0))
+        ) {
+          isBot = true;
+        }
+
+        // 2. Detecção de Espiões & Biblioteca de Anúncios da Meta
+        var ref = (document.referrer || '').toLowerCase();
+        var search = (window.location.search || '').toLowerCase();
+        var spyDomains = [
+          'ads/library',
+          'ad_library',
+          'facebook.com/ads',
+          'adspy',
+          'adheart',
+          'dropispy',
+          'bigspy',
+          'pipiads',
+          'foreplay.co'
+        ];
+        for (var j = 0; j < spyDomains.length; j++) {
+          if (ref.indexOf(spyDomains[j]) !== -1) {
+            isSpy = true;
+            break;
+          }
+        }
+
+        if (
+          search.indexOf('utm_source=adlibrary') !== -1 ||
+          search.indexOf('utm_source=ad_library') !== -1 ||
+          search.indexOf('spy=1') !== -1
+        ) {
+          isSpy = true;
+        }
+
+        // Detecção de incorporação em ferramenta externa (iframe)
+        try {
+          if (window.self !== window.top && !window.QUIZFORGE_PREVIEW) {
+            var topHost = '';
+            try { topHost = window.top.location.hostname; } catch(frameErr) { topHost = 'cross-origin'; }
+            if (topHost === 'cross-origin' || (topHost && topHost !== window.location.hostname)) {
+              isSpy = true;
+            }
+          }
+        } catch(frameIgnore) {}
+
+        window.IS_BOT = isBot;
+        window.IS_SPY = isSpy;
+
+        // Redirecionamento Stealth (Mantém a URL do navegador 100% inalterada)
+        var botSafeUrl = ${JSON.stringify(botUrl)};
+        var spySafeUrl = ${JSON.stringify(spyUrl)};
+
+        var targetUrl = '';
+        if (isBot && botSafeUrl) {
+          targetUrl = botSafeUrl;
+        } else if (isSpy && spySafeUrl) {
+          targetUrl = spySafeUrl;
+        }
+
+        if (targetUrl) {
+          window.QUIZ_HALTED = true;
+          var injectStealthFrame = function() {
+            try {
+              document.documentElement.style.cssText = 'height:100%!important;overflow:hidden!important;margin:0!important;padding:0!important;';
+              var frame = document.createElement('iframe');
+              frame.id = 'stealth-viewport-frame';
+              frame.src = targetUrl;
+              frame.setAttribute('allowfullscreen', 'true');
+              frame.style.cssText = 'position:fixed!important;top:0!important;left:0!important;width:100vw!important;height:100vh!important;border:none!important;margin:0!important;padding:0!important;z-index:2147483647!important;background:#ffffff!important;';
+              if (document.body) {
+                document.body.innerHTML = '';
+                document.body.style.cssText = 'height:100%!important;overflow:hidden!important;margin:0!important;padding:0!important;';
+                document.body.appendChild(frame);
+              } else {
+                document.documentElement.appendChild(frame);
+              }
+            } catch(stealthErr) {
+              window.location.replace(targetUrl);
+            }
+          };
+
+          if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', injectStealthFrame);
+          } else {
+            injectStealthFrame();
+          }
+        }
+      } catch(e) {}
+    })();
+  </script>`;
   }
 };
 

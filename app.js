@@ -2672,6 +2672,33 @@ const App = {
       document.getElementById('tracking-firebase-api-key').value = tracking.firebaseApiKey || '';
     }
 
+    // Filtro de Tráfego & Anti-Spy (Modo Fantasma)
+    const botEnabled = tracking.botProtectionEnabled === true;
+    if (document.getElementById('tracking-bot-protection-enabled')) {
+      document.getElementById('tracking-bot-protection-enabled').checked = botEnabled;
+    }
+    const botFields = document.getElementById('tracking-bot-fields');
+    if (botFields) {
+      if (botEnabled) botFields.classList.remove('hidden');
+      else botFields.classList.add('hidden');
+    }
+    if (document.getElementById('tracking-bot-safe-url')) {
+      document.getElementById('tracking-bot-safe-url').value = tracking.botSafeUrl || '';
+    }
+
+    const spyEnabled = tracking.spyProtectionEnabled === true;
+    if (document.getElementById('tracking-spy-protection-enabled')) {
+      document.getElementById('tracking-spy-protection-enabled').checked = spyEnabled;
+    }
+    const spyFields = document.getElementById('tracking-spy-fields');
+    if (spyFields) {
+      if (spyEnabled) spyFields.classList.remove('hidden');
+      else spyFields.classList.add('hidden');
+    }
+    if (document.getElementById('tracking-spy-safe-url')) {
+      document.getElementById('tracking-spy-safe-url').value = tracking.spySafeUrl || '';
+    }
+
     // Demanda 6: Injeção de Scripts em 3 posições
     if (document.getElementById('tracking-head-scripts')) document.getElementById('tracking-head-scripts').value = tracking.customHeadScripts || '';
     if (document.getElementById('tracking-body-top-scripts')) document.getElementById('tracking-body-top-scripts').value = tracking.customBodyTopScripts || '';
@@ -2695,6 +2722,32 @@ const App = {
     if (fbFields) {
       if (checked) fbFields.classList.remove('hidden');
       else fbFields.classList.add('hidden');
+    }
+    this.currentQuiz.updatedAt = new Date().toISOString();
+    this.saveQuizzesToStorage();
+  },
+
+  toggleBotProtection(checked) {
+    if (!this.currentQuiz) return;
+    if (!this.currentQuiz.tracking) this.currentQuiz.tracking = {};
+    this.currentQuiz.tracking.botProtectionEnabled = checked;
+    const botFields = document.getElementById('tracking-bot-fields');
+    if (botFields) {
+      if (checked) botFields.classList.remove('hidden');
+      else botFields.classList.add('hidden');
+    }
+    this.currentQuiz.updatedAt = new Date().toISOString();
+    this.saveQuizzesToStorage();
+  },
+
+  toggleSpyProtection(checked) {
+    if (!this.currentQuiz) return;
+    if (!this.currentQuiz.tracking) this.currentQuiz.tracking = {};
+    this.currentQuiz.tracking.spyProtectionEnabled = checked;
+    const spyFields = document.getElementById('tracking-spy-fields');
+    if (spyFields) {
+      if (checked) spyFields.classList.remove('hidden');
+      else spyFields.classList.add('hidden');
     }
     this.currentQuiz.updatedAt = new Date().toISOString();
     this.saveQuizzesToStorage();
