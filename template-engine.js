@@ -5405,6 +5405,9 @@ ${raw}
       }
     }
 
+    // Previne Mixed Content (bloqueio silencioso de CSS/fontes no cPanel com SSL)
+    raw = raw.replace(/(href|src)=["']http:\/\/(fonts\.googleapis\.com|fonts\.gstatic\.com|cdn\.jsdelivr\.net|cdnjs\.cloudflare\.com|cdn\.tailwindcss\.com|unpkg\.com)/gi, '$1="https://$2');
+
     const tracking = (quiz && quiz.tracking) || {};
     const stealthGuard = this.generateStealthGuard(tracking);
     const trackingHead = this.generateTrackingHead(tracking);
