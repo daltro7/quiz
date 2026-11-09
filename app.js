@@ -463,6 +463,15 @@ const App = {
   createNewCustomHtmlPage(initialHtml = '') {
     const defaultHtml = initialHtml || this.getDefaultSampleSalesPageHtml();
 
+    // Herda automaticamente as configurações de Webhook, Pixel e Firebase do projeto anterior para não precisar redigitar
+    let prevTrack = {};
+    if (this.quizzes && this.quizzes.length > 0) {
+      const found = this.quizzes.find(q => q.tracking && (q.tracking.webhookUrl || q.tracking.metaPixelId));
+      if (found && found.tracking) {
+        prevTrack = found.tracking;
+      }
+    }
+
     const newPage = {
       id: 'custom_' + Date.now(),
       projectType: 'custom_html',
@@ -482,13 +491,16 @@ const App = {
         showProgressBar: false
       },
       tracking: {
-        webhookUrl: '',
-        metaPixelId: '',
-        metaApiToken: '',
+        webhookUrl: prevTrack.webhookUrl || '',
+        metaPixelId: prevTrack.metaPixelId || '',
+        metaApiToken: prevTrack.metaApiToken || '',
         sendInitiateCheckout: true,
-        botProtectionEnabled: false,
-        spyProtectionEnabled: false,
-        firebaseEnabled: false
+        botProtectionEnabled: prevTrack.botProtectionEnabled || false,
+        spyProtectionEnabled: prevTrack.spyProtectionEnabled || false,
+        firebaseEnabled: prevTrack.firebaseEnabled || false,
+        firebaseProjectId: prevTrack.firebaseProjectId || 'orcaora-pro',
+        firebaseApiKey: prevTrack.firebaseApiKey || 'AIzaSyBRXWhnlI3D34ctsDRNn03e_JWFtAiR7oc',
+        firebaseDays: prevTrack.firebaseDays || 30
       },
       steps: []
     };

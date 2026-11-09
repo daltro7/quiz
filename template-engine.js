@@ -5480,23 +5480,46 @@ ${raw}
 
         // 2. Preserva UTMs em todos os links de checkout e dispara InitiateCheckout ao clicar
         var checkoutPatterns = [
-          'perfectpay.com.br',
-          'kirvano.com',
-          'kiwify.com.br',
-          'hotmart.com',
-          'eduzz.com',
-          'monetizze.com.br',
-          'braip.com',
-          'cakto.com.br',
-          'greenn.com.br',
-          'abmex.com.br',
-          'pay.yampi.com.br',
-          'hubla.app'
+          'perfectpay',
+          'kirvano',
+          'kiwify',
+          'hotmart',
+          'eduzz',
+          'monetizze',
+          'braip',
+          'cakto',
+          'greenn',
+          'abmex',
+          'yampi',
+          'hubla',
+          'ticto',
+          'pepper',
+          'doppus',
+          'cartpanda',
+          'turbopay',
+          'evipes',
+          'logzz',
+          'zouti',
+          'mercadopago',
+          'pagarme',
+          'iugu',
+          'pagseguro',
+          'asaas',
+          'appmax',
+          'checkout',
+          'pay.',
+          '/pay/',
+          'pagar',
+          'comprar',
+          'adquirir',
+          'cart',
+          'carrinho'
         ];
 
         function isCheckoutLink(href) {
           if (!href) return false;
-          var h = href.toLowerCase();
+          var h = String(href).toLowerCase();
+          if (h.startsWith('#') || h.startsWith('javascript:')) return false;
           for (var i = 0; i < checkoutPatterns.length; i++) {
             if (h.indexOf(checkoutPatterns[i]) !== -1) return true;
           }
@@ -5507,7 +5530,7 @@ ${raw}
           try {
             var href = link.getAttribute('href');
             if (!href || href.startsWith('#') || href.startsWith('javascript:')) return;
-            if (isCheckoutLink(href) || link.hasAttribute('data-checkout') || link.classList.contains('quiz-checkout-btn')) {
+            if (isCheckoutLink(href) || link.hasAttribute('data-checkout') || link.classList.contains('quiz-checkout-btn') || link.classList.contains('checkout-btn')) {
               var url = new URL(href, window.location.href);
               params.forEach(function(v, k) {
                 if (!url.searchParams.has(k)) {
@@ -5520,10 +5543,16 @@ ${raw}
         }
 
         function handleCheckoutClick(e) {
-          var target = e.target.closest('a, button');
+          var target = e.target.closest('a, button, [data-checkout], .quiz-checkout-btn, [class*="checkout"]');
           if (!target) return;
-          var href = target.getAttribute('href') || target.getAttribute('data-href') || '';
-          if (isCheckoutLink(href) || target.hasAttribute('data-checkout') || target.classList.contains('quiz-checkout-btn')) {
+          var href = target.getAttribute('href') || target.getAttribute('data-href') || target.getAttribute('data-url') || '';
+          var isCheckout = isCheckoutLink(href) || 
+                           target.hasAttribute('data-checkout') || 
+                           target.classList.contains('quiz-checkout-btn') || 
+                           target.classList.contains('checkout-btn') ||
+                           (target.className && String(target.className).toLowerCase().indexOf('checkout') !== -1);
+
+          if (isCheckout) {
             // Dispara InitiateCheckout no Pixel da Meta
             if (typeof fbq === 'function' && ${tracking.sendInitiateCheckout !== false ? 'true' : 'false'}) {
               try {
@@ -5532,24 +5561,30 @@ ${raw}
                 });
               } catch(fbErr) {}
             }
-            // Notifica Webhook da Planilha
-            if (webhookUrl && !window.IS_BOT) {
+
+            // Notifica Webhook da Planilha (usa keepalive: true para NUNCA ser abortado pela navegação da página)
+            if (webhookUrl) {
               try {
                 var payload = JSON.stringify({
                   sessionId: sessionId,
                   event: 'InitiateCheckout',
                   quizTitle: "${((quiz && quiz.title) || 'Página de Vendas').replace(/"/g, '\\"')}",
+                  data: { stepIndex: 0 },
                   utms: utmObj
                 });
+
+                fetch(webhookUrl, {
+                  method: 'POST',
+                  mode: 'no-cors',
+                  keepalive: true,
+                  headers: { 'Content-Type': 'application/json' },
+                  body: payload
+                }).catch(function(){});
+
                 if (navigator.sendBeacon) {
-                  navigator.sendBeacon(webhookUrl, payload);
-                } else {
-                  fetch(webhookUrl, {
-                    method: 'POST',
-                    mode: 'no-cors',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: payload
-                  }).catch(function(){});
+                  try {
+                    navigator.sendBeacon(webhookUrl, payload);
+                  } catch(bErr) {}
                 }
               } catch(wbErr) {}
             }
