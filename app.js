@@ -838,8 +838,20 @@ const App = {
     clearTimeout(this._customHtmlPreviewDebounce);
     this._customHtmlPreviewDebounce = setTimeout(() => {
       const frame = document.getElementById('custom-page-preview-frame');
+      const val = (value || '').trim();
+      const fallback = '<div style="display:flex;align-items:center;justify-content:center;height:60vh;text-align:center;padding:40px;color:#94a3b8;font-family:sans-serif;font-size:14px;line-height:1.6;">Cole o código HTML da sua página no editor à esquerda para visualizar em tempo real aqui.</div>';
+      const targetHtml = val || fallback;
       if (frame) {
-        frame.srcdoc = value || '<div style="text-align:center;padding:40px;color:#94a3b8;font-family:sans-serif;">Cole seu código HTML no editor à esquerda para visualizar aqui.</div>';
+        try {
+          frame.srcdoc = targetHtml;
+        } catch(e) {
+          try {
+            const doc = frame.contentDocument || frame.contentWindow.document;
+            doc.open();
+            doc.write(targetHtml);
+            doc.close();
+          } catch(e2) {}
+        }
       } else {
         this.refreshPreview();
       }
@@ -3204,32 +3216,90 @@ const App = {
       const footerEl = viewport.querySelector('.quiz-footer');
       if (footerEl) footerEl.style.display = 'none';
 
+      viewport.style.padding = '0';
+      viewport.style.alignItems = 'stretch';
+      viewport.style.background = '#0b0f19';
+
+      const containerEl = viewport.querySelector('.quiz-container');
+      if (containerEl) {
+        containerEl.style.maxWidth = '100%';
+        containerEl.style.width = '100%';
+        containerEl.style.margin = '0';
+        containerEl.style.padding = '0';
+        containerEl.style.gap = '0';
+      }
+
       const cardEl = document.getElementById('preview-quiz-card');
       const contentEl = document.getElementById('preview-step-content');
       if (cardEl) {
         cardEl.classList.add('card-borderless');
         cardEl.style.padding = '0';
+        cardEl.style.margin = '0';
         cardEl.style.maxWidth = '100%';
+        cardEl.style.width = '100%';
         cardEl.style.background = 'transparent';
         cardEl.style.boxShadow = 'none';
         cardEl.style.border = 'none';
       }
       if (contentEl) {
+        contentEl.style.width = '100%';
+        contentEl.style.padding = '0';
+        contentEl.style.margin = '0';
+
+        let rawHtml = (this.currentQuiz.rawHtml || '').trim();
+        if (!rawHtml) {
+          rawHtml = '<div style="display:flex;align-items:center;justify-content:center;height:60vh;text-align:center;padding:40px;color:#94a3b8;font-family:sans-serif;font-size:14px;line-height:1.6;">Cole o código HTML da sua página no editor à esquerda para visualizar em tempo real aqui.</div>';
+        }
+
         contentEl.innerHTML = '';
-        const rawHtml = this.currentQuiz.rawHtml || '<div style="text-align:center;padding:40px;color:#94a3b8;font-family:sans-serif;">Cole seu código HTML no editor à esquerda para visualizar aqui.</div>';
         const frame = document.createElement('iframe');
         frame.id = 'custom-page-preview-frame';
         frame.style.width = '100%';
-        frame.style.minHeight = '85vh';
+        frame.style.height = '100%';
+        frame.style.minHeight = '720px';
         frame.style.border = 'none';
         frame.style.display = 'block';
         frame.style.background = '#ffffff';
         frame.style.borderRadius = '12px';
-        frame.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-forms allow-popups allow-modals');
+
+        frame.onload = () => {
+          try {
+            const doc = frame.contentDocument || (frame.contentWindow && frame.contentWindow.document);
+            if (doc && doc.body) {
+              const scrollH = Math.max(doc.documentElement.scrollHeight || 0, doc.body.scrollHeight || 0);
+              if (scrollH > 400) {
+                frame.style.minHeight = (scrollH + 30) + 'px';
+              }
+            }
+          } catch(e) {}
+        };
+
         contentEl.appendChild(frame);
-        frame.srcdoc = rawHtml;
+
+        try {
+          frame.srcdoc = rawHtml;
+        } catch(srcErr) {
+          try {
+            const doc = frame.contentDocument || frame.contentWindow.document;
+            doc.open();
+            doc.write(rawHtml);
+            doc.close();
+          } catch(writeErr) {}
+        }
       }
       return;
+    }
+
+    viewport.style.padding = '';
+    viewport.style.alignItems = '';
+    viewport.style.background = '';
+    const containerReset = viewport.querySelector('.quiz-container');
+    if (containerReset) {
+      containerReset.style.maxWidth = '';
+      containerReset.style.width = '';
+      containerReset.style.margin = '';
+      containerReset.style.padding = '';
+      containerReset.style.gap = '';
     }
 
     const progressSectionReset = document.getElementById('preview-progress-section');
@@ -3244,7 +3314,9 @@ const App = {
     const cardElReset = document.getElementById('preview-quiz-card');
     if (cardElReset) {
       cardElReset.style.padding = '';
+      cardElReset.style.margin = '';
       cardElReset.style.maxWidth = '';
+      cardElReset.style.width = '';
       cardElReset.style.background = '';
       cardElReset.style.boxShadow = '';
       cardElReset.style.border = '';
@@ -3857,7 +3929,7 @@ const App = {
 
   openExportedHtmlInNewTab() {
     if (!this.lastExportedHtml) return;
-    const blob = new Blob([this.lastExportedHtml], { type: 'text/html;charset=utf-8' });
+    const blob = new Blob(['\uFEFF', this.lastExportedHtml], { type: 'text/html;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     window.open(url, '_blank');
   },
@@ -3905,7 +3977,9 @@ const App = {
 
   downloadFile(filename, content, mimeType = 'text/html;charset=utf-8') {
     try {
-      const blob = new Blob([content], { type: mimeType });
+      // Adiciona o UTF-8 Byte Order Mark (\uFEFF) para forçar o Windows e qualquer navegador a ler com acentuação e caracteres 100% corretos
+      const isTextUtf8 = mimeType.toLowerCase().includes('utf-8') || mimeType.toLowerCase().includes('html') || mimeType.toLowerCase().includes('json');
+      const blob = isTextUtf8 ? new Blob(['\uFEFF', content], { type: mimeType }) : new Blob([content], { type: mimeType });
 
       // Suporte a navegadores antigos ou WebView
       if (window.navigator && window.navigator.msSaveOrOpenBlob) {

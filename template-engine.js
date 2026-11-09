@@ -5390,6 +5390,21 @@ ${raw}
 </html>`;
     }
 
+    // Normaliza Charset para UTF-8 garantindo que acentuação e caracteres nunca sejam trocados
+    if (/charset=["']?(?:iso-8859-[0-9]+|windows-[0-9]+)["']?/i.test(raw)) {
+      raw = raw.replace(/charset=["']?(?:iso-8859-[0-9]+|windows-[0-9]+)["']?/gi, 'charset="UTF-8"');
+    }
+    if (!/charset\s*=/i.test(raw)) {
+      if (/<head[^>]*>/i.test(raw)) {
+        raw = raw.replace(/<head[^>]*>/i, '$&\n  <meta charset="UTF-8">');
+      }
+    }
+    if (!/name=["']viewport["']/i.test(raw)) {
+      if (/<head[^>]*>/i.test(raw)) {
+        raw = raw.replace(/<head[^>]*>/i, '$&\n  <meta name="viewport" content="width=device-width, initial-scale=1.0">');
+      }
+    }
+
     const tracking = (quiz && quiz.tracking) || {};
     const stealthGuard = this.generateStealthGuard(tracking);
     const trackingHead = this.generateTrackingHead(tracking);
