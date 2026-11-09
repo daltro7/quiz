@@ -3504,6 +3504,8 @@ const QuizTemplateEngine = {
           '.plan-cta-btn[href]',
           '.pricing-plans-grid a[href]',
           '.offer-container a[href]',
+          'a[href*="mivvo.com"]',
+          'a[href*="mivvo.com.br"]',
           'a[href*="kirvano.com"]',
           'a[href*="perfectpay.com.br"]',
           'a[href*="kiwify.com.br"]',
@@ -5480,6 +5482,8 @@ ${raw}
 
         // 2. Preserva UTMs em todos os links de checkout e dispara InitiateCheckout ao clicar
         var checkoutPatterns = [
+          'mivvo',
+          'mivvo.com.br',
           'perfectpay',
           'kirvano',
           'kiwify',
