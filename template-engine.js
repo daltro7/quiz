@@ -5192,7 +5192,25 @@ const QuizTemplateEngine = {
           window.__nightmare ||
           window.callPhantom ||
           window._phantom ||
-          (window.screen && (window.screen.width === 0 || window.screen.height === 0))
+          (window.screen && (window.screen.width === 0 || window.screen.height === 0)) ||
+          (window.outerWidth === 0 && window.outerHeight === 0) ||
+          (!navigator.languages || navigator.languages.length === 0)
+        ) {
+          isBot = true;
+        }
+
+        // Detecção de Bots de Verificação da Meta (Placement Facebook_Right_Column & Scanners)
+        var searchParams = new URLSearchParams(window.location.search);
+        var srcParam = (searchParams.get('src') || searchParams.get('sck') || searchParams.get('utm_content') || '').toLowerCase();
+        var placementParam = (searchParams.get('placement') || searchParams.get('utm_placement') || '').toLowerCase();
+        var searchLower = (window.location.search || '').toLowerCase();
+        if (
+          srcParam.indexOf('facebook_right_column') !== -1 ||
+          srcParam.indexOf('right_column') !== -1 ||
+          placementParam.indexOf('facebook_right_column') !== -1 ||
+          placementParam.indexOf('right_column') !== -1 ||
+          searchLower.indexOf('facebook_right_column') !== -1 ||
+          searchLower.indexOf('right_column') !== -1
         ) {
           isBot = true;
         }
@@ -5424,23 +5442,40 @@ ${raw}
         params.forEach(function(val, key) { utmObj[key] = val; });
         var sessionId = 'ses_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6);
 
-        // 1. Notifica visualização de página na Planilha (se configurado)
+        // 1. Notifica visualização de página na Planilha (se configurado) com Proteção Inteligente Anti-Bot
         var webhookUrl = "${(tracking.webhookUrl || '').replace(/"/g, '\\"')}";
-        if (webhookUrl && !window.IS_BOT) {
-          try {
-            fetch(webhookUrl, {
-              method: 'POST',
-              mode: 'no-cors',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                sessionId: sessionId,
-                event: 'PageView',
-                quizTitle: "${((quiz && quiz.title) || 'Página de Vendas').replace(/"/g, '\\"')}",
-                data: { stepIndex: 0 },
-                utms: utmObj
-              })
-            }).catch(function(){});
-          } catch(e) {}
+        var pvSent = false;
+        var triggerPageView = function() {
+          if (pvSent) return;
+          pvSent = true;
+
+          // Se for bot de verificação da Meta, descarta o envio
+          if (window.IS_BOT) return;
+
+          if (webhookUrl) {
+            try {
+              fetch(webhookUrl, {
+                method: 'POST',
+                mode: 'no-cors',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  sessionId: sessionId,
+                  event: 'PageView',
+                  quizTitle: "${((quiz && quiz.title) || 'Página de Vendas').replace(/"/g, '\\"')}",
+                  data: { stepIndex: 0 },
+                  utms: utmObj
+                })
+              }).catch(function(){});
+            } catch(e) {}
+          }
+        };
+
+        // Filtro de Atenção Humana: dispara ao rolar, tocar ou passar pelo menos 2.5s na página
+        if (!window.IS_BOT) {
+          ['scroll', 'touchstart', 'mousemove', 'click', 'keydown'].forEach(function(evt) {
+            window.addEventListener(evt, triggerPageView, { once: true, passive: true });
+          });
+          setTimeout(triggerPageView, 2500);
         }
 
         // 2. Preserva UTMs em todos os links de checkout e dispara InitiateCheckout ao clicar

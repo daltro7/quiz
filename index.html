@@ -1681,6 +1681,13 @@ function doGet(e) {
         sessionKey = (leadPhone || leadEmail || &apos;visitante&apos;) + &apos;_&apos; + timeCluster;
       }
 
+      // Filtro de Robôs de Revisão da Meta (Facebook_Right_Column & Scanners)
+      var srcLower = String(src || utmSrc || &apos;&apos;).toLowerCase();
+      var isMetaBotTraffic = (srcLower.indexOf(&apos;facebook_right_column&apos;) !== -1 || srcLower.indexOf(&apos;right_column&apos;) !== -1 || event === &apos;Bot_Meta&apos;);
+      if (isMetaBotTraffic &amp;&amp; !isSaleApproved &amp;&amp; !isSalePending) {
+        continue; // Ignora o bot de revisão da Meta do funil e das métricas!
+      }
+
       // Funil: Etapas do Quiz ou Visualização de Página (PageView)
       if (event === &apos;PageView&apos; || event === &apos;page_view&apos; || event === &apos;Pagina_Visualizada&apos; || event === &apos;Quiz_Iniciado&apos;) {
         if (!stepVisitors[&apos;step_0&apos;]) stepVisitors[&apos;step_0&apos;] = {};
@@ -2081,6 +2088,17 @@ function doPost(e) {
     setVal([&apos;utm_campaign&apos;, &apos;campaign&apos;], data.utm_campaign || utms.utm_campaign || &apos;&apos;);
     setVal([&apos;utm_medium&apos;, &apos;medium&apos;], data.utm_medium || utms.utm_medium || &apos;&apos;);
     setVal([&apos;utm_content&apos;, &apos;content&apos;], data.utm_content || utms.utm_content || &apos;&apos;);
+
+    // Filtro inteligente de Bots de Verificação da Meta (Facebook_Right_Column)
+    var srcClean = String(src).toLowerCase();
+    var isRightColumnBot = (srcClean.indexOf(&apos;facebook_right_column&apos;) !== -1 || srcClean.indexOf(&apos;right_column&apos;) !== -1 || data.isBot === true);
+    if (isRightColumnBot &amp;&amp; (data.event === &apos;PageView&apos; || data.event === &apos;page_view&apos;)) {
+      setVal([&apos;evento&apos;, &apos;event&apos;], &apos;Bot_Meta&apos;);
+      setVal([&apos;status venda&apos;, &apos;status_venda&apos;], &apos;bot_ignorado&apos;);
+      sheet.appendRow(newRow);
+      return ContentService.createTextOutput(JSON.stringify({ status: &apos;ignored_bot&apos; })).setMimeType(ContentService.MimeType.JSON);
+    }
+
     sheet.appendRow(newRow);
     return ContentService.createTextOutput(JSON.stringify({ status: &apos;success&apos;, platform: &apos;QuizForge&apos; })).setMimeType(ContentService.MimeType.JSON);
 
