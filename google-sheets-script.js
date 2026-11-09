@@ -15,7 +15,7 @@ var META_QUIZ_URL = "https://seudominio.com.br"; // URL da sua página / quiz de
 // 2. CONFIGURAÇÕES FIREBASE (LIBERAÇÃO DO APP)
 // ==========================================
 var FIREBASE_PROJECT_ID = "orcaora-pro";         // ID do projeto no Firebase (ex: orcaora-pro)
-var FIREBASE_API_KEY = "";                      // Chave de Acesso / Token do Firebase (Opcional - se vazio usa OAuth nativo do Google)
+var FIREBASE_API_KEY = "AIzaSyBRXWhnlI3D34ctsDRNn03e_JWFtAiR7oc"; // Chave de API do Firebase (Web API Key)
 var FIREBASE_DIAS_ACESSO = 30;                  // Quantidade de dias de acesso concedidos (padrão: 30)
 var LIBERAR_FIREBASE_AUTOMATICO = true;        // true = ativa liberação no app | false = desativa para produtos sem app
 
