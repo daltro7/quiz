@@ -5436,6 +5436,7 @@ ${raw}
                 sessionId: sessionId,
                 event: 'PageView',
                 quizTitle: "${((quiz && quiz.title) || 'Página de Vendas').replace(/"/g, '\\"')}",
+                data: { stepIndex: 0 },
                 utms: utmObj
               })
             }).catch(function(){});

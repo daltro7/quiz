@@ -582,8 +582,13 @@ function doGet(e) {
         sessionKey = (leadPhone || leadEmail || 'visitante') + '_' + timeCluster;
       }
 
-      // Funil: Etapas do Quiz
-      if (event.indexOf('Quiz_Etapa_') === 0) {
+      // Funil: Etapas do Quiz ou Visualização de Página (PageView)
+      if (event === 'PageView' || event === 'page_view' || event === 'Pagina_Visualizada' || event === 'Quiz_Iniciado') {
+        if (!stepVisitors['step_0']) stepVisitors['step_0'] = {};
+        stepVisitors['step_0'][sessionKey] = true;
+        uniqueStarts[sessionKey] = true;
+        uniqueCompletions[sessionKey] = true;
+      } else if (event.indexOf('Quiz_Etapa_') === 0) {
         var numStep = parseInt(event.replace('Quiz_Etapa_', ''), 10);
         if (!isNaN(numStep) && numStep >= 1) {
           var k = 'step_' + (numStep - 1);
@@ -591,17 +596,13 @@ function doGet(e) {
           stepVisitors[k][sessionKey] = true;
           if (numStep === 1) uniqueStarts[sessionKey] = true;
         }
-      } else if (event === 'Quiz_Iniciado') {
-        if (!stepVisitors['step_0']) stepVisitors['step_0'] = {};
-        stepVisitors['step_0'][sessionKey] = true;
-        uniqueStarts[sessionKey] = true;
-      } else if (stepIdx && !isNaN(parseInt(stepIdx, 10)) && event !== 'Quiz_Resposta') {
+      } else if (stepIdx !== '' && !isNaN(parseInt(stepIdx, 10)) && event !== 'Quiz_Resposta') {
         var num = parseInt(stepIdx, 10);
-        if (num >= 1) {
-          var k2 = 'step_' + (num - 1);
+        if (num >= 0) {
+          var k2 = num === 0 ? 'step_0' : ('step_' + (num - 1));
           if (!stepVisitors[k2]) stepVisitors[k2] = {};
           stepVisitors[k2][sessionKey] = true;
-          if (num === 1) uniqueStarts[sessionKey] = true;
+          if (num <= 1) uniqueStarts[sessionKey] = true;
         }
       }
       if (event === 'Quiz_Concluido' || event === 'Oferta_Visualizada') uniqueCompletions[sessionKey] = true;

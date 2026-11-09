@@ -4131,7 +4131,10 @@ const App = {
 
   renderFunnelDashboard() {
     if (!this.currentQuiz) return;
-    const steps = this.currentQuiz.steps || [];
+    let steps = this.currentQuiz.steps || [];
+    if (this.currentQuiz.projectType === 'custom_html' && steps.length === 0) {
+      steps = [{ id: 'step_html_page', title: 'Página de Vendas (PageViews)' }];
+    }
     const container = document.getElementById('analytics-funnel-container');
     if (!container) return;
 

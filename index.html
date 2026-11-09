@@ -1681,8 +1681,13 @@ function doGet(e) {
         sessionKey = (leadPhone || leadEmail || &apos;visitante&apos;) + &apos;_&apos; + timeCluster;
       }
 
-      // Funil: Etapas do Quiz
-      if (event.indexOf(&apos;Quiz_Etapa_&apos;) === 0) {
+      // Funil: Etapas do Quiz ou Visualização de Página (PageView)
+      if (event === &apos;PageView&apos; || event === &apos;page_view&apos; || event === &apos;Pagina_Visualizada&apos; || event === &apos;Quiz_Iniciado&apos;) {
+        if (!stepVisitors[&apos;step_0&apos;]) stepVisitors[&apos;step_0&apos;] = {};
+        stepVisitors[&apos;step_0&apos;][sessionKey] = true;
+        uniqueStarts[sessionKey] = true;
+        uniqueCompletions[sessionKey] = true;
+      } else if (event.indexOf(&apos;Quiz_Etapa_&apos;) === 0) {
         var numStep = parseInt(event.replace(&apos;Quiz_Etapa_&apos;, &apos;&apos;), 10);
         if (!isNaN(numStep) &amp;&amp; numStep &gt;= 1) {
           var k = &apos;step_&apos; + (numStep - 1);
@@ -1690,17 +1695,13 @@ function doGet(e) {
           stepVisitors[k][sessionKey] = true;
           if (numStep === 1) uniqueStarts[sessionKey] = true;
         }
-      } else if (event === &apos;Quiz_Iniciado&apos;) {
-        if (!stepVisitors[&apos;step_0&apos;]) stepVisitors[&apos;step_0&apos;] = {};
-        stepVisitors[&apos;step_0&apos;][sessionKey] = true;
-        uniqueStarts[sessionKey] = true;
-      } else if (stepIdx &amp;&amp; !isNaN(parseInt(stepIdx, 10)) &amp;&amp; event !== &apos;Quiz_Resposta&apos;) {
+      } else if (stepIdx !== &apos;&apos; &amp;&amp; !isNaN(parseInt(stepIdx, 10)) &amp;&amp; event !== &apos;Quiz_Resposta&apos;) {
         var num = parseInt(stepIdx, 10);
-        if (num &gt;= 1) {
-          var k2 = &apos;step_&apos; + (num - 1);
+        if (num &gt;= 0) {
+          var k2 = num === 0 ? &apos;step_0&apos; : (&apos;step_&apos; + (num - 1));
           if (!stepVisitors[k2]) stepVisitors[k2] = {};
           stepVisitors[k2][sessionKey] = true;
-          if (num === 1) uniqueStarts[sessionKey] = true;
+          if (num &lt;= 1) uniqueStarts[sessionKey] = true;
         }
       }
       if (event === &apos;Quiz_Concluido&apos; || event === &apos;Oferta_Visualizada&apos;) uniqueCompletions[sessionKey] = true;
