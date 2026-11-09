@@ -837,8 +837,13 @@ const App = {
     // Atualiza preview com debounce
     clearTimeout(this._customHtmlPreviewDebounce);
     this._customHtmlPreviewDebounce = setTimeout(() => {
-      this.refreshPreview();
-    }, 300);
+      const frame = document.getElementById('custom-page-preview-frame');
+      if (frame) {
+        frame.srcdoc = value || '<div style="text-align:center;padding:40px;color:#94a3b8;font-family:sans-serif;">Cole seu código HTML no editor à esquerda para visualizar aqui.</div>';
+      } else {
+        this.refreshPreview();
+      }
+    }, 250);
   },
 
   async pasteFromClipboardToCustomHtml() {
@@ -3196,6 +3201,8 @@ const App = {
       if (progressSection) progressSection.style.display = 'none';
       const backBtn = document.getElementById('preview-btn-back');
       if (backBtn) backBtn.style.display = 'none';
+      const footerEl = viewport.querySelector('.quiz-footer');
+      if (footerEl) footerEl.style.display = 'none';
 
       const cardEl = document.getElementById('preview-quiz-card');
       const contentEl = document.getElementById('preview-step-content');
@@ -3208,10 +3215,30 @@ const App = {
         cardEl.style.border = 'none';
       }
       if (contentEl) {
+        contentEl.innerHTML = '';
         const rawHtml = this.currentQuiz.rawHtml || '<div style="text-align:center;padding:40px;color:#94a3b8;font-family:sans-serif;">Cole seu código HTML no editor à esquerda para visualizar aqui.</div>';
-        contentEl.innerHTML = `<iframe id="custom-page-preview-frame" srcdoc="${QuizTemplateEngine.escapeSrcdoc(rawHtml)}" style="width:100%; min-height:85vh; border:none; display:block; background:#fff; border-radius:12px;" sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-modals"></iframe>`;
+        const frame = document.createElement('iframe');
+        frame.id = 'custom-page-preview-frame';
+        frame.style.width = '100%';
+        frame.style.minHeight = '85vh';
+        frame.style.border = 'none';
+        frame.style.display = 'block';
+        frame.style.background = '#ffffff';
+        frame.style.borderRadius = '12px';
+        frame.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-forms allow-popups allow-modals');
+        contentEl.appendChild(frame);
+        frame.srcdoc = rawHtml;
       }
       return;
+    }
+
+    const progressSectionReset = document.getElementById('preview-progress-section');
+    if (progressSectionReset && this.currentQuiz.projectType !== 'landing_page') {
+      progressSectionReset.style.display = '';
+    }
+    const footerElReset = viewport.querySelector('.quiz-footer');
+    if (footerElReset) {
+      footerElReset.style.display = '';
     }
 
     const cardElReset = document.getElementById('preview-quiz-card');
