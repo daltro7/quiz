@@ -3228,6 +3228,9 @@ const QuizTemplateEngine = {
 
   // Gera o arquivo .html independente para exportação
   generate(quiz, initialStep = 0) {
+    if (quiz && (quiz.projectType === 'custom_html' || (quiz.rawHtml && quiz.rawHtml.trim()))) {
+      return this.generateCustomHtml(quiz);
+    }
     const theme = quiz.theme || {};
     const tracking = quiz.tracking || {};
     const steps = (quiz.steps || []).map(s => this.normalizeStep(s));
@@ -5344,6 +5347,204 @@ const QuizTemplateEngine = {
       } catch(e) {}
     })();
   </script>`;
+  },
+
+  generateCustomHtml(quiz) {
+    let raw = (quiz && quiz.rawHtml ? quiz.rawHtml : '').trim();
+    if (!raw) {
+      raw = `<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${this.escapeHtml((quiz && quiz.title) || 'Página de Vendas')}</title>
+  <style>
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background:#07090e; color:#fff; padding:60px 20px; text-align:center; }
+    .container { max-width:800px; margin:0 auto; }
+    h1 { font-size:2.4rem; margin-bottom:16px; font-weight:800; }
+    p { color:#94a3b8; font-size:1.1rem; line-height:1.6; margin-bottom:32px; }
+    .btn { display:inline-block; background:#10b981; color:#064e3b; font-weight:800; font-size:1.1rem; padding:16px 36px; border-radius:9999px; text-decoration:none; box-shadow:0 10px 25px rgba(16,185,129,.35); transition:transform .2s; }
+    .btn:hover { transform:scale(1.04); }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>${this.escapeHtml((quiz && quiz.title) || 'Sua Oferta Principal')}</h1>
+    <p>Cole o HTML da sua página de vendas no QuizForge para injetar o Pixel da Meta, Modo Fantasma e Planilha Google automaticamente.</p>
+    <a href="#" class="btn quiz-checkout-btn">GARANTIR MEU ACESSO AGORA</a>
+  </div>
+</body>
+</html>`;
+    } else if (!raw.toLowerCase().includes('<html') && !raw.toLowerCase().includes('<!doctype')) {
+      raw = `<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${this.escapeHtml((quiz && quiz.title) || 'Página de Vendas')}</title>
+</head>
+<body>
+${raw}
+</body>
+</html>`;
+    }
+
+    const tracking = (quiz && quiz.tracking) || {};
+    const stealthGuard = this.generateStealthGuard(tracking);
+    const trackingHead = this.generateTrackingHead(tracking);
+    const customHead = tracking.customHeadScripts || '';
+    const customBodyTop = tracking.customBodyTopScripts || '';
+
+    const autoTrackScript = `
+  <!-- QuizForge Tracking & UTM Preserver -->
+  <script>
+    (function() {
+      try {
+        var params = new URLSearchParams(window.location.search);
+        var utmObj = {};
+        params.forEach(function(val, key) { utmObj[key] = val; });
+        var sessionId = 'ses_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6);
+
+        // 1. Notifica visualização de página na Planilha (se configurado)
+        var webhookUrl = "${(tracking.webhookUrl || '').replace(/"/g, '\\"')}";
+        if (webhookUrl && !window.IS_BOT) {
+          try {
+            fetch(webhookUrl, {
+              method: 'POST',
+              mode: 'no-cors',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                sessionId: sessionId,
+                event: 'PageView',
+                quizTitle: "${((quiz && quiz.title) || 'Página de Vendas').replace(/"/g, '\\"')}",
+                utms: utmObj
+              })
+            }).catch(function(){});
+          } catch(e) {}
+        }
+
+        // 2. Preserva UTMs em todos os links de checkout e dispara InitiateCheckout ao clicar
+        var checkoutPatterns = [
+          'perfectpay.com.br',
+          'kirvano.com',
+          'kiwify.com.br',
+          'hotmart.com',
+          'eduzz.com',
+          'monetizze.com.br',
+          'braip.com',
+          'cakto.com.br',
+          'greenn.com.br',
+          'abmex.com.br',
+          'pay.yampi.com.br',
+          'hubla.app'
+        ];
+
+        function isCheckoutLink(href) {
+          if (!href) return false;
+          var h = href.toLowerCase();
+          for (var i = 0; i < checkoutPatterns.length; i++) {
+            if (h.indexOf(checkoutPatterns[i]) !== -1) return true;
+          }
+          return false;
+        }
+
+        function enrichLinkWithUtms(link) {
+          try {
+            var href = link.getAttribute('href');
+            if (!href || href.startsWith('#') || href.startsWith('javascript:')) return;
+            if (isCheckoutLink(href) || link.hasAttribute('data-checkout') || link.classList.contains('quiz-checkout-btn')) {
+              var url = new URL(href, window.location.href);
+              params.forEach(function(v, k) {
+                if (!url.searchParams.has(k)) {
+                  url.searchParams.set(k, v);
+                }
+              });
+              link.href = url.toString();
+            }
+          } catch(e) {}
+        }
+
+        function handleCheckoutClick(e) {
+          var target = e.target.closest('a, button');
+          if (!target) return;
+          var href = target.getAttribute('href') || target.getAttribute('data-href') || '';
+          if (isCheckoutLink(href) || target.hasAttribute('data-checkout') || target.classList.contains('quiz-checkout-btn')) {
+            // Dispara InitiateCheckout no Pixel da Meta
+            if (typeof fbq === 'function' && ${tracking.sendInitiateCheckout !== false ? 'true' : 'false'}) {
+              try {
+                fbq('track', 'InitiateCheckout', {
+                  content_name: "${((quiz && quiz.title) || 'Página de Vendas').replace(/"/g, '\\"')}"
+                });
+              } catch(fbErr) {}
+            }
+            // Notifica Webhook da Planilha
+            if (webhookUrl && !window.IS_BOT) {
+              try {
+                var payload = JSON.stringify({
+                  sessionId: sessionId,
+                  event: 'InitiateCheckout',
+                  quizTitle: "${((quiz && quiz.title) || 'Página de Vendas').replace(/"/g, '\\"')}",
+                  utms: utmObj
+                });
+                if (navigator.sendBeacon) {
+                  navigator.sendBeacon(webhookUrl, payload);
+                } else {
+                  fetch(webhookUrl, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: payload
+                  }).catch(function(){});
+                }
+              } catch(wbErr) {}
+            }
+          }
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+          var links = document.querySelectorAll('a[href]');
+          links.forEach(enrichLinkWithUtms);
+          document.addEventListener('click', handleCheckoutClick, true);
+        });
+
+        if (document.readyState === 'interactive' || document.readyState === 'complete') {
+          var links = document.querySelectorAll('a[href]');
+          links.forEach(enrichLinkWithUtms);
+          document.addEventListener('click', handleCheckoutClick, true);
+        }
+      } catch(err) {
+        console.error('[QuizForge Tracking Error]', err);
+      }
+    })();
+  </script>
+`;
+
+    let output = raw;
+
+    // Injeta no <head>
+    const headInjection = stealthGuard + '\n' + trackingHead + '\n' + customHead;
+    if (/<head[^>]*>/i.test(output)) {
+      output = output.replace(/<head[^>]*>/i, match => match + '\n' + headInjection);
+    } else if (/<html[^>]*>/i.test(output)) {
+      output = output.replace(/<html[^>]*>/i, match => match + '\n<head>' + headInjection + '</head>');
+    } else {
+      output = '<head>' + headInjection + '</head>\n' + output;
+    }
+
+    // Injeta scripts no <body>
+    const bodyTopInjection = customBodyTop ? ('\n' + customBodyTop + '\n') : '';
+    if (/<body[^>]*>/i.test(output)) {
+      output = output.replace(/<body[^>]*>/i, match => match + bodyTopInjection);
+    }
+
+    if (/<\/body>/i.test(output)) {
+      output = output.replace(/<\/body>/i, autoTrackScript + '\n</body>');
+    } else {
+      output = output + '\n' + autoTrackScript;
+    }
+
+    return output;
   }
 };
 

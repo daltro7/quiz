@@ -232,8 +232,16 @@ function liberarAcessoFirebase30Dias(email) {
   dataExpiracao.setDate(dataExpiracao.getDate() + dias);
   var dataIso = dataExpiracao.toISOString();
 
-  var urlBusca = "https://firestore.googleapis.com/v1/projects/" + encodeURIComponent(projectId) + "/databases/(default)/documents:runQuery";
-  var token = ((FIREBASE_API_KEY && String(FIREBASE_API_KEY).indexOf('AIzaSy') === -1) ? String(FIREBASE_API_KEY).trim() : '') || ScriptApp.getOAuthToken();
+  var apiKey = (FIREBASE_API_KEY || '').trim();
+  if (!apiKey && (projectId === 'orcaora-pro' || projectId === '446382097009')) {
+    apiKey = 'AIzaSyBRXWhnlI3D34ctsDRNn03e_JWFtAiR7oc';
+  }
+
+  var urlBusca = "https://firestore.googleapis.com/v1/projects/" + encodeURIComponent(projectId) + "/databases/(default)/documents:runQuery" + (apiKey ? "?key=" + encodeURIComponent(apiKey) : "");
+  var headersReq = {};
+  if (!apiKey) {
+    headersReq["Authorization"] = "Bearer " + ScriptApp.getOAuthToken();
+  }
 
   // Busca flexível (minúsculas, grafia original do checkout e capitalizada)
   var emailValues = [{ "stringValue": cleanEmail }];
@@ -256,7 +264,7 @@ function liberarAcessoFirebase30Dias(email) {
   var opcoesBusca = {
     "method": "post",
     "contentType": "application/json",
-    "headers": { "Authorization": "Bearer " + token },
+    "headers": headersReq,
     "payload": JSON.stringify(queryPayload),
     "muteHttpExceptions": true
   };
@@ -276,7 +284,7 @@ function liberarAcessoFirebase30Dias(email) {
       if (!errMsg) errMsg = respostaTexto.substring(0, 80);
       
       if (statusCode === 403 || statusCode === 401) {
-        return "❌ Firebase (403): Permissão negada. Adicione o escopo datastore no appsscript.json";
+        return "❌ Firebase (403): Permissão negada nas Regras do Firestore. No Firebase Console > Firestore > Regras, permita leitura/escrita em /usuarios";
       }
       return "❌ Erro Firebase (" + statusCode + "): " + errMsg;
     }
@@ -298,7 +306,7 @@ function liberarAcessoFirebase30Dias(email) {
     }
 
     var caminhoDocumento = docEncontrado.name;
-    var urlAtualizacao = "https://firestore.googleapis.com/v1/" + caminhoDocumento + "?updateMask.fieldPaths=dataExpiracao&updateMask.fieldPaths=status";
+    var urlAtualizacao = "https://firestore.googleapis.com/v1/" + caminhoDocumento + "?updateMask.fieldPaths=dataExpiracao&updateMask.fieldPaths=status" + (apiKey ? "&key=" + encodeURIComponent(apiKey) : "");
 
     var payloadAtualizacao = {
       "fields": {
@@ -310,7 +318,7 @@ function liberarAcessoFirebase30Dias(email) {
     var opcoesAtualizacao = {
       "method": "patch",
       "contentType": "application/json",
-      "headers": { "Authorization": "Bearer " + token },
+      "headers": headersReq,
       "payload": JSON.stringify(payloadAtualizacao),
       "muteHttpExceptions": true
     };

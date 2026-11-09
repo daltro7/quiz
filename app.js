@@ -164,16 +164,27 @@ const App = {
 
     grid.innerHTML = this.quizzes.map((quiz, index) => {
       const isLanding = quiz.projectType === 'landing_page';
+      const isCustomHtml = quiz.projectType === 'custom_html';
       const stepCount = (quiz.steps || []).length;
       const lastModified = quiz.updatedAt ? new Date(quiz.updatedAt).toLocaleDateString('pt-BR') : 'Hoje';
 
+      let borderClass = 'border-slate-800 hover:border-slate-700';
+      let badgeHtml = '';
+      if (isCustomHtml) {
+        borderClass = 'border-emerald-500/30 hover:border-emerald-500/60';
+        badgeHtml = '<span class="text-[11px] font-bold px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center gap-1"><i class="ph ph-code"></i> HTML Pronto</span>';
+      } else if (isLanding) {
+        borderClass = 'border-teal-500/30 hover:border-teal-500/60';
+        badgeHtml = '<span class="text-[11px] font-bold px-2.5 py-1 rounded-full bg-teal-500/10 text-teal-400 border border-teal-500/20 flex items-center gap-1"><i class="ph ph-browsers"></i> Página de Vendas</span>';
+      } else {
+        badgeHtml = `<span class="text-[11px] font-bold px-2.5 py-1 rounded-full bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 flex items-center gap-1"><i class="ph ph-chat-circle-dots"></i> ${stepCount} Etapas</span>`;
+      }
+
       return `
-        <div class="bg-slate-900 border ${isLanding ? 'border-teal-500/30 hover:border-teal-500/60' : 'border-slate-800 hover:border-slate-700'} rounded-2xl p-5 flex flex-col justify-between transition-card">
+        <div class="bg-slate-900 border ${borderClass} rounded-2xl p-5 flex flex-col justify-between transition-card">
           <div>
             <div class="flex items-center justify-between mb-3">
-              <span class="text-[11px] font-bold px-2.5 py-1 rounded-full ${isLanding ? 'bg-teal-500/10 text-teal-400 border border-teal-500/20' : 'bg-indigo-500/10 text-indigo-400 border border-indigo-500/20'} flex items-center gap-1">
-                ${isLanding ? '<i class="ph ph-browsers"></i> Página de Vendas' : '<i class="ph ph-chat-circle-dots"></i> ' + stepCount + ' Etapas'}
-              </span>
+              ${badgeHtml}
               <div class="flex items-center gap-2">
                 ${this.firebaseUser ? '<span class="text-[10px] text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20 flex items-center gap-1 font-semibold"><i class="ph ph-cloud-check"></i> Na Nuvem</span>' : ''}
                 <span class="text-[11px] text-slate-500">Atualizado: ${lastModified}</span>
@@ -220,6 +231,8 @@ const App = {
     this.closeModals();
     if (projectType === 'landing_page') {
       this.createNewLandingPage();
+    } else if (projectType === 'custom_html') {
+      this.createNewCustomHtmlPage();
     } else {
       this.createNewQuiz();
     }
@@ -447,6 +460,90 @@ const App = {
     this.openEditor(newPage.id);
   },
 
+  createNewCustomHtmlPage(initialHtml = '') {
+    const defaultHtml = initialHtml || this.getDefaultSampleSalesPageHtml();
+
+    const newPage = {
+      id: 'custom_' + Date.now(),
+      projectType: 'custom_html',
+      title: 'Minha Página de Vendas (HTML)',
+      description: 'Página pronta com Pixel, CAPI, Planilha e Stealth Guard injetados pelo QuizForge.',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      rawHtml: defaultHtml,
+      theme: {
+        primaryColor: '#10b981',
+        primaryHover: '#059669',
+        bgColor: '#07090e',
+        cardBg: '#0f172a',
+        textColor: '#ffffff',
+        textMuted: '#94a3b8',
+        borderRadius: '16px',
+        showProgressBar: false
+      },
+      tracking: {
+        webhookUrl: '',
+        metaPixelId: '',
+        metaApiToken: '',
+        sendInitiateCheckout: true,
+        botProtectionEnabled: false,
+        spyProtectionEnabled: false,
+        firebaseEnabled: false
+      },
+      steps: []
+    };
+
+    this.quizzes.unshift(newPage);
+    this.saveQuizzesToStorage();
+    if (this.firebaseUser) {
+      this.cloudSaveQuiz(newPage, false);
+    }
+    this.openEditor(newPage.id);
+  },
+
+  getDefaultSampleSalesPageHtml() {
+    return `<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Página de Alta Conversão</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #07090e; color: #f8fafc; padding: 40px 20px; line-height: 1.6; }
+    .container { max-width: 820px; margin: 0 auto; text-align: center; }
+    .badge { display: inline-block; background: rgba(16, 185, 129, 0.15); color: #34d399; font-weight: 700; font-size: 11px; padding: 6px 14px; border-radius: 9999px; text-transform: uppercase; letter-spacing: 0.05em; border: 1px solid rgba(16, 185, 129, 0.3); margin-bottom: 20px; }
+    h1 { font-size: clamp(2rem, 5vw, 2.8rem); font-weight: 900; color: #ffffff; line-height: 1.2; margin-bottom: 16px; }
+    h1 span { color: #10b981; }
+    p.lead { font-size: 1.15rem; color: #94a3b8; max-width: 680px; margin: 0 auto 32px; }
+    .video-box { position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden; max-width: 100%; background: #000; border-radius: 20px; border: 1px solid #1e293b; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.7); margin-bottom: 36px; }
+    .video-box iframe { position: absolute; top:0; left: 0; width: 100%; height: 100%; border: 0; }
+    .cta-button { display: inline-flex; align-items: center; justify-content: center; gap: 10px; background: linear-gradient(135deg, #10b981, #059669); color: #ffffff; font-weight: 900; font-size: 1.25rem; padding: 20px 42px; border-radius: 9999px; text-decoration: none; box-shadow: 0 15px 35px rgba(16, 185, 129, 0.4); transition: transform 0.2s, box-shadow 0.2s; text-transform: uppercase; }
+    .cta-button:hover { transform: translateY(-2px); box-shadow: 0 20px 40px rgba(16, 185, 129, 0.5); }
+    .guarantee { font-size: 0.85rem; color: #64748b; margin-top: 14px; display: flex; align-items: center; justify-content: center; gap: 6px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="badge">🔥 Acesso Liberado Imediatamente</div>
+    <h1>Descubra o Método Exclusivo para <span>Escalar Seus Resultados</span></h1>
+    <p class="lead">Assista ao vídeo abaixo para entender passo a passo como você pode implementar essa estratégia hoje mesmo:</p>
+    
+    <div class="video-box">
+      <iframe src="https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ?rel=0" allowfullscreen></iframe>
+    </div>
+
+    <div>
+      <a href="https://checkout.perfectpay.com.br/pay/PPU38CQG8G8" class="cta-button quiz-checkout-btn">
+        QUERO GARANTIR MEU ACESSO AGORA ➔
+      </a>
+      <div class="guarantee">🔒 Pagamento 100% Seguro • Garantia Incondicional de 30 Dias</div>
+    </div>
+  </div>
+</body>
+</html>`;
+  },
+
   createNewQuiz() {
     const newQuiz = {
       id: 'quiz_' + Date.now(),
@@ -562,6 +659,16 @@ const App = {
     const titleInput = document.getElementById('editor-quiz-title');
     if (titleInput) titleInput.value = quiz.title || '';
 
+    const tabStepsBtn = document.getElementById('tab-btn-steps');
+    const tabDesignBtn = document.getElementById('tab-btn-design');
+    if (quiz.projectType === 'custom_html') {
+      if (tabStepsBtn) tabStepsBtn.innerHTML = '<i class="ph ph-code text-base"></i> Código HTML';
+      if (tabDesignBtn) tabDesignBtn.classList.add('hidden');
+    } else {
+      if (tabStepsBtn) tabStepsBtn.innerHTML = quiz.projectType === 'landing_page' ? '<i class="ph ph-browsers text-base"></i> Seções da Página' : '<i class="ph ph-list-numbers text-base"></i> Etapas do Funil';
+      if (tabDesignBtn) tabDesignBtn.classList.remove('hidden');
+    }
+
     this.renderSteps();
     this.renderDesign();
     this.renderTracking();
@@ -638,9 +745,145 @@ const App = {
   // ==========================================
   // ABA 1: RENDERIZAÇÃO DAS ETAPAS E BLOCOS
   // ==========================================
+
+  renderCustomHtmlEditor(container) {
+    const rawHtml = this.currentQuiz.rawHtml || '';
+    const charCount = rawHtml.length;
+    const lineCount = rawHtml ? rawHtml.split('\n').length : 0;
+
+    container.innerHTML = `
+      <div class="space-y-5">
+        <!-- Banner de Instruções -->
+        <div class="bg-gradient-to-r from-emerald-950/60 via-slate-900 to-slate-900 border border-emerald-500/30 rounded-2xl p-4 sm:p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs shadow-lg">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0 text-xl font-bold">
+              <i class="ph ph-file-html"></i>
+            </div>
+            <div>
+              <h4 class="font-bold text-white text-sm">Página de Vendas (HTML Completo Pronto)</h4>
+              <p class="text-slate-300 text-xs mt-0.5">Cole o código HTML da sua página. O QuizForge cuidará de todo o rastreamento, proteção de tráfego e métricas.</p>
+            </div>
+          </div>
+          <div class="flex items-center gap-2 shrink-0 flex-wrap">
+            <button type="button" onclick="App.pasteFromClipboardToCustomHtml()" class="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-slate-950 font-bold text-xs flex items-center gap-1.5 transition shadow cursor-pointer">
+              <i class="ph ph-clipboard-text"></i> Colar do Teclado
+            </button>
+            <button type="button" onclick="App.insertSampleSalesPageHtml()" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs flex items-center gap-1.5 transition border border-slate-700 cursor-pointer">
+              <i class="ph ph-sparkle"></i> Exemplo Pronto
+            </button>
+          </div>
+        </div>
+
+        <!-- Editor de Código HTML -->
+        <div class="bg-slate-950 border border-slate-800 rounded-2xl p-4 space-y-3 shadow-xl">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-2">
+              <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
+              <span class="text-xs font-bold text-white font-mono">index.html (Código-Fonte)</span>
+            </div>
+            <div class="flex items-center gap-3 text-[11px] text-slate-400 font-mono">
+              <span id="custom-html-stats">${lineCount} linhas | ${charCount.toLocaleString('pt-BR')} caracteres</span>
+              <button type="button" onclick="App.clearCustomHtml()" class="text-red-400 hover:text-red-300 text-[11px] font-semibold underline cursor-pointer">
+                Limpar
+              </button>
+            </div>
+          </div>
+
+          <textarea id="custom-html-editor" oninput="App.updateCustomHtml(this.value)" placeholder="Cole aqui o seu código HTML completo (ex: <!DOCTYPE html>...)" class="w-full h-[540px] bg-slate-900/90 text-emerald-200 border border-slate-800 focus:border-emerald-500 rounded-xl p-4 font-mono text-xs leading-relaxed outline-none resize-y selection:bg-emerald-500 selection:text-slate-950">${this.escape(rawHtml)}</textarea>
+
+          <!-- Dicas de Integração -->
+          <div class="bg-slate-900/60 border border-slate-800/80 rounded-xl p-3.5 space-y-2 text-xs text-slate-300">
+            <div class="flex items-center gap-2 text-emerald-400 font-bold">
+              <i class="ph ph-check-circle text-base"></i>
+              <span>O que o QuizForge injeta automaticamente nesta página ao exportar:</span>
+            </div>
+            <ul class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px] text-slate-300 pt-1">
+              <li class="flex items-start gap-1.5">
+                <i class="ph ph-check text-emerald-400 mt-0.5 shrink-0"></i>
+                <span><b>Meta Pixel & CAPI:</b> Disparo otimizado de PageView e InitiateCheckout.</span>
+              </li>
+              <li class="flex items-start gap-1.5">
+                <i class="ph ph-check text-emerald-400 mt-0.5 shrink-0"></i>
+                <span><b>Auto-Rastreio de Checkouts:</b> Dispara compra iniciada ao clicar em links Kirvano, PerfectPay, Kiwify, etc.</span>
+              </li>
+              <li class="flex items-start gap-1.5">
+                <i class="ph ph-check text-emerald-400 mt-0.5 shrink-0"></i>
+                <span><b>Preservação de UTMs:</b> Garante que <code>src</code> e <code>utm_source</code> passem até o pagamento.</span>
+              </li>
+              <li class="flex items-start gap-1.5">
+                <i class="ph ph-check text-emerald-400 mt-0.5 shrink-0"></i>
+                <span><b>Stealth Guard (Anti-Spy):</b> Bloqueia espiões e robôs da biblioteca de anúncios.</span>
+              </li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    `;
+  },
+
+  updateCustomHtml(value) {
+    if (!this.currentQuiz) return;
+    this.currentQuiz.rawHtml = value;
+    this.currentQuiz.updatedAt = new Date().toISOString();
+    this.saveQuizzesToStorage();
+    
+    // Atualiza estatísticas
+    const statsEl = document.getElementById('custom-html-stats');
+    if (statsEl) {
+      const lineCount = value ? value.split('\n').length : 0;
+      statsEl.innerText = `${lineCount} linhas | ${value.length.toLocaleString('pt-BR')} caracteres`;
+    }
+
+    // Atualiza preview com debounce
+    clearTimeout(this._customHtmlPreviewDebounce);
+    this._customHtmlPreviewDebounce = setTimeout(() => {
+      this.refreshPreview();
+    }, 300);
+  },
+
+  async pasteFromClipboardToCustomHtml() {
+    try {
+      const text = await navigator.clipboard.readText();
+      if (!text) {
+        alert('Área de transferência vazia.');
+        return;
+      }
+      const editor = document.getElementById('custom-html-editor');
+      if (editor) {
+        editor.value = text;
+        this.updateCustomHtml(text);
+        if (typeof this.showToast === 'function') {
+          this.showToast('HTML colado com sucesso!', 'success');
+        }
+      }
+    } catch(err) {
+      alert('Por favor, clique dentro da caixa de texto e pressione Ctrl + V para colar.');
+    }
+  },
+
+  clearCustomHtml() {
+    if (!confirm('Deseja realmente limpar todo o código HTML desta página?')) return;
+    const editor = document.getElementById('custom-html-editor');
+    if (editor) editor.value = '';
+    this.updateCustomHtml('');
+  },
+
+  insertSampleSalesPageHtml() {
+    if (this.currentQuiz && this.currentQuiz.rawHtml && this.currentQuiz.rawHtml.trim() && !confirm('Substituir o HTML atual pelo modelo de exemplo de alta conversão?')) return;
+    const sample = this.getDefaultSampleSalesPageHtml();
+    const editor = document.getElementById('custom-html-editor');
+    if (editor) editor.value = sample;
+    this.updateCustomHtml(sample);
+  },
+
   renderSteps() {
     const container = document.getElementById('steps-container');
     if (!container || !this.currentQuiz) return;
+
+    if (this.currentQuiz.projectType === 'custom_html') {
+      this.renderCustomHtmlEditor(container);
+      return;
+    }
 
     const steps = this.currentQuiz.steps || [];
 
@@ -2947,6 +3190,38 @@ const App = {
 
     const viewport = document.getElementById('preview-viewport');
     if (!viewport) return;
+
+    if (this.currentQuiz.projectType === 'custom_html') {
+      const progressSection = document.getElementById('preview-progress-section');
+      if (progressSection) progressSection.style.display = 'none';
+      const backBtn = document.getElementById('preview-btn-back');
+      if (backBtn) backBtn.style.display = 'none';
+
+      const cardEl = document.getElementById('preview-quiz-card');
+      const contentEl = document.getElementById('preview-step-content');
+      if (cardEl) {
+        cardEl.classList.add('card-borderless');
+        cardEl.style.padding = '0';
+        cardEl.style.maxWidth = '100%';
+        cardEl.style.background = 'transparent';
+        cardEl.style.boxShadow = 'none';
+        cardEl.style.border = 'none';
+      }
+      if (contentEl) {
+        const rawHtml = this.currentQuiz.rawHtml || '<div style="text-align:center;padding:40px;color:#94a3b8;font-family:sans-serif;">Cole seu código HTML no editor à esquerda para visualizar aqui.</div>';
+        contentEl.innerHTML = `<iframe id="custom-page-preview-frame" srcdoc="${QuizTemplateEngine.escapeSrcdoc(rawHtml)}" style="width:100%; min-height:85vh; border:none; display:block; background:#fff; border-radius:12px;" sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-modals"></iframe>`;
+      }
+      return;
+    }
+
+    const cardElReset = document.getElementById('preview-quiz-card');
+    if (cardElReset) {
+      cardElReset.style.padding = '';
+      cardElReset.style.maxWidth = '';
+      cardElReset.style.background = '';
+      cardElReset.style.boxShadow = '';
+      cardElReset.style.border = '';
+    }
 
     if (stepIndex !== undefined && stepIndex !== null) {
       this.preview.currentStepIndex = stepIndex;
