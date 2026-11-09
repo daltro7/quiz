@@ -5340,6 +5340,30 @@ const App = {
     });
   },
 
+  copyAppsscriptJson() {
+    const el = document.getElementById('appsscript-json-code') || document.getElementById('modal-appsscript-json-code');
+    const code = el ? el.innerText.trim() : `{
+  "timeZone": "America/Sao_Paulo",
+  "dependencies": {},
+  "exceptionLogging": "STACKDRIVER",
+  "runtimeVersion": "V8",
+  "oauthScopes": [
+    "https://www.googleapis.com/auth/spreadsheets",
+    "https://www.googleapis.com/auth/script.external_request",
+    "https://www.googleapis.com/auth/datastore"
+  ]
+}`;
+    navigator.clipboard.writeText(code).then(() => {
+      if (typeof this.showToast === 'function') {
+        this.showToast('Manifesto appsscript.json copiado com sucesso!', 'success');
+      } else {
+        alert('Manifesto appsscript.json copiado com sucesso!');
+      }
+    }).catch(() => {
+      alert('Manifesto appsscript.json copiado com sucesso!');
+    });
+  },
+
   escape(str) {
     if (!str) return '';
     return String(str)

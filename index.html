@@ -661,6 +661,49 @@
                   <input type="password" id="tracking-firebase-api-key" onchange="App.updateTrackingProp('firebaseApiKey', this.value)" placeholder="Deixe em branco para usar o Google OAuth nativo (recomendado)" class="w-full bg-slate-900 border border-slate-700 px-3 py-2 rounded-xl text-xs text-white focus:border-amber-500 outline-none">
                   <p class="text-[10px] text-slate-400">Se deixar em branco, o script usa a autorização nativa do Google OAuth (<code>ScriptApp.getOAuthToken()</code>), que é a mais segura e não expõe senhas.</p>
                 </div>
+
+                <!-- Bloco de Permissão do Manifesto appsscript.json (App & SaaS) -->
+                <div class="mt-4 p-3.5 bg-amber-950/40 border border-amber-500/40 rounded-xl space-y-3">
+                  <div class="flex items-center justify-between flex-wrap gap-2">
+                    <div class="flex items-center gap-2">
+                      <div class="w-6 h-6 rounded-md bg-amber-500/20 text-amber-400 flex items-center justify-center text-xs font-bold">
+                        <i class="ph ph-file-code"></i>
+                      </div>
+                      <div>
+                        <h5 class="text-xs font-bold text-amber-300">Manifesto Obrigatório: appsscript.json</h5>
+                        <p class="text-[10px] text-amber-200/80">Evita o erro de permissão (403) para liberar o acesso no Firebase</p>
+                      </div>
+                    </div>
+                    <button type="button" onclick="App.copyAppsscriptJson()" class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold px-2.5 py-1.5 rounded-lg text-[10px] flex items-center gap-1.5 transition shadow-sm cursor-pointer">
+                      <i class="ph ph-copy"></i> Copiar appsscript.json
+                    </button>
+                  </div>
+                  
+                  <div class="relative bg-slate-950 border border-slate-800 rounded-lg p-2.5 font-mono text-[11px] text-amber-100 overflow-x-auto">
+                    <pre id="appsscript-json-code">{
+  &quot;timeZone&quot;: &quot;America/Sao_Paulo&quot;,
+  &quot;dependencies&quot;: {},
+  &quot;exceptionLogging&quot;: &quot;STACKDRIVER&quot;,
+  &quot;runtimeVersion&quot;: &quot;V8&quot;,
+  &quot;oauthScopes&quot;: [
+    &quot;https://www.googleapis.com/auth/spreadsheets&quot;,
+    &quot;https://www.googleapis.com/auth/script.external_request&quot;,
+    &quot;https://www.googleapis.com/auth/datastore&quot;
+  ]
+}</pre>
+                  </div>
+
+                  <div class="text-[11px] text-slate-300 space-y-1.5 pt-2 border-t border-amber-500/20">
+                    <p class="font-bold text-amber-300 flex items-center gap-1.5">
+                      <i class="ph ph-info"></i> Como instalar no Google Apps Script em 3 passos:
+                    </p>
+                    <ol class="list-decimal pl-4 space-y-1 text-slate-300 text-[11px] leading-relaxed">
+                      <li>Na sua Planilha Google, vá em <b>Extensões &gt; Apps Script</b>.</li>
+                      <li>No menu lateral esquerdo, clique no ícone de engrenagem ⚙️ (<b>Configurações do Projeto</b>) e marque a caixinha: <b>"Mostrar arquivo de manifesto 'appsscript.json' no editor"</b>.</li>
+                      <li>Volte ao editor clicando no ícone <b>&lt;&gt;</b>, clique no arquivo <b>appsscript.json</b>, substitua todo o código pelo JSON acima e salve (<kbd class="px-1.5 py-0.5 bg-slate-800 border border-slate-700 rounded text-[10px] font-mono text-amber-300">Ctrl + S</kbd>).</li>
+                    </ol>
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -2033,6 +2076,38 @@ function doPost(e) {
   }
 }
 </pre>
+        </div>
+
+        <!-- Aviso Importante para App & SaaS (Firebase) -->
+        <div class="p-3.5 bg-amber-950/40 border border-amber-500/40 rounded-xl space-y-2.5">
+          <div class="flex items-center justify-between flex-wrap gap-2">
+            <div class="flex items-center gap-2">
+              <span class="px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30 text-[10px] font-bold">App &amp; SaaS (Firebase)</span>
+              <h5 class="text-xs font-bold text-amber-200">Manifesto appsscript.json Obrigatório</h5>
+            </div>
+            <button type="button" onclick="App.copyAppsscriptJson()" class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold px-2.5 py-1 rounded text-[10px] flex items-center gap-1 transition shadow-sm cursor-pointer">
+              <i class="ph ph-copy"></i> Copiar appsscript.json
+            </button>
+          </div>
+          <p class="text-[11px] text-amber-200/90 leading-relaxed">
+            Se você utiliza a <b>Liberação de Acesso no App (Firebase Firestore)</b>, adicione o escopo do Datastore no Apps Script para evitar erro 403:
+          </p>
+          <div class="relative bg-slate-950 border border-slate-800 rounded-lg p-2 font-mono text-[10px] text-amber-100 overflow-x-auto">
+            <pre id="modal-appsscript-json-code">{
+  &quot;timeZone&quot;: &quot;America/Sao_Paulo&quot;,
+  &quot;dependencies&quot;: {},
+  &quot;exceptionLogging&quot;: &quot;STACKDRIVER&quot;,
+  &quot;runtimeVersion&quot;: &quot;V8&quot;,
+  &quot;oauthScopes&quot;: [
+    &quot;https://www.googleapis.com/auth/spreadsheets&quot;,
+    &quot;https://www.googleapis.com/auth/script.external_request&quot;,
+    &quot;https://www.googleapis.com/auth/datastore&quot;
+  ]
+}</pre>
+          </div>
+          <p class="text-[10px] text-slate-300">
+            👉 No Apps Script: clique na <b>engrenagem ⚙️ (Configurações do Projeto)</b>, marque <b>"Mostrar arquivo de manifesto &apos;appsscript.json&apos; no editor"</b>, abra o arquivo <b>appsscript.json</b>, cole o código acima e salve (<kbd class="px-1 py-0.5 bg-slate-800 rounded text-[9px] font-mono text-amber-300">Ctrl + S</kbd>).
+          </p>
         </div>
 
         <ol start="5" class="list-decimal pl-5 space-y-1.5 text-slate-300">
