@@ -1273,7 +1273,9 @@ function sendMetaCapiPurchase(params) {
 function liberarAcessoFirebase30Dias(email) {
   if (!LIBERAR_FIREBASE_AUTOMATICO) return &quot;Desativado&quot;;
   if (!email || String(email).indexOf(&apos;@&apos;) === -1) return &quot;❌ E-mail inválido&quot;;
-  var cleanEmail = String(email).trim().toLowerCase();
+  var rawEmail = String(email).trim();
+  var cleanEmail = rawEmail.toLowerCase();
+  var capEmail = cleanEmail.charAt(0).toUpperCase() + cleanEmail.slice(1);
   var projectId = (FIREBASE_PROJECT_ID || &apos;&apos;).trim();
   if (!projectId) return &quot;⚠️ FIREBASE_PROJECT_ID não configurado&quot;;
 
@@ -1285,14 +1287,19 @@ function liberarAcessoFirebase30Dias(email) {
   var urlBusca = &quot;https://firestore.googleapis.com/v1/projects/&quot; + encodeURIComponent(projectId) + &quot;/databases/(default)/documents:runQuery&quot;;
   var token = (FIREBASE_API_KEY || &apos;&apos;).trim() || ScriptApp.getOAuthToken();
 
+  // Busca flexível (minúsculas, grafia original do checkout e capitalizada)
+  var emailValues = [{ &quot;stringValue&quot;: cleanEmail }];
+  if (rawEmail !== cleanEmail) emailValues.push({ &quot;stringValue&quot;: rawEmail });
+  if (capEmail !== cleanEmail &amp;&amp; capEmail !== rawEmail) emailValues.push({ &quot;stringValue&quot;: capEmail });
+
   var queryPayload = {
     &quot;structuredQuery&quot;: {
       &quot;from&quot;: [{ &quot;collectionId&quot;: &quot;usuarios&quot; }],
       &quot;where&quot;: {
         &quot;fieldFilter&quot;: {
           &quot;field&quot;: { &quot;fieldPath&quot;: &quot;email&quot; },
-          &quot;op&quot;: &quot;EQUAL&quot;,
-          &quot;value&quot;: { &quot;stringValue&quot;: cleanEmail }
+          &quot;op&quot;: &quot;IN&quot;,
+          &quot;value&quot;: { &quot;arrayValue&quot;: { &quot;values&quot;: emailValues } }
         }
       }
     }
@@ -1308,17 +1315,48 @@ function liberarAcessoFirebase30Dias(email) {
 
   try {
     var respostaBusca = UrlFetchApp.fetch(urlBusca, opcoesBusca);
-    var dadosBusca = JSON.parse(respostaBusca.getContentText());
+    var statusCode = respostaBusca.getResponseCode();
+    var respostaTexto = respostaBusca.getContentText();
 
-    if (!dadosBusca || !dadosBusca[0] || !dadosBusca[0].document) {
-      return &quot;❌ E-mail não cadastrado no App&quot;;
+    if (statusCode !== 200) {
+      var errMsg = &quot;&quot;;
+      try {
+        var errObj = JSON.parse(respostaTexto);
+        if (Array.isArray(errObj) &amp;&amp; errObj[0] &amp;&amp; errObj[0].error) errMsg = errObj[0].error.message;
+        else if (errObj &amp;&amp; errObj.error) errMsg = errObj.error.message;
+      } catch(e) {}
+      if (!errMsg) errMsg = respostaTexto.substring(0, 80);
+      
+      if (statusCode === 403 || statusCode === 401) {
+        return &quot;❌ Firebase (403): Permissão negada. Adicione o escopo datastore no appsscript.json&quot;;
+      }
+      return &quot;❌ Erro Firebase (&quot; + statusCode + &quot;): &quot; + errMsg;
     }
 
-    var caminhoDocumento = dadosBusca[0].document.name;
-    var urlAtualizacao = &quot;https://firestore.googleapis.com/v1/&quot; + caminhoDocumento + &quot;?updateMask.fieldPaths=dataExpiracao&quot;;
+    var dadosBusca = JSON.parse(respostaTexto);
+
+    var docEncontrado = null;
+    if (Array.isArray(dadosBusca)) {
+      for (var i = 0; i &lt; dadosBusca.length; i++) {
+        if (dadosBusca[i] &amp;&amp; dadosBusca[i].document) {
+          docEncontrado = dadosBusca[i].document;
+          break;
+        }
+      }
+    }
+
+    if (!docEncontrado) {
+      return &quot;❌ E-mail não cadastrado no App (&quot; + cleanEmail + &quot;)&quot;;
+    }
+
+    var caminhoDocumento = docEncontrado.name;
+    var urlAtualizacao = &quot;https://firestore.googleapis.com/v1/&quot; + caminhoDocumento + &quot;?updateMask.fieldPaths=dataExpiracao&amp;updateMask.fieldPaths=status&quot;;
 
     var payloadAtualizacao = {
-      &quot;fields&quot;: { &quot;dataExpiracao&quot;: { &quot;stringValue&quot;: dataIso } }
+      &quot;fields&quot;: {
+        &quot;dataExpiracao&quot;: { &quot;stringValue&quot;: dataIso },
+        &quot;status&quot;: { &quot;stringValue&quot;: &quot;ativo&quot; }
+      }
     };
 
     var opcoesAtualizacao = {
@@ -1330,11 +1368,13 @@ function liberarAcessoFirebase30Dias(email) {
     };
 
     var respostaAtualizacao = UrlFetchApp.fetch(urlAtualizacao, opcoesAtualizacao);
-    if (respostaAtualizacao.getResponseCode() === 200) {
+    var statusAtualizacao = respostaAtualizacao.getResponseCode();
+
+    if (statusAtualizacao === 200) {
       var dFormatada = Utilities.formatDate(dataExpiracao, Session.getScriptTimeZone() || &quot;GMT-3&quot;, &quot;dd/MM/yyyy&quot;);
       return &quot;✅ Liberado 30 dias (&quot; + dFormatada + &quot;)&quot;;
     } else {
-      return &quot;❌ Erro Firebase: &quot; + respostaAtualizacao.getContentText().substring(0, 80);
+      return &quot;❌ Erro Atualização Firebase (&quot; + statusAtualizacao + &quot;): &quot; + respostaAtualizacao.getContentText().substring(0, 80);
     }
   } catch (erro) {
     return &quot;❌ Erro Script: &quot; + erro.message;
