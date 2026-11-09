@@ -221,7 +221,11 @@ function liberarAcessoFirebase30Dias(email) {
   var cleanEmail = rawEmail.toLowerCase();
   var capEmail = cleanEmail.charAt(0).toUpperCase() + cleanEmail.slice(1);
   var projectId = (FIREBASE_PROJECT_ID || '').trim();
+  if (projectId === '446382097009') projectId = 'orcaora-pro';
   if (!projectId) return "⚠️ FIREBASE_PROJECT_ID não configurado";
+  if (/^\d+$/.test(projectId)) {
+    return "⚠️ Use o ID do projeto em texto (ex: orcaora-pro) e não o número do projeto (" + projectId + ")";
+  }
 
   var dias = Number(FIREBASE_DIAS_ACESSO) || 30;
   var dataExpiracao = new Date();
@@ -229,7 +233,7 @@ function liberarAcessoFirebase30Dias(email) {
   var dataIso = dataExpiracao.toISOString();
 
   var urlBusca = "https://firestore.googleapis.com/v1/projects/" + encodeURIComponent(projectId) + "/databases/(default)/documents:runQuery";
-  var token = (FIREBASE_API_KEY || '').trim() || ScriptApp.getOAuthToken();
+  var token = ((FIREBASE_API_KEY && String(FIREBASE_API_KEY).indexOf('AIzaSy') === -1) ? String(FIREBASE_API_KEY).trim() : '') || ScriptApp.getOAuthToken();
 
   // Busca flexível (minúsculas, grafia original do checkout e capitalizada)
   var emailValues = [{ "stringValue": cleanEmail }];

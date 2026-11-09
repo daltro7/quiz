@@ -1320,7 +1320,11 @@ function liberarAcessoFirebase30Dias(email) {
   var cleanEmail = rawEmail.toLowerCase();
   var capEmail = cleanEmail.charAt(0).toUpperCase() + cleanEmail.slice(1);
   var projectId = (FIREBASE_PROJECT_ID || &apos;&apos;).trim();
+  if (projectId === &apos;446382097009&apos;) projectId = &apos;orcaora-pro&apos;;
   if (!projectId) return &quot;⚠️ FIREBASE_PROJECT_ID não configurado&quot;;
+  if (/^\d+$/.test(projectId)) {
+    return &quot;⚠️ Use o ID do projeto em texto (ex: orcaora-pro) e não o número do projeto (&quot; + projectId + &quot;)&quot;;
+  }
 
   var dias = Number(FIREBASE_DIAS_ACESSO) || 30;
   var dataExpiracao = new Date();
@@ -1328,7 +1332,7 @@ function liberarAcessoFirebase30Dias(email) {
   var dataIso = dataExpiracao.toISOString();
 
   var urlBusca = &quot;https://firestore.googleapis.com/v1/projects/&quot; + encodeURIComponent(projectId) + &quot;/databases/(default)/documents:runQuery&quot;;
-  var token = (FIREBASE_API_KEY || &apos;&apos;).trim() || ScriptApp.getOAuthToken();
+  var token = ((FIREBASE_API_KEY &amp;&amp; String(FIREBASE_API_KEY).indexOf(&apos;AIzaSy&apos;) === -1) ? String(FIREBASE_API_KEY).trim() : &apos;&apos;) || ScriptApp.getOAuthToken();
 
   // Busca flexível (minúsculas, grafia original do checkout e capitalizada)
   var emailValues = [{ &quot;stringValue&quot;: cleanEmail }];
