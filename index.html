@@ -1740,7 +1740,7 @@ function doGet(e) {
             amountFormatted: formattedVal,
             method: payMethod || &apos;PIX&apos;,
             status: isSaleApproved ? &apos;approved&apos; : &apos;waiting_payment&apos;,
-            platform: platform || (event.indexOf(&apos;Kirvano&apos;) !== -1 ? &apos;Kirvano&apos; : (event.indexOf(&apos;Mivvo&apos;) !== -1 ? &apos;Mivvo&apos; : &apos;PerfectPay&apos;)),
+            platform: platform || (event.indexOf(&apos;Kirvano&apos;) !== -1 ? &apos;Kirvano&apos; : (event.indexOf(&apos;Mivvo&apos;) !== -1 ? &apos;Mivvo&apos; : (event.indexOf(&apos;Hotmart&apos;) !== -1 ? &apos;Hotmart&apos; : &apos;PerfectPay&apos;))),
             product: product || &apos;Oferta&apos;,
             src: src || &apos;-&apos;,
             utm: originTag || &apos;-&apos;,
@@ -2072,7 +2072,73 @@ function doPost(e) {
 
 
     // ==========================================
-    // CASO D: DISPARO PADRÃO DO QUIZFORGE
+    // CASO D: WEBHOOK DA HOTMART (Webhook 2.0)
+    // ==========================================
+    if (data.event &amp;&amp; (String(data.event).indexOf(&apos;PURCHASE_&apos;) === 0 || String(data.event).indexOf(&apos;SWITCH_PLAN&apos;) === 0 || (data.data &amp;&amp; data.data.buyer &amp;&amp; data.data.purchase))) {
+      var dH = data.data || {};
+      var purH = dH.purchase || {};
+      var buyH = dH.buyer || {};
+      var prodH = dH.product || {};
+      var origH = dH.origin || purH.origin || {};
+
+      var isAppH = (data.event === &apos;PURCHASE_APPROVED&apos; || data.event === &apos;PURCHASE_COMPLETE&apos; || purH.status === &apos;APPROVED&apos; || purH.status === &apos;COMPLETE&apos;);
+      var isWaitH = (data.event === &apos;PURCHASE_WAITING_PAYMENT&apos; || data.event === &apos;PURCHASE_BILLET_PRINTED&apos; || purH.status === &apos;WAITING_PAYMENT&apos; || purH.status === &apos;BILLET_PRINTED&apos;);
+      var statusStrH = isAppH ? &apos;approved&apos; : (isWaitH ? &apos;waiting_payment&apos; : (purH.status || data.event || &apos;&apos;));
+      var eventStrH = isAppH ? &apos;Venda_Aprovada&apos; : &apos;Aguardando_Pagamento&apos;;
+
+      var amountValH = (purH.price &amp;&amp; purH.price.value !== undefined) ? Number(purH.price.value) : (Number(purH.original_offer_price &amp;&amp; purH.original_offer_price.value) || 0);
+      var prodNameH = (prodH.name) || (purH.offer &amp;&amp; purH.offer.name) || &apos;Hotmart Oferta&apos;;
+      var payMethodH = (purH.payment &amp;&amp; purH.payment.type) || &apos;HOTMART&apos;;
+      var phoneH = buyH.checkout_phone || buyH.phone || &apos;&apos;;
+
+      setVal([&apos;sessão (id)&apos;, &apos;sessão&apos;, &apos;sessao&apos;], purH.transaction || (&apos;hot_&apos; + Date.now()));
+      setVal([&apos;evento&apos;, &apos;event&apos;], eventStrH);
+      setVal([&apos;quiz / produto&apos;, &apos;produto&apos;], prodNameH);
+      setVal([&apos;status venda&apos;, &apos;status_venda&apos;, &apos;status&apos;], statusStrH);
+      setVal([&apos;valor (r$)&apos;, &apos;valor&apos;], amountValH);
+      setVal([&apos;método&apos;, &apos;metodo&apos;], payMethodH);
+      setVal([&apos;plataforma&apos;, &apos;platform&apos;], &apos;Hotmart&apos;);
+      setVal([&apos;nome&apos;, &apos;cliente&apos;], buyH.name || ([buyH.first_name, buyH.last_name].filter(Boolean).join(&apos; &apos;)) || &apos;&apos;);
+      setVal([&apos;whatsapp&apos;, &apos;telefone&apos;], phoneH);
+      setVal([&apos;email&apos;, &apos;e-mail&apos;], buyH.email || &apos;&apos;);
+      setVal([&apos;documento&apos;, &apos;cpf&apos;], buyH.document || &apos;&apos;);
+      setVal([&apos;src&apos;, &apos;sck&apos;], origH.src || origH.sck || &apos;&apos;);
+      setVal([&apos;utm_source&apos;, &apos;source&apos;], origH.src || origH.utm_source || &apos;&apos;);
+      setVal([&apos;utm_campaign&apos;, &apos;campaign&apos;], origH.utm_campaign || &apos;&apos;);
+      setVal([&apos;utm_medium&apos;, &apos;medium&apos;], origH.utm_medium || &apos;&apos;);
+      setVal([&apos;utm_content&apos;, &apos;content&apos;], origH.sck || origH.utm_content || &apos;&apos;);
+
+      // 1. Disparo Meta CAPI para vendas aprovadas
+      if (isAppH) {
+        var capiResH = sendMetaCapiPurchase({
+          orderId: purH.transaction || (&apos;hot_&apos; + Date.now()),
+          amount: amountValH,
+          productName: prodNameH,
+          name: buyH.name || ([buyH.first_name, buyH.last_name].filter(Boolean).join(&apos; &apos;)) || &apos;&apos;,
+          email: buyH.email || &apos;&apos;,
+          phone: phoneH,
+          clientIp: purH.client_ip || &apos;&apos;,
+          clientUserAgent: purH.client_user_agent || &apos;&apos;,
+          fbc: origH.fbc || origH.fbclid || &apos;&apos;,
+          fbp: origH.fbp || &apos;&apos;,
+          externalId: purH.transaction || (&apos;hot_&apos; + Date.now())
+        });
+        setVal([&apos;meta capi&apos;, &apos;capi&apos;], capiResH.success ? &apos;Enviado (Purchase)&apos; : (&apos;Erro: &apos; + (capiResH.error || capiResH.code || capiResH.reason)));
+
+        // 2. Liberação Automática no Firebase (30 dias)
+        if (LIBERAR_FIREBASE_AUTOMATICO &amp;&amp; buyH.email) {
+          var fbResH = liberarAcessoFirebase30Dias(buyH.email);
+          setVal([&apos;acesso app&apos;, &apos;resultado&apos;, &apos;firebase&apos;, &apos;status app&apos;], fbResH);
+        }
+      }
+
+      sheet.appendRow(newRow);
+      return ContentService.createTextOutput(JSON.stringify({ status: &apos;success&apos;, platform: &apos;Hotmart&apos; })).setMimeType(ContentService.MimeType.JSON);
+    }
+
+
+    // ==========================================
+    // CASO E: DISPARO PADRÃO DO QUIZFORGE
     // ==========================================
     var utms = data.utms || {};
     var src = data.src || utms.src || utms.sck || utms.SRC || utms.SCK || &apos;&apos;;

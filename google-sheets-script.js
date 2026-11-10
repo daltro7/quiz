@@ -641,7 +641,7 @@ function doGet(e) {
             amountFormatted: formattedVal,
             method: payMethod || 'PIX',
             status: isSaleApproved ? 'approved' : 'waiting_payment',
-            platform: platform || (event.indexOf('Kirvano') !== -1 ? 'Kirvano' : (event.indexOf('Mivvo') !== -1 ? 'Mivvo' : 'PerfectPay')),
+            platform: platform || (event.indexOf('Kirvano') !== -1 ? 'Kirvano' : (event.indexOf('Mivvo') !== -1 ? 'Mivvo' : (event.indexOf('Hotmart') !== -1 ? 'Hotmart' : 'PerfectPay'))),
             product: product || 'Oferta',
             src: src || '-',
             utm: originTag || '-',
@@ -973,7 +973,72 @@ function doPost(e) {
 
 
     // ==========================================
-    // CASO D: DISPARO PADRÃO DO QUIZFORGE
+    // CASO D: WEBHOOK DA HOTMART (Webhook 2.0)
+    // ==========================================
+    if (data.event && (String(data.event).indexOf('PURCHASE_') === 0 || String(data.event).indexOf('SWITCH_PLAN') === 0 || (data.data && data.data.buyer && data.data.purchase))) {
+      var dH = data.data || {};
+      var purH = dH.purchase || {};
+      var buyH = dH.buyer || {};
+      var prodH = dH.product || {};
+      var origH = dH.origin || purH.origin || {};
+
+      var isAppH = (data.event === 'PURCHASE_APPROVED' || data.event === 'PURCHASE_COMPLETE' || purH.status === 'APPROVED' || purH.status === 'COMPLETE');
+      var isWaitH = (data.event === 'PURCHASE_WAITING_PAYMENT' || data.event === 'PURCHASE_BILLET_PRINTED' || purH.status === 'WAITING_PAYMENT' || purH.status === 'BILLET_PRINTED');
+      var statusStrH = isAppH ? 'approved' : (isWaitH ? 'waiting_payment' : (purH.status || data.event || ''));
+      var eventStrH = isAppH ? 'Venda_Aprovada' : 'Aguardando_Pagamento';
+
+      var amountValH = (purH.price && purH.price.value !== undefined) ? Number(purH.price.value) : (Number(purH.original_offer_price && purH.original_offer_price.value) || 0);
+      var prodNameH = (prodH.name) || (purH.offer && purH.offer.name) || 'Hotmart Oferta';
+      var payMethodH = (purH.payment && purH.payment.type) || 'HOTMART';
+      var phoneH = buyH.checkout_phone || buyH.phone || '';
+
+      setVal(['sessão (id)', 'sessão', 'sessao'], purH.transaction || ('hot_' + Date.now()));
+      setVal(['evento', 'event'], eventStrH);
+      setVal(['quiz / produto', 'produto'], prodNameH);
+      setVal(['status venda', 'status_venda', 'status'], statusStrH);
+      setVal(['valor (r$)', 'valor'], amountValH);
+      setVal(['método', 'metodo'], payMethodH);
+      setVal(['plataforma', 'platform'], 'Hotmart');
+      setVal(['nome', 'cliente'], buyH.name || ([buyH.first_name, buyH.last_name].filter(Boolean).join(' ')) || '');
+      setVal(['whatsapp', 'telefone'], phoneH);
+      setVal(['email', 'e-mail'], buyH.email || '');
+      setVal(['documento', 'cpf'], buyH.document || '');
+      setVal(['src', 'sck'], origH.src || origH.sck || '');
+      setVal(['utm_source', 'source'], origH.src || origH.utm_source || '');
+      setVal(['utm_campaign', 'campaign'], origH.utm_campaign || '');
+      setVal(['utm_medium', 'medium'], origH.utm_medium || '');
+      setVal(['utm_content', 'content'], origH.sck || origH.utm_content || '');
+
+      // 1. Disparo Meta CAPI para vendas aprovadas
+      if (isAppH) {
+        var capiResH = sendMetaCapiPurchase({
+          orderId: purH.transaction || ('hot_' + Date.now()),
+          amount: amountValH,
+          productName: prodNameH,
+          name: buyH.name || ([buyH.first_name, buyH.last_name].filter(Boolean).join(' ')) || '',
+          email: buyH.email || '',
+          phone: phoneH,
+          clientIp: purH.client_ip || '',
+          clientUserAgent: purH.client_user_agent || '',
+          fbc: origH.fbc || origH.fbclid || '',
+          fbp: origH.fbp || '',
+          externalId: purH.transaction || ('hot_' + Date.now())
+        });
+        setVal(['meta capi', 'capi'], capiResH.success ? 'Enviado (Purchase)' : ('Erro: ' + (capiResH.error || capiResH.code || capiResH.reason)));
+
+        // 2. Liberação Automática no Firebase (30 dias)
+        if (LIBERAR_FIREBASE_AUTOMATICO && buyH.email) {
+          var fbResH = liberarAcessoFirebase30Dias(buyH.email);
+          setVal(['acesso app', 'resultado', 'firebase', 'status app'], fbResH);
+        }
+      }
+
+      sheet.appendRow(newRow);
+      return ContentService.createTextOutput(JSON.stringify({ status: 'success', platform: 'Hotmart' })).setMimeType(ContentService.MimeType.JSON);
+    }
+
+    // ==========================================
+    // CASO E: DISPARO PADRÃO DO QUIZFORGE
     // ==========================================
     var utms = data.utms || {};
     var src = data.src || utms.src || utms.sck || utms.SRC || utms.SCK || '';
