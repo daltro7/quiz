@@ -219,6 +219,12 @@
         <span class="text-[11px] text-slate-500 font-semibold" id="orders-last-update">Atualizado agora</span>
       </div>
 
+      <!-- Barra de Pesquisa por Nome ou Origem (SRC) -->
+      <div class="relative">
+        <i class="ph ph-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-xs"></i>
+        <input type="text" id="orders-search-input" oninput="app.setOrdersSearch(this.value)" placeholder="Buscar por cliente, SRC (ex: quiz, pv) ou produto..." class="w-full bg-slate-900/80 border border-slate-800 rounded-xl pl-8 pr-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition">
+      </div>
+
       <!-- Lista de Pedidos -->
       <div id="orders-list-container" class="space-y-2.5">
         <!-- Renderizado dinamicamente via JS -->
@@ -404,6 +410,7 @@
 
       filter: 'today',
       ordersFilter: 'approved',
+      ordersSearch: '',
       activeTab: 'orders',
       startDate: '',
       endDate: '',
@@ -742,6 +749,11 @@
         this.renderOrders();
       },
 
+      setOrdersSearch(val) {
+        this.ordersSearch = (val || '').toLowerCase().trim();
+        this.renderOrders();
+      },
+
       async refreshData() {
         const syncBtn = document.getElementById('btn-sync');
         const syncIcon = document.getElementById('icon-sync');
@@ -872,13 +884,22 @@
         const orders = this.data.orders || [];
 
         const isApproved = this.ordersFilter === 'approved';
+        const search = this.ordersSearch || '';
+
         const filtered = orders.filter(o => {
           const st = String(o.status || '').toLowerCase();
-          if (isApproved) {
-            return st === 'approved' || st === 'aprovado' || st === 'paid';
-          } else {
-            return st === 'waiting_payment' || st === 'pending' || st === 'pendente';
-          }
+          const matchStatus = isApproved 
+            ? (st === 'approved' || st === 'aprovado' || st === 'paid')
+            : (st === 'waiting_payment' || st === 'pending' || st === 'pendente');
+          if (!matchStatus) return false;
+
+          if (!search) return true;
+          const name = String(o.name || '').toLowerCase();
+          const src = String(o.src || '').toLowerCase();
+          const utm = String(o.utm || '').toLowerCase();
+          const prod = String(o.product || '').toLowerCase();
+          const plat = String(o.platform || '').toLowerCase();
+          return name.includes(search) || src.includes(search) || utm.includes(search) || prod.includes(search) || plat.includes(search);
         });
 
         const appCount = orders.filter(o => ['approved', 'aprovado', 'paid'].includes(String(o.status || '').toLowerCase())).length;
@@ -890,7 +911,7 @@
           container.innerHTML = `
             <div class="bg-slate-900/50 border border-slate-800 rounded-2xl p-6 text-center space-y-2">
               <i class="ph ph-receipt text-3xl text-slate-600"></i>
-              <p class="text-xs text-slate-400 font-medium">Nenhum pedido encontrado para este filtro.</p>
+              <p class="text-xs text-slate-400 font-medium">Nenhum pedido encontrado ${search ? 'para a busca "' + search + '"' : 'para este filtro'}.</p>
             </div>
           `;
           return;
@@ -917,6 +938,9 @@
 
           const val = Number(order.amount || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
+          const srcVal = (order.src && order.src !== '-') ? order.src : ((order.utm && order.utm !== '-') ? order.utm : 'Direto');
+          const platVal = order.platform || 'Mivvo';
+
           return `
             <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-3.5 space-y-3 transition hover:border-slate-700">
               <div class="flex items-center justify-between">
@@ -927,6 +951,16 @@
                   <div>
                     <h4 class="text-xs font-extrabold text-white leading-tight">${rawName}</h4>
                     <p class="text-[11px] text-slate-400 mt-0.5">${order.product || 'OrçaObra Pro'} • <span class="text-slate-300 font-semibold">${order.method || 'PIX'}</span></p>
+                    
+                    <!-- CAMPO: ORIGEM DE VENDA (SRC) & PLATAFORMA -->
+                    <div class="flex items-center gap-1.5 mt-1.5 flex-wrap">
+                      <span class="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-md bg-indigo-500/15 text-indigo-300 border border-indigo-500/30">
+                        <i class="ph ph-target text-[11px]"></i> SRC: ${srcVal}
+                      </span>
+                      <span class="inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-slate-800 text-slate-300 border border-slate-700">
+                        <i class="ph ph-storefront text-[10px]"></i> ${platVal}
+                      </span>
+                    </div>
                   </div>
                 </div>
 
