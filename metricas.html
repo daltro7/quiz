@@ -193,13 +193,16 @@
       </div>
     </div>
 
-    <!-- ABAS INTERNAS: PEDIDOS VS FUNIL -->
-    <div class="flex p-1 bg-slate-900/90 border border-slate-800 rounded-xl">
-      <button onclick="app.switchTab('orders')" id="tab-btn-orders" class="flex-1 py-2 rounded-lg text-xs font-extrabold transition bg-indigo-600 text-white shadow-sm flex items-center justify-center gap-1.5">
-        <i class="ph ph-shopping-bag"></i> Pedidos & Clientes
+    <!-- ABAS INTERNAS: PEDIDOS VS RECUPERAÇÃO VS FUNIL -->
+    <div class="flex p-1 bg-slate-900/90 border border-slate-800 rounded-xl gap-1">
+      <button onclick="app.switchTab('orders')" id="tab-btn-orders" class="flex-1 py-2 rounded-lg text-xs font-extrabold transition bg-indigo-600 text-white shadow-sm flex items-center justify-center gap-1">
+        <i class="ph ph-shopping-bag"></i> Pedidos
       </button>
-      <button onclick="app.switchTab('funnel')" id="tab-btn-funnel" class="flex-1 py-2 rounded-lg text-xs font-extrabold transition text-slate-400 hover:text-white flex items-center justify-center gap-1.5">
-        <i class="ph ph-chart-bar"></i> Etapas do Funil
+      <button onclick="app.switchTab('recovery')" id="tab-btn-recovery" class="flex-1 py-2 rounded-lg text-xs font-extrabold transition text-slate-400 hover:text-white flex items-center justify-center gap-1">
+        <i class="ph ph-lightning text-amber-400"></i> Recuperar PIX <span id="recovery-badge-count" class="hidden px-1.5 py-0.2 rounded-full bg-amber-500 text-slate-950 font-black text-[10px]">0</span>
+      </button>
+      <button onclick="app.switchTab('funnel')" id="tab-btn-funnel" class="flex-1 py-2 rounded-lg text-xs font-extrabold transition text-slate-400 hover:text-white flex items-center justify-center gap-1">
+        <i class="ph ph-chart-bar"></i> Funil
       </button>
     </div>
 
@@ -231,6 +234,79 @@
       </div>
     </div>
 
+    <!-- CONTEÚDO DA ABA: RECUPERAÇÃO DE VENDAS (SEMI-AUTOMÁTICA 1-CLIQUE) -->
+    <div id="tab-content-recovery" class="space-y-3 hidden">
+      <!-- Banner / Resumo de Recuperação -->
+      <div class="bg-gradient-to-r from-amber-500/10 via-indigo-500/10 to-emerald-500/10 border border-slate-800 rounded-2xl p-3.5 space-y-3">
+        <div class="flex items-center justify-between gap-2">
+          <div class="flex items-center gap-2">
+            <span class="w-8 h-8 rounded-xl bg-amber-500/20 text-amber-400 border border-amber-500/30 flex items-center justify-center text-base shrink-0">
+              <i class="ph ph-lightning"></i>
+            </span>
+            <div>
+              <h3 class="text-xs font-black text-white flex items-center gap-1.5">
+                Recuperador de Vendas VIP
+                <span class="text-[9px] font-extrabold px-1.5 py-0.2 bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded-full">1-Clique Humano</span>
+              </h3>
+              <p class="text-[10px] text-slate-400">Recupere PIX pendentes pelo WhatsApp sem risco de ban</p>
+            </div>
+          </div>
+          <button onclick="app.openRecoverySettings()" class="px-2.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold border border-slate-700 transition flex items-center gap-1 shrink-0 shadow-sm">
+            <i class="ph ph-gear text-sm text-indigo-400"></i> Mensagens
+          </button>
+        </div>
+
+        <!-- Mini Cards de Status -->
+        <div class="grid grid-cols-3 gap-2 text-center">
+          <div class="bg-slate-900/80 p-2 rounded-xl border border-slate-800/80">
+            <div class="text-[10px] text-amber-400 font-bold">PIX Pendentes</div>
+            <div id="recov-stat-pending-val" class="text-xs font-black text-white mt-0.5">R$ 0,00</div>
+            <div id="recov-stat-pending-count" class="text-[10px] text-slate-500">0 pedidos</div>
+          </div>
+          <div class="bg-slate-900/80 p-2 rounded-xl border border-slate-800/80">
+            <div class="text-[10px] text-indigo-400 font-bold">Em Contato</div>
+            <div id="recov-stat-contacted-count" class="text-xs font-black text-white mt-0.5">0</div>
+            <div class="text-[10px] text-slate-500">clientes abordados</div>
+          </div>
+          <div class="bg-slate-900/80 p-2 rounded-xl border border-slate-800/80">
+            <div class="text-[10px] text-emerald-400 font-bold">Recuperados 🎉</div>
+            <div id="recov-stat-recovered-val" class="text-xs font-black text-white mt-0.5">R$ 0,00</div>
+            <div id="recov-stat-recovered-count" class="text-[10px] text-slate-500">0 vendas pagas</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Filtro por Etapa do Funil (Pipeline) -->
+      <div class="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar text-xs">
+        <button onclick="app.setRecoveryStageFilter('all')" id="recov-stage-btn-all" class="px-3 py-1.5 rounded-xl font-bold bg-indigo-600 text-white shadow-sm flex-shrink-0 transition">
+          Todos (<span id="recov-count-all">0</span>)
+        </button>
+        <button onclick="app.setRecoveryStageFilter('stage1')" id="recov-stage-btn-stage1" class="px-3 py-1.5 rounded-xl font-bold bg-slate-800/90 text-slate-400 border border-slate-700/80 flex-shrink-0 transition">
+          ⚡ Etapa 1 (<span id="recov-count-stage1">0</span>)
+        </button>
+        <button onclick="app.setRecoveryStageFilter('stage2')" id="recov-stage-btn-stage2" class="px-3 py-1.5 rounded-xl font-bold bg-slate-800/90 text-slate-400 border border-slate-700/80 flex-shrink-0 transition">
+          ⏰ Etapa 2 (<span id="recov-count-stage2">0</span>)
+        </button>
+        <button onclick="app.setRecoveryStageFilter('stage3')" id="recov-stage-btn-stage3" class="px-3 py-1.5 rounded-xl font-bold bg-slate-800/90 text-slate-400 border border-slate-700/80 flex-shrink-0 transition">
+          🔥 Etapa 3 (<span id="recov-count-stage3">0</span>)
+        </button>
+        <button onclick="app.setRecoveryStageFilter('paid')" id="recov-stage-btn-paid" class="px-3 py-1.5 rounded-xl font-bold bg-slate-800/90 text-slate-400 border border-slate-700/80 flex-shrink-0 transition">
+          🏆 Pagos (<span id="recov-count-paid">0</span>)
+        </button>
+      </div>
+
+      <!-- Barra de Pesquisa de Recuperação -->
+      <div class="relative">
+        <i class="ph ph-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-xs"></i>
+        <input type="text" id="recovery-search-input" oninput="app.setRecoverySearch(this.value)" placeholder="Buscar cliente por nome, telefone ou SRC (ex: quiz, pv)..." class="w-full bg-slate-900/80 border border-slate-800 rounded-xl pl-8 pr-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition">
+      </div>
+
+      <!-- Lista de Clientes do Funil de Recuperação -->
+      <div id="recovery-list-container" class="space-y-2.5">
+        <!-- Renderizado dinamicamente via JS -->
+      </div>
+    </div>
+
     <!-- CONTEÚDO DA ABA: FUNIL DETALHADO -->
     <div id="tab-content-funnel" class="space-y-3 hidden">
       <div class="bg-slate-900/80 border border-slate-800 rounded-2xl p-4">
@@ -246,6 +322,93 @@
     </div>
 
   </main>
+
+  <!-- MODAL: CONFIGURAÇÃO DE RECUPERAÇÃO DE VENDAS (MENSAGENS & SPINTAX) -->
+  <div id="modal-recovery-settings" class="fixed inset-0 bg-slate-950/85 backdrop-blur-sm z-50 flex items-center justify-center p-3 sm:p-4 hidden">
+    <div class="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-lg p-5 shadow-2xl max-h-[90vh] overflow-y-auto space-y-4">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-800">
+        <div class="flex items-center gap-2">
+          <div class="w-8 h-8 rounded-xl bg-amber-500/20 text-amber-400 border border-amber-500/30 flex items-center justify-center text-base shrink-0">
+            <i class="ph ph-lightning"></i>
+          </div>
+          <div>
+            <h3 class="font-black text-sm text-white">Configurar Funil de Recuperação</h3>
+            <p class="text-[10px] text-slate-400">Personalize os textos com Spintax anti-ban</p>
+          </div>
+        </div>
+        <button onclick="app.closeRecoverySettings()" class="w-8 h-8 rounded-full bg-slate-800 text-slate-400 hover:text-white flex items-center justify-center transition">
+          <i class="ph ph-x text-base"></i>
+        </button>
+      </div>
+
+      <!-- Guia de Variáveis & Spintax -->
+      <div class="bg-indigo-500/10 border border-indigo-500/20 rounded-2xl p-3 text-[11px] text-indigo-300 space-y-1.5">
+        <p class="font-extrabold text-white flex items-center gap-1.5">
+          <i class="ph ph-info text-indigo-400"></i> Variáveis automáticas:
+        </p>
+        <p class="text-slate-300">
+          <code class="bg-slate-950 px-1.5 py-0.5 rounded text-amber-300 font-mono">{nome}</code> Primeiro nome • 
+          <code class="bg-slate-950 px-1.5 py-0.5 rounded text-amber-300 font-mono">{produto}</code> Produto • 
+          <code class="bg-slate-950 px-1.5 py-0.5 rounded text-amber-300 font-mono">{valor}</code> Valor R$
+        </p>
+        <p class="text-slate-400 pt-0.5">
+          🛡️ <b>Spintax Anti-Ban:</b> use chaves com barra vertical como <code class="text-emerald-300">{Oi|Olá|Tudo bem}</code>. O sistema sorteia uma palavra diferente para cada cliente e nunca envia o mesmo texto!
+        </p>
+      </div>
+
+      <!-- Etapa 1 -->
+      <div class="space-y-1.5 bg-slate-950/60 p-3 rounded-2xl border border-slate-800/80">
+        <div class="flex items-center justify-between">
+          <label class="text-xs font-black text-emerald-400 flex items-center gap-1.5">
+            <span>⚡ Mensagem 1 (PIX Recente • 0 a 60 min)</span>
+          </label>
+          <span class="text-[10px] text-slate-400">Primeiro contato amigável</span>
+        </div>
+        <textarea id="recov-tpl-msg1" rows="3" class="w-full bg-slate-900 border border-slate-800 rounded-xl p-2.5 text-xs text-white focus:outline-none focus:border-indigo-500 font-mono leading-relaxed"></textarea>
+      </div>
+
+      <!-- Etapa 2 -->
+      <div class="space-y-1.5 bg-slate-950/60 p-3 rounded-2xl border border-slate-800/80">
+        <div class="flex items-center justify-between">
+          <label class="text-xs font-black text-amber-400 flex items-center gap-1.5">
+            <span>⏰ Mensagem 2 (Lembrete • 1h a 4h depois)</span>
+          </label>
+          <span class="text-[10px] text-slate-400">Reserva de vaga</span>
+        </div>
+        <textarea id="recov-tpl-msg2" rows="3" class="w-full bg-slate-900 border border-slate-800 rounded-xl p-2.5 text-xs text-white focus:outline-none focus:border-indigo-500 font-mono leading-relaxed"></textarea>
+      </div>
+
+      <!-- Etapa 3 -->
+      <div class="space-y-1.5 bg-slate-950/60 p-3 rounded-2xl border border-slate-800/80">
+        <div class="flex items-center justify-between">
+          <label class="text-xs font-black text-purple-400 flex items-center gap-1.5">
+            <span>🔥 Mensagem 3 (Última Chance • Final do dia)</span>
+          </label>
+          <span class="text-[10px] text-slate-400">Encerramento / Objeções</span>
+        </div>
+        <textarea id="recov-tpl-msg3" rows="3" class="w-full bg-slate-900 border border-slate-800 rounded-xl p-2.5 text-xs text-white focus:outline-none focus:border-indigo-500 font-mono leading-relaxed"></textarea>
+      </div>
+
+      <!-- Dica de Áudio -->
+      <div class="bg-emerald-500/10 border border-emerald-500/20 rounded-2xl p-3 text-[11px] text-slate-300 space-y-1">
+        <p class="font-extrabold text-emerald-400 flex items-center gap-1.5">
+          <i class="ph ph-microphone text-base"></i> Dica de Ouro: Áudio Humano
+        </p>
+        <p class="text-slate-400">
+          Quando o cliente responder ao seu WhatsApp, encaminhe um áudio previamente gravado com a sua voz respondendo dúvidas. O WhatsApp entrega como áudio gravado na hora e a conversão de PIX passa de 50%!
+        </p>
+      </div>
+
+      <div class="flex items-center justify-between pt-2 border-t border-slate-800">
+        <button onclick="app.resetRecoveryTemplates()" type="button" class="px-3 py-2 rounded-xl text-xs font-bold text-slate-400 hover:text-white transition">
+          Restaurar Padrão
+        </button>
+        <button onclick="app.saveRecoverySettings()" type="button" class="px-4 py-2 rounded-xl text-xs font-extrabold bg-indigo-600 hover:bg-indigo-500 text-white shadow-md transition flex items-center gap-1.5">
+          <i class="ph ph-check text-sm"></i> Salvar Mensagens
+        </button>
+      </div>
+    </div>
+  </div>
 
   <!-- MODAL: LOGIN FIREBASE -->
   <div id="modal-auth" class="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4 hidden">
@@ -411,6 +574,9 @@
       filter: 'today',
       ordersFilter: 'approved',
       ordersSearch: '',
+      recoveryStageFilter: 'all',
+      recoverySearch: '',
+      recoveryState: {},
       activeTab: 'orders',
       startDate: '',
       endDate: '',
@@ -430,11 +596,18 @@
 
       settings: {
         sheetUrl: '',
-        whatsappTemplate: 'Oi {nome}, tudo bem? Preciso falar com você sobre o seu pedido do OrçaObra!'
+        whatsappTemplate: 'Oi {nome}, tudo bem? Preciso falar com você sobre o seu pedido do OrçaObra!',
+        recoveryTemplates: {
+          msg1: "{Oi|Olá} {nome}! {Tudo bem?|Como vai?} Vi que você gerou o Pix do {produto} no valor de {valor}, mas ainda não constou a confirmação aqui. Deu algum erro no app do seu banco ou precisa que eu te reenvie a chave Pix?",
+          msg2: "Oi {nome}, passando para te avisar que o seu pedido do {produto} ainda está reservado por pouco tempo com o valor promocional de {valor}. Quer que eu te ajude a concluir ou prefere outra forma de pagamento?",
+          msg3: "{nome}, última chamada: seu acesso promocional ao {produto} está prestes a expirar. Ficou com alguma dúvida sobre o aplicativo ou suporte? Me avisa aqui para eu segurar sua vaga! 🤝"
+        }
       },
 
       async init() {
         this.initDates();
+        this.loadRecoverySettings();
+        this.loadRecoveryState();
         this.initFirebase();
       },
 
@@ -716,20 +889,34 @@
       switchTab(tab) {
         this.activeTab = tab;
         const btnOrders = document.getElementById('tab-btn-orders');
+        const btnRecovery = document.getElementById('tab-btn-recovery');
         const btnFunnel = document.getElementById('tab-btn-funnel');
         const contentOrders = document.getElementById('tab-content-orders');
+        const contentRecovery = document.getElementById('tab-content-recovery');
         const contentFunnel = document.getElementById('tab-content-funnel');
 
+        // Reseta todos os botões para inativo
+        [btnOrders, btnRecovery, btnFunnel].forEach(btn => {
+          if (btn) btn.className = 'flex-1 py-2 rounded-lg text-xs font-extrabold transition text-slate-400 hover:text-white flex items-center justify-center gap-1';
+        });
+
+        // Oculta todos os conteúdos
+        [contentOrders, contentRecovery, contentFunnel].forEach(cnt => {
+          if (cnt) cnt.classList.add('hidden');
+        });
+
         if (tab === 'orders') {
-          btnOrders.className = 'flex-1 py-2 rounded-lg text-xs font-extrabold transition bg-indigo-600 text-white shadow-sm flex items-center justify-center gap-1.5';
-          btnFunnel.className = 'flex-1 py-2 rounded-lg text-xs font-extrabold transition text-slate-400 hover:text-white flex items-center justify-center gap-1.5';
-          contentOrders.classList.remove('hidden');
-          contentFunnel.classList.add('hidden');
+          if (btnOrders) btnOrders.className = 'flex-1 py-2 rounded-lg text-xs font-extrabold transition bg-indigo-600 text-white shadow-sm flex items-center justify-center gap-1';
+          if (contentOrders) contentOrders.classList.remove('hidden');
+          this.renderOrders();
+        } else if (tab === 'recovery') {
+          if (btnRecovery) btnRecovery.className = 'flex-1 py-2 rounded-lg text-xs font-extrabold transition bg-amber-500 text-slate-950 shadow-sm flex items-center justify-center gap-1';
+          if (contentRecovery) contentRecovery.classList.remove('hidden');
+          this.renderRecovery();
         } else {
-          btnFunnel.className = 'flex-1 py-2 rounded-lg text-xs font-extrabold transition bg-indigo-600 text-white shadow-sm flex items-center justify-center gap-1.5';
-          btnOrders.className = 'flex-1 py-2 rounded-lg text-xs font-extrabold transition text-slate-400 hover:text-white flex items-center justify-center gap-1.5';
-          contentFunnel.classList.remove('hidden');
-          contentOrders.classList.add('hidden');
+          if (btnFunnel) btnFunnel.className = 'flex-1 py-2 rounded-lg text-xs font-extrabold transition bg-indigo-600 text-white shadow-sm flex items-center justify-center gap-1';
+          if (contentFunnel) contentFunnel.classList.remove('hidden');
+          this.renderFunnel();
         }
       },
 
@@ -876,6 +1063,7 @@
         document.getElementById('metric-conversion-rate').innerText = `${rate}% Vendas/Visitas`;
 
         this.renderOrders();
+        this.renderRecovery();
         this.renderFunnel();
       },
 
@@ -985,6 +1173,471 @@
                   <span class="text-[10px] text-slate-500">Sem telefone cadastrado</span>
                 `}
               </div>
+            </div>
+          `;
+        }).join('');
+      },
+
+      loadRecoverySettings() {
+        try {
+          const raw = localStorage.getItem('qf_recovery_templates');
+          if (raw) {
+            const parsed = JSON.parse(raw);
+            if (parsed && parsed.msg1) this.settings.recoveryTemplates = parsed;
+          }
+        } catch(e) {}
+      },
+
+      loadRecoveryState() {
+        try {
+          const raw = localStorage.getItem('qf_recovery_state');
+          if (raw) {
+            this.recoveryState = JSON.parse(raw) || {};
+          }
+        } catch(e) {}
+      },
+
+      saveRecoveryState() {
+        try {
+          localStorage.setItem('qf_recovery_state', JSON.stringify(this.recoveryState || {}));
+        } catch(e) {}
+      },
+
+      openRecoverySettings() {
+        const tpls = this.settings.recoveryTemplates;
+        const el1 = document.getElementById('recov-tpl-msg1');
+        const el2 = document.getElementById('recov-tpl-msg2');
+        const el3 = document.getElementById('recov-tpl-msg3');
+        if (el1) el1.value = tpls.msg1 || '';
+        if (el2) el2.value = tpls.msg2 || '';
+        if (el3) el3.value = tpls.msg3 || '';
+        const modal = document.getElementById('modal-recovery-settings');
+        if (modal) modal.classList.remove('hidden');
+      },
+
+      closeRecoverySettings() {
+        const modal = document.getElementById('modal-recovery-settings');
+        if (modal) modal.classList.add('hidden');
+      },
+
+      saveRecoverySettings() {
+        const m1 = (document.getElementById('recov-tpl-msg1').value || '').trim();
+        const m2 = (document.getElementById('recov-tpl-msg2').value || '').trim();
+        const m3 = (document.getElementById('recov-tpl-msg3').value || '').trim();
+
+        if (m1) this.settings.recoveryTemplates.msg1 = m1;
+        if (m2) this.settings.recoveryTemplates.msg2 = m2;
+        if (m3) this.settings.recoveryTemplates.msg3 = m3;
+
+        try {
+          localStorage.setItem('qf_recovery_templates', JSON.stringify(this.settings.recoveryTemplates));
+        } catch(e) {}
+
+        this.closeRecoverySettings();
+        this.renderRecovery();
+        alert('✅ Mensagens do funil de recuperação salvas com sucesso!');
+      },
+
+      resetRecoveryTemplates() {
+        if (!confirm('Deseja restaurar as mensagens padrão do funil?')) return;
+        this.settings.recoveryTemplates = {
+          msg1: "{Oi|Olá} {nome}! {Tudo bem?|Como vai?} Vi que você gerou o Pix do {produto} no valor de {valor}, mas ainda não constou a confirmação aqui. Deu algum erro no app do seu banco ou precisa que eu te reenvie a chave Pix?",
+          msg2: "Oi {nome}, passando para te avisar que o seu pedido do {produto} ainda está reservado por pouco tempo com o valor promocional de {valor}. Quer que eu te ajude a concluir ou prefere outra forma de pagamento?",
+          msg3: "{nome}, última chamada: seu acesso promocional ao {produto} está prestes a expirar. Ficou com alguma dúvida sobre o aplicativo ou suporte? Me avisa aqui para eu segurar sua vaga! 🤝"
+        };
+        try {
+          localStorage.removeItem('qf_recovery_templates');
+        } catch(e) {}
+        this.openRecoverySettings();
+      },
+
+      parseSpintax(text) {
+        if (!text) return '';
+        let result = text;
+        const regex = /\{([^{}]+)\}/;
+        let count = 0;
+        while (regex.test(result) && count < 20) {
+          count++;
+          result = result.replace(regex, (match, choices) => {
+            const parts = choices.split('|');
+            return parts[Math.floor(Math.random() * parts.length)];
+          });
+        }
+        return result;
+      },
+
+      buildRecoveryMessage(stage, order) {
+        const tpls = this.settings.recoveryTemplates;
+        const tpl = stage === 1 ? tpls.msg1 : (stage === 2 ? tpls.msg2 : tpls.msg3);
+        const rawName = (order.name || 'Cliente').trim();
+        const firstName = rawName.split(/\s+/)[0];
+        const prod = order.product || 'OrçaObra Pro';
+        const val = Number(order.amount || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+
+        let msg = this.parseSpintax(tpl);
+        msg = msg.replace(/{nome}/g, firstName);
+        msg = msg.replace(/{nome_completo}/g, rawName);
+        msg = msg.replace(/{produto}/g, prod);
+        msg = msg.replace(/{valor}/g, val);
+        return msg;
+      },
+
+      setRecoveryStageFilter(stage) {
+        this.recoveryStageFilter = stage;
+        ['all', 'stage1', 'stage2', 'stage3', 'paid'].forEach(s => {
+          const btn = document.getElementById(`recov-stage-btn-${s}`);
+          if (btn) {
+            if (s === stage) {
+              btn.className = 'px-3 py-1.5 rounded-xl font-bold bg-indigo-600 text-white shadow-sm flex-shrink-0 transition';
+            } else {
+              btn.className = 'px-3 py-1.5 rounded-xl font-bold bg-slate-800/90 text-slate-400 border border-slate-700/80 flex-shrink-0 transition';
+            }
+          }
+        });
+        this.renderRecovery();
+      },
+
+      setRecoverySearch(val) {
+        this.recoverySearch = (val || '').toLowerCase().trim();
+        this.renderRecovery();
+      },
+
+      sendRecoveryMessage(orderId, stage) {
+        const order = (this.data.orders || []).find(o => String(o.id) === String(orderId));
+        if (!order) return;
+
+        let cleanPhone = String(order.whatsapp || order.phone || '').replace(/\D/g, '');
+        if (!cleanPhone || cleanPhone.length < 8) {
+          alert('⚠️ Telefone do cliente não informado ou incompleto no checkout.');
+          return;
+        }
+
+        if (cleanPhone.length === 10 || cleanPhone.length === 11) {
+          cleanPhone = '55' + cleanPhone;
+        }
+
+        const msg = this.buildRecoveryMessage(stage, order);
+        const waUrl = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(msg)}`;
+
+        const key = String(order.id);
+        if (!this.recoveryState) this.recoveryState = {};
+        this.recoveryState[key] = {
+          ...(this.recoveryState[key] || {}),
+          lastStage: stage,
+          lastSentAt: new Date().toISOString(),
+          lastMessage: msg
+        };
+        this.saveRecoveryState();
+
+        window.open(waUrl, '_blank');
+        this.renderRecovery();
+      },
+
+      copyRecoveryMessage(orderId, stage) {
+        const order = (this.data.orders || []).find(o => String(o.id) === String(orderId));
+        if (!order) return;
+        const msg = this.buildRecoveryMessage(stage, order);
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(msg).then(() => {
+            alert('✅ Mensagem copiada com sucesso!\n\n' + msg);
+          }).catch(() => {
+            prompt('Copie a mensagem abaixo:', msg);
+          });
+        } else {
+          prompt('Copie a mensagem abaixo:', msg);
+        }
+      },
+
+      markOrderAsPaidManually(orderId) {
+        if (!confirm('Deseja marcar este pedido como PAGO manualmente?\n\nEle será movido para a lista de "Pagos/Recuperados" e não receberá mais lembretes.')) return;
+        const key = String(orderId);
+        if (!this.recoveryState) this.recoveryState = {};
+        this.recoveryState[key] = {
+          ...(this.recoveryState[key] || {}),
+          manualPaid: true,
+          manualPaidAt: new Date().toISOString()
+        };
+        this.saveRecoveryState();
+        this.renderRecovery();
+      },
+
+      dismissRecoveryOrder(orderId) {
+        if (!confirm('Deseja descartar este cliente do funil de recuperação?')) return;
+        const key = String(orderId);
+        if (!this.recoveryState) this.recoveryState = {};
+        this.recoveryState[key] = {
+          ...(this.recoveryState[key] || {}),
+          dismissed: true
+        };
+        this.saveRecoveryState();
+        this.renderRecovery();
+      },
+
+      renderRecovery() {
+        const container = document.getElementById('recovery-list-container');
+        if (!container) return;
+
+        const orders = this.data.orders || [];
+        const state = this.recoveryState || {};
+        const filter = this.recoveryStageFilter || 'all';
+        const search = this.recoverySearch || '';
+
+        let pendingVal = 0;
+        let pendingCount = 0;
+        let contactedCount = 0;
+        let recoveredVal = 0;
+        let recoveredCount = 0;
+
+        let stage1Count = 0;
+        let stage2Count = 0;
+        let stage3Count = 0;
+        let paidCount = 0;
+
+        const classifiedOrders = orders.map(order => {
+          const key = String(order.id);
+          const ordState = state[key] || {};
+          const isRealPaid = ['approved', 'aprovado', 'paid'].includes(String(order.status || '').toLowerCase());
+          const isManualPaid = ordState.manualPaid === true;
+          const isPaid = isRealPaid || isManualPaid;
+          const isDismissed = ordState.dismissed === true;
+          const amount = Number(order.amount || 0);
+
+          let stage = 'stage1';
+          if (isPaid) {
+            stage = 'paid';
+            recoveredCount++;
+            recoveredVal += amount;
+            paidCount++;
+          } else if (isDismissed) {
+            stage = 'dismissed';
+          } else {
+            pendingCount++;
+            pendingVal += amount;
+
+            if (ordState.lastStage === 2) {
+              stage = 'stage3';
+              stage3Count++;
+            } else if (ordState.lastStage === 1) {
+              stage = 'stage2';
+              stage2Count++;
+            } else {
+              stage = 'stage1';
+              stage1Count++;
+            }
+
+            if (ordState.lastStage >= 1) {
+              contactedCount++;
+            }
+          }
+
+          return {
+            ...order,
+            stage,
+            isPaid,
+            isDismissed,
+            ordState
+          };
+        });
+
+        const formatBRL = (val) => Number(val || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+        
+        const elPendingVal = document.getElementById('recov-stat-pending-val');
+        const elPendingCount = document.getElementById('recov-stat-pending-count');
+        const elContactedCount = document.getElementById('recov-stat-contacted-count');
+        const elRecoveredVal = document.getElementById('recov-stat-recovered-val');
+        const elRecoveredCount = document.getElementById('recov-stat-recovered-count');
+
+        if (elPendingVal) elPendingVal.innerText = formatBRL(pendingVal);
+        if (elPendingCount) elPendingCount.innerText = `${pendingCount} ${pendingCount === 1 ? 'pedido' : 'pedidos'}`;
+        if (elContactedCount) elContactedCount.innerText = contactedCount;
+        if (elRecoveredVal) elRecoveredVal.innerText = formatBRL(recoveredVal);
+        if (elRecoveredCount) elRecoveredCount.innerText = `${recoveredCount} ${recoveredCount === 1 ? 'venda' : 'vendas'}`;
+
+        const badgeRecovery = document.getElementById('recovery-badge-count');
+        if (badgeRecovery) {
+          if (pendingCount > 0) {
+            badgeRecovery.innerText = pendingCount;
+            badgeRecovery.classList.remove('hidden');
+          } else {
+            badgeRecovery.classList.add('hidden');
+          }
+        }
+
+        const elCAll = document.getElementById('recov-count-all');
+        const elCS1 = document.getElementById('recov-count-stage1');
+        const elCS2 = document.getElementById('recov-count-stage2');
+        const elCS3 = document.getElementById('recov-count-stage3');
+        const elCPaid = document.getElementById('recov-count-paid');
+
+        if (elCAll) elCAll.innerText = pendingCount + paidCount;
+        if (elCS1) elCS1.innerText = stage1Count;
+        if (elCS2) elCS2.innerText = stage2Count;
+        if (elCS3) elCS3.innerText = stage3Count;
+        if (elCPaid) elCPaid.innerText = paidCount;
+
+        const filtered = classifiedOrders.filter(o => {
+          if (o.isDismissed && filter !== 'dismissed') return false;
+
+          if (filter === 'stage1' && o.stage !== 'stage1') return false;
+          if (filter === 'stage2' && o.stage !== 'stage2') return false;
+          if (filter === 'stage3' && o.stage !== 'stage3') return false;
+          if (filter === 'paid' && o.stage !== 'paid') return false;
+          if (filter === 'all' && o.isPaid) return true;
+
+          if (!search) return true;
+          const name = String(o.name || '').toLowerCase();
+          const phone = String(o.whatsapp || o.phone || '').toLowerCase();
+          const src = String(o.src || '').toLowerCase();
+          const utm = String(o.utm || '').toLowerCase();
+          const prod = String(o.product || '').toLowerCase();
+          const plat = String(o.platform || '').toLowerCase();
+          return name.includes(search) || phone.includes(search) || src.includes(search) || utm.includes(search) || prod.includes(search) || plat.includes(search);
+        });
+
+        if (filtered.length === 0) {
+          container.innerHTML = `
+            <div class="bg-slate-900/50 border border-slate-800 rounded-2xl p-6 text-center space-y-2">
+              <i class="ph ph-lightning text-3xl text-slate-600"></i>
+              <p class="text-xs text-slate-400 font-medium">Nenhum cliente para recuperar neste filtro.</p>
+              ${search ? `<p class="text-[11px] text-slate-500">Tente buscar por outro termo.</p>` : ''}
+            </div>
+          `;
+          return;
+        }
+
+        container.innerHTML = filtered.map(order => {
+          const rawName = (order.name || 'Cliente').trim();
+          const firstName = rawName.split(/\s+/)[0];
+          const initials = rawName.slice(0, 2).toUpperCase();
+
+          const val = Number(order.amount || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+          const srcVal = (order.src && order.src !== '-') ? order.src : ((order.utm && order.utm !== '-') ? order.utm : 'Direto');
+          const platVal = order.platform || 'Mivvo';
+
+          const st = order.ordState || {};
+          const lastSentTime = st.lastSentAt ? new Date(st.lastSentAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : null;
+
+          let actionBtnHtml = '';
+          let stageBadge = '';
+
+          if (order.isPaid) {
+            stageBadge = `<span class="text-[9px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">Pago ✅</span>`;
+            actionBtnHtml = `
+              <div class="flex items-center justify-between pt-2 border-t border-slate-800/80 text-[11px]">
+                <span class="text-emerald-400 font-extrabold flex items-center gap-1">
+                  <i class="ph ph-check-circle"></i> Venda Concluída com Sucesso!
+                </span>
+                <span class="text-slate-500 text-[10px]">Cliente liberado sem cobrança</span>
+              </div>
+            `;
+          } else if (order.stage === 'stage1') {
+            stageBadge = `<span class="text-[9px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">Etapa 1 (Recente)</span>`;
+            actionBtnHtml = `
+              <div class="pt-2 border-t border-slate-800/80 flex items-center justify-between gap-2">
+                <div class="flex items-center gap-1.5">
+                  <button onclick="app.sendRecoveryMessage('${order.id}', 1)" class="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white text-xs font-black flex items-center gap-1.5 shadow-md shadow-emerald-600/20 transition">
+                    <i class="ph ph-whatsapp-logo text-sm"></i> Enviar Mensagem 1
+                  </button>
+                  <button onclick="app.copyRecoveryMessage('${order.id}', 1)" class="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 transition" title="Copiar Texto">
+                    <i class="ph ph-copy text-sm"></i>
+                  </button>
+                </div>
+                <div class="flex items-center gap-1">
+                  <button onclick="app.markOrderAsPaidManually('${order.id}')" class="px-2 py-1.5 rounded-xl bg-slate-800/80 hover:bg-emerald-500/20 text-slate-400 hover:text-emerald-400 text-[10px] font-bold border border-slate-700 transition" title="Marcar como pago">
+                    <i class="ph ph-check"></i> Pago
+                  </button>
+                  <button onclick="app.dismissRecoveryOrder('${order.id}')" class="px-2 py-1.5 rounded-xl bg-slate-800/80 hover:bg-red-500/20 text-slate-400 hover:text-red-400 text-[10px] font-bold border border-slate-700 transition" title="Descartar">
+                    <i class="ph ph-trash"></i>
+                  </button>
+                </div>
+              </div>
+            `;
+          } else if (order.stage === 'stage2') {
+            stageBadge = `<span class="text-[9px] font-bold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/30">Etapa 2 (Lembrete)</span>`;
+            actionBtnHtml = `
+              <div class="pt-2 border-t border-slate-800/80 flex items-center justify-between gap-2">
+                <div class="flex items-center gap-1.5">
+                  <button onclick="app.sendRecoveryMessage('${order.id}', 2)" class="px-3.5 py-2 rounded-xl bg-amber-600 hover:bg-amber-500 active:scale-95 text-white text-xs font-black flex items-center gap-1.5 shadow-md shadow-amber-600/20 transition">
+                    <i class="ph ph-whatsapp-logo text-sm"></i> Enviar Mensagem 2
+                  </button>
+                  <button onclick="app.copyRecoveryMessage('${order.id}', 2)" class="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 transition" title="Copiar Texto">
+                    <i class="ph ph-copy text-sm"></i>
+                  </button>
+                </div>
+                <div class="flex items-center gap-1">
+                  <button onclick="app.markOrderAsPaidManually('${order.id}')" class="px-2 py-1.5 rounded-xl bg-slate-800/80 hover:bg-emerald-500/20 text-slate-400 hover:text-emerald-400 text-[10px] font-bold border border-slate-700 transition" title="Marcar como pago">
+                    <i class="ph ph-check"></i> Pago
+                  </button>
+                  <button onclick="app.dismissRecoveryOrder('${order.id}')" class="px-2 py-1.5 rounded-xl bg-slate-800/80 hover:bg-red-500/20 text-slate-400 hover:text-red-400 text-[10px] font-bold border border-slate-700 transition" title="Descartar">
+                    <i class="ph ph-trash"></i>
+                  </button>
+                </div>
+              </div>
+            `;
+          } else {
+            stageBadge = `<span class="text-[9px] font-bold px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-400 border border-purple-500/30">Etapa 3 (Última Chance)</span>`;
+            actionBtnHtml = `
+              <div class="pt-2 border-t border-slate-800/80 flex items-center justify-between gap-2">
+                <div class="flex items-center gap-1.5">
+                  <button onclick="app.sendRecoveryMessage('${order.id}', 3)" class="px-3.5 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 active:scale-95 text-white text-xs font-black flex items-center gap-1.5 shadow-md shadow-purple-600/20 transition">
+                    <i class="ph ph-whatsapp-logo text-sm"></i> Enviar Mensagem 3
+                  </button>
+                  <button onclick="app.copyRecoveryMessage('${order.id}', 3)" class="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 transition" title="Copiar Texto">
+                    <i class="ph ph-copy text-sm"></i>
+                  </button>
+                </div>
+                <div class="flex items-center gap-1">
+                  <button onclick="app.markOrderAsPaidManually('${order.id}')" class="px-2 py-1.5 rounded-xl bg-slate-800/80 hover:bg-emerald-500/20 text-slate-400 hover:text-emerald-400 text-[10px] font-bold border border-slate-700 transition" title="Marcar como pago">
+                    <i class="ph ph-check"></i> Pago
+                  </button>
+                  <button onclick="app.dismissRecoveryOrder('${order.id}')" class="px-2 py-1.5 rounded-xl bg-slate-800/80 hover:bg-red-500/20 text-slate-400 hover:text-red-400 text-[10px] font-bold border border-slate-700 transition" title="Descartar">
+                    <i class="ph ph-trash"></i>
+                  </button>
+                </div>
+              </div>
+            `;
+          }
+
+          return `
+            <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-3.5 space-y-2.5 transition hover:border-slate-700 shadow-sm">
+              <div class="flex items-start justify-between gap-2">
+                <div class="flex items-center gap-2.5">
+                  <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-amber-600/30 to-indigo-600/20 border border-amber-500/30 flex items-center justify-center text-xs font-black text-amber-300 shrink-0">
+                    ${initials}
+                  </div>
+                  <div>
+                    <h4 class="text-xs font-extrabold text-white leading-tight flex items-center gap-1.5 flex-wrap">
+                      ${rawName}
+                      ${stageBadge}
+                    </h4>
+                    <p class="text-[11px] text-slate-400 mt-0.5">
+                      ${order.product || 'OrçaObra Pro'} • <span class="text-slate-300 font-semibold">${order.method || 'PIX'}</span>
+                    </p>
+                    <div class="flex items-center gap-1.5 mt-1 flex-wrap">
+                      <span class="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-md bg-indigo-500/15 text-indigo-300 border border-indigo-500/30">
+                        <i class="ph ph-target text-[11px]"></i> SRC: ${srcVal}
+                      </span>
+                      <span class="inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-slate-800 text-slate-300 border border-slate-700">
+                        <i class="ph ph-storefront text-[10px]"></i> ${platVal}
+                      </span>
+                      ${lastSentTime ? `
+                        <span class="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-400">
+                          <i class="ph ph-check text-[10px]"></i> Msg ${st.lastStage} enviada às ${lastSentTime}
+                        </span>
+                      ` : ''}
+                    </div>
+                  </div>
+                </div>
+
+                <div class="text-right shrink-0">
+                  <div class="text-sm font-black text-white">${val}</div>
+                  <span class="text-[10px] text-slate-500 block mt-0.5">
+                    <i class="ph ph-clock text-[10px]"></i> ${order.date || 'Hoje'}
+                  </span>
+                </div>
+              </div>
+
+              ${actionBtnHtml}
             </div>
           `;
         }).join('');
