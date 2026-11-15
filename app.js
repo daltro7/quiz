@@ -5927,7 +5927,325 @@ const App = {
         }
       ]
     };
-  }
+  },
+
+  // ==========================================
+  // FUNIL DE RECUPERAÇÃO DE PIX (PC / QUIZFORGE)
+  // ==========================================
+  DEFAULT_RECOVERY_STAGES: [
+    {
+      id: 'stage1',
+      title: 'Etapa 1 - PIX Recente (0 a 60 min)',
+      minMinutes: 0,
+      maxMinutes: 60,
+      template: "{Oi|Olá} {nome}! {Tudo bem?|Como vai?} Vi que você gerou o Pix do {produto} no valor de {valor}, mas ainda não constou a confirmação aqui. Deu algum erro no app do seu banco ou precisa que eu te reenvie a chave Pix?"
+    },
+    {
+      id: 'stage2',
+      title: 'Etapa 2 - Lembrete Amigável (1h a 4h)',
+      minMinutes: 60,
+      maxMinutes: 240,
+      template: "Oi {nome}, passando para te avisar que o seu pedido do {produto} ainda está reservado por pouco tempo com o valor promocional de {valor}. Quer que eu te ajude a concluir ou prefere outra forma de pagamento?"
+    },
+    {
+      id: 'stage3',
+      title: 'Etapa 3 - Última Chance (+4h a 24h)',
+      minMinutes: 240,
+      maxMinutes: 1440,
+      template: "{nome}, última chamada: seu acesso promocional ao {produto} está prestes a expirar. Ficou com alguma dúvida sobre o aplicativo ou suporte? Me avisa aqui para eu segurar sua vaga! 🤝"
+    }
+  ],
+
+  recoveryStages: null,
+
+  loadRecoveryStages() {
+    try {
+      const raw = localStorage.getItem('qf_recovery_stages_v2');
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          this.recoveryStages = parsed;
+          return this.recoveryStages;
+        }
+      }
+      // Migração de formato legado se existir
+      const oldRaw = localStorage.getItem('qf_recovery_templates');
+      if (oldRaw) {
+        const oldParsed = JSON.parse(oldRaw);
+        if (oldParsed && oldParsed.msg1) {
+          this.recoveryStages = JSON.parse(JSON.stringify(this.DEFAULT_RECOVERY_STAGES));
+          if (oldParsed.msg1) this.recoveryStages[0].template = oldParsed.msg1;
+          if (oldParsed.msg2 && this.recoveryStages[1]) this.recoveryStages[1].template = oldParsed.msg2;
+          if (oldParsed.msg3 && this.recoveryStages[2]) this.recoveryStages[2].template = oldParsed.msg3;
+          localStorage.setItem('qf_recovery_stages_v2', JSON.stringify(this.recoveryStages));
+          return this.recoveryStages;
+        }
+      }
+    } catch(e) {
+      console.warn('[Recovery] Erro ao carregar etapas:', e);
+    }
+    this.recoveryStages = JSON.parse(JSON.stringify(this.DEFAULT_RECOVERY_STAGES));
+    return this.recoveryStages;
+  },
+
+  openRecoveryModal() {
+    this.closeModals();
+    this.loadRecoveryStages();
+    this.renderRecoveryModalStages();
+    const modal = document.getElementById('modal-recovery');
+    if (modal) modal.classList.remove('hidden');
+  },
+
+  renderRecoveryModalStages() {
+    const container = document.getElementById('recovery-modal-stages-list');
+    if (!container) return;
+
+    if (!this.recoveryStages || !this.recoveryStages.length) {
+      this.recoveryStages = JSON.parse(JSON.stringify(this.DEFAULT_RECOVERY_STAGES));
+    }
+
+    container.innerHTML = this.recoveryStages.map((stage, idx) => {
+      const minHours = (stage.minMinutes / 60).toFixed(1).replace('.0', '');
+      const maxHours = (stage.maxMinutes / 60).toFixed(1).replace('.0', '');
+      const timeLabel = stage.minMinutes < 60 && stage.maxMinutes <= 60 
+        ? `${stage.minMinutes} a ${stage.maxMinutes} min`
+        : `${minHours}h a ${maxHours}h`;
+
+      return `
+        <div class="bg-slate-950/70 border border-slate-800 hover:border-slate-700/80 rounded-2xl p-4 sm:p-5 transition shadow-sm space-y-4">
+          <!-- Topo da Etapa -->
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-800/80">
+            <div class="flex items-center gap-2.5 flex-1">
+              <span class="w-7 h-7 rounded-lg bg-indigo-600/20 text-indigo-400 border border-indigo-500/30 flex items-center justify-center text-xs font-black shrink-0">
+                #${idx + 1}
+              </span>
+              <input type="text" 
+                     value="${(stage.title || `Etapa ${idx + 1}`).replace(/"/g, '&quot;')}" 
+                     onchange="App.updateRecoveryStage(${idx}, 'title', this.value)"
+                     class="w-full bg-slate-900 border border-slate-700/80 focus:border-indigo-500 px-3 py-1.5 rounded-xl text-xs font-bold text-white outline-none"
+                     placeholder="Título da Etapa">
+            </div>
+
+            <!-- Janela de Tempo & Ações -->
+            <div class="flex items-center gap-2 shrink-0">
+              <div class="flex items-center gap-1.5 bg-slate-900 border border-slate-800 px-2.5 py-1 rounded-xl text-[11px] text-slate-300">
+                <i class="ph ph-clock text-amber-400"></i>
+                <span class="text-slate-400 text-[10px]">De:</span>
+                <input type="number" min="0" value="${stage.minMinutes || 0}" 
+                       onchange="App.updateRecoveryStage(${idx}, 'minMinutes', this.value)" 
+                       class="w-12 bg-slate-950 border border-slate-700 text-center rounded px-1 text-white font-mono text-[11px] outline-none">
+                <span class="text-slate-400 text-[10px]">Até:</span>
+                <input type="number" min="1" value="${stage.maxMinutes || 60}" 
+                       onchange="App.updateRecoveryStage(${idx}, 'maxMinutes', this.value)" 
+                       class="w-12 bg-slate-950 border border-slate-700 text-center rounded px-1 text-white font-mono text-[11px] outline-none">
+                <span class="text-slate-400 text-[10px]">min</span>
+              </div>
+
+              ${this.recoveryStages.length > 1 ? `
+                <button type="button" onclick="App.removeRecoveryStage(${idx})" class="p-1.5 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 transition" title="Excluir Etapa">
+                  <i class="ph ph-trash text-base"></i>
+                </button>
+              ` : ''}
+            </div>
+          </div>
+
+          <!-- Mensagem com Spintax -->
+          <div class="space-y-2">
+            <div class="flex flex-wrap items-center justify-between gap-2">
+              <label class="text-[11px] font-bold text-slate-300 flex items-center gap-1.5">
+                <i class="ph ph-chat-text text-indigo-400"></i>
+                <span>Mensagem WhatsApp da Etapa</span>
+              </label>
+
+              <!-- Tags Rápidas de Variáveis -->
+              <div class="flex items-center gap-1.5">
+                <span class="text-[10px] text-slate-500 hidden sm:inline">Inserir:</span>
+                <button type="button" onclick="App.insertRecoveryVariable(${idx}, '{nome}')" class="px-2 py-0.5 rounded-md bg-indigo-950 hover:bg-indigo-900 border border-indigo-700/60 text-indigo-300 text-[10px] font-mono transition">
+                  {nome}
+                </button>
+                <button type="button" onclick="App.insertRecoveryVariable(${idx}, '{produto}')" class="px-2 py-0.5 rounded-md bg-indigo-950 hover:bg-indigo-900 border border-indigo-700/60 text-indigo-300 text-[10px] font-mono transition">
+                  {produto}
+                </button>
+                <button type="button" onclick="App.insertRecoveryVariable(${idx}, '{valor}')" class="px-2 py-0.5 rounded-md bg-indigo-950 hover:bg-indigo-900 border border-indigo-700/60 text-indigo-300 text-[10px] font-mono transition">
+                  {valor}
+                </button>
+              </div>
+            </div>
+
+            <textarea id="recov-stage-tpl-${idx}" 
+                      rows="3" 
+                      onchange="App.updateRecoveryStage(${idx}, 'template', this.value)"
+                      class="w-full bg-slate-900 border border-slate-700/80 focus:border-indigo-500 rounded-xl p-3 text-xs text-slate-200 outline-none leading-relaxed transition resize-y font-normal"
+                      placeholder="Digite a mensagem ou use Spintax {Oi|Olá}...">${(stage.template || '').replace(/</g, '&lt;')}</textarea>
+          </div>
+
+          <!-- Ação de Teste de Spintax -->
+          <div class="flex items-center justify-between pt-1">
+            <button type="button" onclick="App.testRecoverySpintax(${idx})" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white text-xs font-semibold border border-slate-800 transition">
+              <i class="ph ph-dice-five text-amber-400"></i>
+              <span>Testar Variação (Spintax)</span>
+            </button>
+            <span class="text-[10px] text-slate-500">Janela estimada: ${timeLabel}</span>
+          </div>
+
+          <!-- Box de Prévia Dinâmica -->
+          <div id="recov-stage-preview-${idx}" class="hidden"></div>
+        </div>
+      `;
+    }).join('');
+  },
+
+  addNewRecoveryStage() {
+    const list = this.recoveryStages || [];
+    const nextIdx = list.length + 1;
+    const lastStage = list[list.length - 1];
+    const newMin = lastStage ? (lastStage.maxMinutes || 60) : 0;
+    const newMax = newMin + 240; // +4h por padrão
+
+    const newStage = {
+      id: 'stage_' + Date.now(),
+      title: `Etapa ${nextIdx} - Nova Abordagem (${Math.floor(newMin/60)}h a ${Math.floor(newMax/60)}h)`,
+      minMinutes: newMin,
+      maxMinutes: newMax,
+      template: `{Oi|Olá} {nome}! Passando para ver se precisa de ajuda para ativar seu acesso ao {produto}. Caso tenha preferência por cartão ou outra forma, me avisa por aqui!`
+    };
+
+    list.push(newStage);
+    this.recoveryStages = list;
+    this.renderRecoveryModalStages();
+  },
+
+  removeRecoveryStage(idx) {
+    if (!this.recoveryStages || this.recoveryStages.length <= 1) {
+      alert('Você precisa manter pelo menos 1 etapa no funil.');
+      return;
+    }
+    const st = this.recoveryStages[idx];
+    if (!confirm(`Deseja realmente remover a etapa "${st.title || 'Etapa ' + (idx + 1)}"?`)) return;
+    this.recoveryStages.splice(idx, 1);
+    this.renderRecoveryModalStages();
+  },
+
+  updateRecoveryStage(idx, field, val) {
+    if (!this.recoveryStages || !this.recoveryStages[idx]) return;
+    if (field === 'minMinutes' || field === 'maxMinutes') {
+      this.recoveryStages[idx][field] = Math.max(0, parseInt(val, 10) || 0);
+    } else {
+      this.recoveryStages[idx][field] = val;
+    }
+  },
+
+  insertRecoveryVariable(idx, variable) {
+    const textarea = document.getElementById(`recov-stage-tpl-${idx}`);
+    if (!textarea) return;
+    const start = textarea.selectionStart || 0;
+    const end = textarea.selectionEnd || 0;
+    const text = textarea.value;
+    textarea.value = text.substring(0, start) + variable + text.substring(end);
+    textarea.focus();
+    textarea.selectionStart = textarea.selectionEnd = start + variable.length;
+    this.updateRecoveryStage(idx, 'template', textarea.value);
+  },
+
+  parseRecoverySpintax(text) {
+    if (!text) return '';
+    let result = text;
+    const regex = /\{([^{}]+)\}/;
+    let count = 0;
+    while (regex.test(result) && count < 25) {
+      count++;
+      result = result.replace(regex, (match, choices) => {
+        const parts = choices.split('|');
+        return parts[Math.floor(Math.random() * parts.length)];
+      });
+    }
+    return result;
+  },
+
+  testRecoverySpintax(idx) {
+    const stage = this.recoveryStages[idx];
+    if (!stage) return;
+    let sample = this.parseRecoverySpintax(stage.template || '');
+    sample = sample.replace(/{nome}/g, 'Carlos');
+    sample = sample.replace(/{nome_completo}/g, 'Carlos Eduardo');
+    sample = sample.replace(/{produto}/g, 'OrçaObra Pro');
+    sample = sample.replace(/{valor}/g, 'R$ 27,90');
+
+    const previewEl = document.getElementById(`recov-stage-preview-${idx}`);
+    if (previewEl) {
+      previewEl.classList.remove('hidden');
+      previewEl.innerHTML = `
+        <div class="text-[10px] uppercase font-bold text-emerald-400 mb-1 flex items-center gap-1">
+          <i class="ph ph-chat-circle-dots"></i> Exemplo gerado agora (WhatsApp):
+        </div>
+        <div class="text-xs text-slate-200 bg-slate-950 p-3 rounded-xl border border-emerald-500/30 whitespace-pre-wrap leading-relaxed shadow-inner">
+          ${sample.replace(/</g, '&lt;')}
+        </div>
+      `;
+    }
+  },
+
+  saveRecoveryStages() {
+    (this.recoveryStages || []).forEach((st, idx) => {
+      const textarea = document.getElementById(`recov-stage-tpl-${idx}`);
+      if (textarea) st.template = textarea.value;
+    });
+
+    try {
+      localStorage.setItem('qf_recovery_stages_v2', JSON.stringify(this.recoveryStages));
+      if (this.currentUser && this.firestore) {
+        this.firestore.collection('users').doc(this.currentUser.uid).collection('settings').doc('recovery').set({
+          stages: this.recoveryStages,
+          updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        }, { merge: true }).catch(err => console.warn('Erro ao salvar stages no Firestore:', err));
+      }
+    } catch(e) {
+      console.error(e);
+    }
+    this.closeModals();
+    if (typeof this.showToast === 'function') {
+      this.showToast('Etapas e mensagens do funil salvas com sucesso!', 'success');
+    } else {
+      alert('✅ Etapas e mensagens do funil salvas com sucesso!');
+    }
+  },
+
+  resetRecoveryStages() {
+    if (!confirm('Deseja restaurar as etapas padrão do funil de recuperação?')) return;
+    this.recoveryStages = JSON.parse(JSON.stringify(this.DEFAULT_RECOVERY_STAGES));
+    this.renderRecoveryModalStages();
+  },
+
+  exportRecoveryConfig() {
+    const jsonStr = JSON.stringify(this.recoveryStages || this.DEFAULT_RECOVERY_STAGES, null, 2);
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(jsonStr).then(() => {
+        alert('✅ Configuração copiada em formato JSON para a área de transferência!');
+      }).catch(() => {
+        prompt('Copie o JSON abaixo:', jsonStr);
+      });
+    } else {
+      prompt('Copie o JSON abaixo:', jsonStr);
+    }
+  },
+
+  importRecoveryConfig() {
+    const raw = prompt('Cole aqui o JSON com a configuração das etapas:');
+    if (!raw) return;
+    try {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        this.recoveryStages = parsed;
+        this.renderRecoveryModalStages();
+        alert('✅ Configuração importada com sucesso! Clique em "Salvar Alterações" para confirmar.');
+      } else {
+        alert('⚠️ O JSON informado não contém uma lista válida de etapas.');
+      }
+    } catch(e) {
+      alert('❌ Erro ao ler JSON: Formato inválido.');
+    }
+  },
+
 };
 
 document.addEventListener('DOMContentLoaded', () => {

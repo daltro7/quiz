@@ -1180,6 +1180,17 @@
 
       loadRecoverySettings() {
         try {
+          const rawStages = localStorage.getItem('qf_recovery_stages_v2');
+          if (rawStages) {
+            const parsedStages = JSON.parse(rawStages);
+            if (Array.isArray(parsedStages) && parsedStages.length > 0) {
+              this.settings.recoveryStages = parsedStages;
+              if (parsedStages[0]) this.settings.recoveryTemplates.msg1 = parsedStages[0].template;
+              if (parsedStages[1]) this.settings.recoveryTemplates.msg2 = parsedStages[1].template;
+              if (parsedStages[2]) this.settings.recoveryTemplates.msg3 = parsedStages[2].template;
+              return;
+            }
+          }
           const raw = localStorage.getItem('qf_recovery_templates');
           if (raw) {
             const parsed = JSON.parse(raw);
@@ -1267,8 +1278,16 @@
       },
 
       buildRecoveryMessage(stage, order) {
-        const tpls = this.settings.recoveryTemplates;
-        const tpl = stage === 1 ? tpls.msg1 : (stage === 2 ? tpls.msg2 : tpls.msg3);
+        let tpl = '';
+        if (this.settings.recoveryStages && this.settings.recoveryStages.length > 0) {
+          const stageIdx = (typeof stage === 'number') ? (stage - 1) : 0;
+          const st = this.settings.recoveryStages[stageIdx] || this.settings.recoveryStages[0];
+          tpl = st ? st.template : '';
+        }
+        if (!tpl) {
+          const tpls = this.settings.recoveryTemplates;
+          tpl = stage === 1 ? tpls.msg1 : (stage === 2 ? tpls.msg2 : tpls.msg3);
+        }
         const rawName = (order.name || 'Cliente').trim();
         const firstName = rawName.split(/\s+/)[0];
         const prod = order.product || 'OrçaObra Pro';

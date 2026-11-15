@@ -97,6 +97,10 @@
       </button>
 
       <!-- Botão Meus Quizzes (Alternar) -->
+      <button onclick="App.openRecoveryModal()" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-400 text-xs font-bold border border-emerald-500/30 transition shadow-sm" title="Gerenciar Funil e Mensagens de Recuperação de PIX">
+        <i class="ph ph-whatsapp-logo text-sm text-emerald-400"></i>
+        <span>Recuperador PIX</span>
+      </button>
       <button id="btn-header-back-dashboard" onclick="App.toggleDashboardView()" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold border border-slate-700 transition">
         <i class="ph ph-folder text-sm"></i>
         Meus Quizzes
@@ -2496,6 +2500,107 @@ function doPost(e) {
           </span>
         </div>
       </div>
+    </div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- MODAL: RECUPERADOR DE PIX & FUNIL DE VENDAS -->
+  <!-- ========================================== -->
+  <div id="modal-recovery" class="hidden fixed inset-0 z-50 bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-3 sm:p-6 overflow-y-auto">
+    <div class="bg-slate-900 border border-slate-700/80 rounded-2xl w-full max-w-4xl max-h-[92vh] flex flex-col shadow-2xl overflow-hidden my-auto animate-in fade-in zoom-in-95 duration-200">
+      
+      <!-- Cabeçalho do Modal -->
+      <div class="p-4 sm:p-5 border-b border-slate-800 bg-slate-900/90 flex items-center justify-between gap-4 sticky top-0 z-10">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center justify-center text-2xl shrink-0 shadow-sm">
+            <i class="ph ph-whatsapp-logo"></i>
+          </div>
+          <div>
+            <div class="flex items-center gap-2">
+              <h3 class="text-base sm:text-lg font-extrabold text-white">Funil de Recuperação de PIX (WhatsApp)</h3>
+              <span class="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">Sem Risco de Ban</span>
+            </div>
+            <p class="text-xs text-slate-400 mt-0.5">Configure etapas personalizadas, janelas de tempo e mensagens dinâmicas com Spintax.</p>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-2">
+          <!-- Botão Abrir Painel PWA no PC -->
+          <a href="metricas.html" target="_blank" class="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-xs font-bold border border-slate-700 transition" title="Abrir painel de métricas e disparo no PC">
+            <i class="ph ph-arrow-square-out text-sm text-indigo-400"></i>
+            <span>Abrir Painel PWA / Web</span>
+          </a>
+          <button onclick="App.closeModals()" class="w-8 h-8 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white flex items-center justify-center transition" title="Fechar">
+            <i class="ph ph-x font-bold"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- Barra de Ações Rápidas -->
+      <div class="px-4 sm:px-6 py-3 bg-slate-950/60 border-b border-slate-800 flex flex-wrap items-center justify-between gap-2.5">
+        <div class="flex items-center gap-2">
+          <button type="button" onclick="App.addNewRecoveryStage()" class="px-3.5 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold transition flex items-center gap-1.5 shadow-md shadow-indigo-600/20">
+            <i class="ph ph-plus-circle text-sm font-bold"></i>
+            <span>Nova Etapa</span>
+          </button>
+          <button type="button" onclick="App.resetRecoveryStages()" class="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold border border-slate-700 transition flex items-center gap-1">
+            <i class="ph ph-arrow-counter-clockwise text-sm"></i>
+            <span>Restaurar Padrão</span>
+          </button>
+        </div>
+
+        <div class="flex items-center gap-2">
+          <button type="button" onclick="App.exportRecoveryConfig()" class="px-2.5 py-1.5 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-slate-300 text-[11px] font-semibold border border-slate-700 transition flex items-center gap-1" title="Copiar configuração em JSON">
+            <i class="ph ph-copy text-xs"></i>
+            <span>Copiar JSON</span>
+          </button>
+          <button type="button" onclick="App.importRecoveryConfig()" class="px-2.5 py-1.5 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-slate-300 text-[11px] font-semibold border border-slate-700 transition flex items-center gap-1" title="Colar configuração de outro aparelho">
+            <i class="ph ph-download-simple text-xs"></i>
+            <span>Importar JSON</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Corpo com as Etapas Dinâmicas -->
+      <div class="p-4 sm:p-6 overflow-y-auto space-y-4 flex-1">
+        
+        <!-- Alerta Informativo & Dicas Rápidas -->
+        <div class="p-3.5 rounded-xl bg-indigo-950/40 border border-indigo-500/20 text-xs text-slate-300 space-y-1.5">
+          <div class="flex items-center gap-1.5 font-bold text-indigo-300">
+            <i class="ph ph-lightbulb text-base"></i>
+            <span>Como Funcionam as Variáveis e o Anti-Robô (Spintax)</span>
+          </div>
+          <p class="text-slate-400 text-[11px] leading-relaxed">
+            Use <b>{nome}</b> para o primeiro nome, <b>{produto}</b> para o produto e <b>{valor}</b> para o preço do pedido.
+            Para nunca ser identificado como spam pelo WhatsApp, use o Spintax: <code class="px-1.5 py-0.5 bg-slate-900 border border-slate-700 rounded text-amber-300">{Oi|Olá|Tudo bem?}</code>. O sistema sorteará uma opção diferente a cada disparo.
+          </p>
+        </div>
+
+        <!-- Lista de Cards das Etapas Dinâmicas -->
+        <div id="recovery-modal-stages-list" class="space-y-4">
+          <!-- Renderizado dinamicamente por App.renderRecoveryModalStages() -->
+        </div>
+
+      </div>
+
+      <!-- Rodapé / Salvar -->
+      <div class="p-4 sm:p-5 border-t border-slate-800 bg-slate-900/90 flex flex-col sm:flex-row items-center justify-between gap-3 sticky bottom-0 z-10">
+        <div class="flex items-center gap-2 text-xs text-slate-400">
+          <i class="ph ph-shield-check text-emerald-400 text-base"></i>
+          <span>As configurações salvam automaticamente e sincronizam com o PWA.</span>
+        </div>
+
+        <div class="flex items-center gap-2.5 w-full sm:w-auto">
+          <button type="button" onclick="App.closeModals()" class="flex-1 sm:flex-none px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold transition">
+            Cancelar
+          </button>
+          <button type="button" onclick="App.saveRecoveryStages()" class="flex-1 sm:flex-none px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-extrabold shadow-lg shadow-emerald-600/25 transition flex items-center justify-center gap-1.5">
+            <i class="ph ph-floppy-disk text-sm font-bold"></i>
+            <span>Salvar Alterações</span>
+          </button>
+        </div>
+      </div>
+
     </div>
   </div>
 
