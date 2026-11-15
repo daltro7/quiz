@@ -709,7 +709,7 @@ const App = {
   // ==========================================
   switchEditorTab(tabName) {
     this.activeTab = tabName;
-    ['steps', 'design', 'tracking', 'analytics'].forEach(t => {
+    ['steps', 'design', 'tracking', 'analytics', 'recovery'].forEach(t => {
       const btn = document.getElementById(`tab-btn-${t}`);
       const content = document.getElementById(`tab-content-${t}`);
       if (btn && content) {
@@ -726,14 +726,18 @@ const App = {
     const leftPanel = document.getElementById('panel-editor-left');
     const rightPanel = document.getElementById('panel-editor-right');
 
-    if (tabName === 'analytics') {
-      // Oculta a prévia do celular para os gráficos e métricas ocuparem a tela inteira
+    if (tabName === 'analytics' || tabName === 'recovery') {
+      // Oculta a prévia do celular para Analytics e Recuperador ocuparem a tela toda com conforto
       if (rightPanel) rightPanel.classList.add('hidden');
       if (leftPanel) {
         leftPanel.classList.remove('md:w-[56%]', 'lg:w-[58%]', 'border-r');
         leftPanel.classList.add('w-full');
       }
-      this.renderFunnelDashboard();
+      if (tabName === 'analytics') {
+        this.initFunnelDashboard();
+      } else {
+        this.initQuizRecoveryTab();
+      }
     } else {
       // Restaura a prévia do celular ao lado para as abas de edição
       if (rightPanel) rightPanel.classList.remove('hidden');
@@ -5929,9 +5933,57 @@ const App = {
     };
   },
 
+// ==========================================
+  // FUNIL DE RECUPERAÇÃO DE PIX POR FUNIL (PC / QUIZFORGE)
   // ==========================================
-  // FUNIL DE RECUPERAÇÃO DE PIX (PC / QUIZFORGE)
-  // ==========================================
+  BRAZIL_RECOVERY_STAGES: [
+    {
+      id: 'stage1',
+      title: 'Etapa 1 - PIX Recente (0 a 60 min)',
+      minMinutes: 0,
+      maxMinutes: 60,
+      template: "{Oi|Olá} {nome}! {Tudo bem?|Como vai?} Vi que você gerou o Pix do {produto} no valor de {valor}, mas ainda não constou a confirmação aqui. Deu algum erro no app do seu banco ou precisa que eu te reenvie a chave Pix?"
+    },
+    {
+      id: 'stage2',
+      title: 'Etapa 2 - Lembrete Amigável (1h a 4h)',
+      minMinutes: 60,
+      maxMinutes: 240,
+      template: "Oi {nome}, passando para te avisar que o seu pedido do {produto} ainda está reservado por pouco tempo com o valor promocional de {valor}. Quer que eu te ajude a concluir ou prefere outra forma de pagamento?"
+    },
+    {
+      id: 'stage3',
+      title: 'Etapa 3 - Última Chance (+4h a 24h)',
+      minMinutes: 240,
+      maxMinutes: 1440,
+      template: "{nome}, última chamada: seu acesso promocional ao {produto} está prestes a expirar. Ficou com alguma dúvida sobre o aplicativo ou suporte? Me avisa aqui para eu segurar sua vaga! 🤝"
+    }
+  ],
+
+  MEXICO_RECOVERY_STAGES: [
+    {
+      id: 'stage1',
+      title: 'Etapa 1 - Recordatorio Amigable (0 a 60 min)',
+      minMinutes: 0,
+      maxMinutes: 60,
+      template: "{¡Hola|Hola} {nome}! {¿Cómo estás?|¿Qué tal?} Vi que generaste tu pedido de {produto} por {valor}, pero aún no nos aparece la confirmación de tu pago. ¿Tuviste algún problema con tu banca en línea o necesitas que te reenvíe los datos para completar tu compra?"
+    },
+    {
+      id: 'stage2',
+      title: 'Etapa 2 - Reserva por Vencer (1h a 4h)',
+      minMinutes: 60,
+      maxMinutes: 240,
+      template: "Hola {nome}, te escribo rapidito para avisarte que tu acceso a {produto} sigue reservado por tiempo limitado con el precio especial de {valor}. ¿Gustas que te apoye para finalizarlo o prefieres pagar con tarjeta u otro método?"
+    },
+    {
+      id: 'stage3',
+      title: 'Etapa 3 - Última Oportunidad (+4h a 24h)',
+      minMinutes: 240,
+      maxMinutes: 1440,
+      template: "{nome}, último aviso: tu lugar promocional para {produto} está a punto de liberarse para otra persona. ¿Te quedó alguna duda sobre la aplicación o la garantía? ¡Avísame por aquí para guardarte el beneficio! 🤝"
+    }
+  ],
+
   DEFAULT_RECOVERY_STAGES: [
     {
       id: 'stage1',
@@ -5958,6 +6010,402 @@ const App = {
 
   recoveryStages: null,
 
+  initQuizRecoveryTab() {
+    if (!this.currentQuiz) return;
+
+    if (!this.currentQuiz.recovery) {
+      const isSpanish = /mexic|espan|presupuest|receta/i.test(this.currentQuiz.title || '') || 
+                        /mexic|espan|presupuest|receta/i.test(this.currentQuiz.productTitle || '');
+      this.currentQuiz.recovery = {
+        enabled: true,
+        country: isSpanish ? 'MX' : 'BR',
+        ddi: isSpanish ? '52' : '55',
+        stages: JSON.parse(JSON.stringify(isSpanish ? this.MEXICO_RECOVERY_STAGES : this.BRAZIL_RECOVERY_STAGES))
+      };
+    }
+
+    const rec = this.currentQuiz.recovery;
+    if (!rec.stages || !rec.stages.length) {
+      rec.stages = JSON.parse(JSON.stringify(rec.country === 'MX' ? this.MEXICO_RECOVERY_STAGES : this.BRAZIL_RECOVERY_STAGES));
+    }
+
+    const badgeProd = document.getElementById('quiz-recov-badge-product');
+    if (badgeProd) {
+      badgeProd.innerText = this.currentQuiz.productTitle || this.currentQuiz.title || 'Produto do Funil';
+    }
+
+    const chkEnabled = document.getElementById('quiz-recov-enabled');
+    if (chkEnabled) chkEnabled.checked = rec.enabled !== false;
+
+    this.updateQuizRecoveryLangButtons();
+    this.renderQuizRecoveryStages();
+    this.renderQuizRecoveryOrders();
+  },
+
+  toggleQuizRecoveryEnabled(enabled) {
+    if (!this.currentQuiz) return;
+    if (!this.currentQuiz.recovery) this.initQuizRecoveryTab();
+    this.currentQuiz.recovery.enabled = enabled;
+    this.saveQuiz(true);
+    this.showToast(enabled ? 'Recuperação ativada neste funil!' : 'Recuperação desativada neste funil.', 'info');
+  },
+
+  updateQuizRecoveryLangButtons() {
+    if (!this.currentQuiz || !this.currentQuiz.recovery) return;
+    const country = this.currentQuiz.recovery.country || 'BR';
+    const btnBr = document.getElementById('btn-recov-lang-br');
+    const btnMx = document.getElementById('btn-recov-lang-mx');
+
+    if (btnBr) {
+      btnBr.className = country === 'BR'
+        ? 'px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 bg-indigo-600 text-white shadow-sm border border-indigo-500'
+        : 'px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-700';
+    }
+
+    if (btnMx) {
+      btnMx.className = country === 'MX'
+        ? 'px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 bg-emerald-600 text-white shadow-sm border border-emerald-500'
+        : 'px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-700';
+    }
+  },
+
+  loadQuizRecoveryPreset(country) {
+    if (!this.currentQuiz) return;
+    if (!this.currentQuiz.recovery) this.initQuizRecoveryTab();
+
+    const countryName = country === 'MX' ? 'Espanhol (México • DDI +52)' : 'Português (Brasil • DDI +55)';
+    if (!confirm('Deseja carregar os modelos padrão em ' + countryName + ' para este funil?')) return;
+
+    this.currentQuiz.recovery.country = country;
+    this.currentQuiz.recovery.ddi = country === 'MX' ? '52' : '55';
+    this.currentQuiz.recovery.stages = JSON.parse(JSON.stringify(country === 'MX' ? this.MEXICO_RECOVERY_STAGES : this.BRAZIL_RECOVERY_STAGES));
+
+    this.updateQuizRecoveryLangButtons();
+    this.renderQuizRecoveryStages();
+    this.renderQuizRecoveryOrders();
+    this.saveQuiz(true);
+    this.showToast('Modelos em ' + countryName + ' carregados!', 'success');
+  },
+
+  renderQuizRecoveryStages() {
+    const container = document.getElementById('quiz-recovery-stages-list');
+    if (!container || !this.currentQuiz || !this.currentQuiz.recovery) return;
+
+    const stages = this.currentQuiz.recovery.stages || [];
+
+    container.innerHTML = stages.map((stage, idx) => {
+      const minHours = (stage.minMinutes / 60).toFixed(1).replace('.0', '');
+      const maxHours = (stage.maxMinutes / 60).toFixed(1).replace('.0', '');
+      const timeLabel = stage.minMinutes < 60 && stage.maxMinutes <= 60 
+        ? (stage.minMinutes + ' a ' + stage.maxMinutes + ' min')
+        : (minHours + 'h a ' + maxHours + 'h');
+
+      const safeTitle = (stage.title || ('Etapa ' + (idx + 1))).replace(/"/g, '&quot;');
+      const safeTpl = (stage.template || '').replace(/</g, '&lt;');
+      const deleteBtn = stages.length > 1 
+        ? '<button type="button" onclick="App.removeQuizRecoveryStage(' + idx + ')" class="p-1.5 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 transition" title="Excluir Etapa"><i class="ph ph-trash text-base"></i></button>' 
+        : '';
+
+      return '<div class="bg-slate-950/70 border border-slate-800 hover:border-slate-700/80 rounded-2xl p-4 sm:p-5 transition shadow-sm space-y-4">' +
+        '<div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-800/80">' +
+          '<div class="flex items-center gap-2.5 flex-1">' +
+            '<span class="w-7 h-7 rounded-lg bg-emerald-600/20 text-emerald-400 border border-emerald-500/30 flex items-center justify-center text-xs font-black shrink-0">#' + (idx + 1) + '</span>' +
+            '<input type="text" value="' + safeTitle + '" onchange="App.updateQuizRecoveryStage(' + idx + ', \'title\', this.value)" class="w-full bg-slate-900 border border-slate-700/80 focus:border-emerald-500 px-3 py-1.5 rounded-xl text-xs font-bold text-white outline-none" placeholder="Título da Etapa">' +
+          '</div>' +
+          '<div class="flex items-center gap-2 shrink-0">' +
+            '<div class="flex items-center gap-1.5 bg-slate-900 border border-slate-800 px-2.5 py-1 rounded-xl text-[11px] text-slate-300">' +
+              '<i class="ph ph-clock text-amber-400"></i>' +
+              '<span class="text-slate-400 text-[10px]">De:</span>' +
+              '<input type="number" min="0" value="' + (stage.minMinutes || 0) + '" onchange="App.updateQuizRecoveryStage(' + idx + ', \'minMinutes\', this.value)" class="w-12 bg-slate-950 border border-slate-700 text-center rounded px-1 text-white font-mono text-[11px] outline-none">' +
+              '<span class="text-slate-400 text-[10px]">Até:</span>' +
+              '<input type="number" min="1" value="' + (stage.maxMinutes || 60) + '" onchange="App.updateQuizRecoveryStage(' + idx + ', \'maxMinutes\', this.value)" class="w-12 bg-slate-950 border border-slate-700 text-center rounded px-1 text-white font-mono text-[11px] outline-none">' +
+              '<span class="text-slate-400 text-[10px]">min</span>' +
+            '</div>' +
+            deleteBtn +
+          '</div>' +
+        '</div>' +
+        '<div class="space-y-2">' +
+          '<div class="flex flex-wrap items-center justify-between gap-2">' +
+            '<label class="text-[11px] font-bold text-slate-300 flex items-center gap-1.5">' +
+              '<i class="ph ph-chat-text text-emerald-400"></i>' +
+              '<span>Mensagem WhatsApp desta Etapa</span>' +
+            '</label>' +
+            '<div class="flex items-center gap-1.5">' +
+              '<span class="text-[10px] text-slate-500 hidden sm:inline">Inserir:</span>' +
+              '<button type="button" onclick="App.insertQuizRecoveryVariable(' + idx + ', \'{nome}\')" class="px-2 py-0.5 rounded-md bg-emerald-950 hover:bg-emerald-900 border border-emerald-700/60 text-emerald-300 text-[10px] font-mono transition">{nome}</button>' +
+              '<button type="button" onclick="App.insertQuizRecoveryVariable(' + idx + ', \'{produto}\')" class="px-2 py-0.5 rounded-md bg-emerald-950 hover:bg-emerald-900 border border-emerald-700/60 text-emerald-300 text-[10px] font-mono transition">{produto}</button>' +
+              '<button type="button" onclick="App.insertQuizRecoveryVariable(' + idx + ', \'{valor}\')" class="px-2 py-0.5 rounded-md bg-emerald-950 hover:bg-emerald-900 border border-emerald-700/60 text-emerald-300 text-[10px] font-mono transition">{valor}</button>' +
+            '</div>' +
+          '</div>' +
+          '<textarea id="quiz-recov-stage-tpl-' + idx + '" rows="3" onchange="App.updateQuizRecoveryStage(' + idx + ', \'template\', this.value)" class="w-full bg-slate-900 border border-slate-700/80 focus:border-emerald-500 rounded-xl p-3 text-xs text-slate-200 outline-none leading-relaxed transition resize-y font-normal" placeholder="Mensagem em texto ou com Spintax {Oi|Olá}...">' + safeTpl + '</textarea>' +
+        '</div>' +
+        '<div class="flex items-center justify-between pt-1">' +
+          '<button type="button" onclick="App.testQuizRecoverySpintax(' + idx + ')" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white text-xs font-semibold border border-slate-800 transition">' +
+            '<i class="ph ph-dice-five text-amber-400"></i>' +
+            '<span>Testar Variação (Spintax)</span>' +
+          '</button>' +
+          '<span class="text-[10px] text-slate-500">Janela estimada: ' + timeLabel + '</span>' +
+        '</div>' +
+        '<div id="quiz-recov-stage-preview-' + idx + '" class="hidden"></div>' +
+      '</div>';
+    }).join('');
+  },
+
+  addQuizRecoveryStage() {
+    if (!this.currentQuiz || !this.currentQuiz.recovery) return;
+    const stages = this.currentQuiz.recovery.stages || [];
+    const nextIdx = stages.length + 1;
+    const last = stages[stages.length - 1];
+    const newMin = last ? (last.maxMinutes || 60) : 0;
+    const newMax = newMin + 240;
+    const isMx = this.currentQuiz.recovery.country === 'MX';
+
+    stages.push({
+      id: 'stage_' + Date.now(),
+      title: isMx 
+        ? ('Etapa ' + nextIdx + ' - Nuevo Seguimiento (' + Math.floor(newMin/60) + 'h a ' + Math.floor(newMax/60) + 'h)')
+        : ('Etapa ' + nextIdx + ' - Nova Abordagem (' + Math.floor(newMin/60) + 'h a ' + Math.floor(newMax/60) + 'h)'),
+      minMinutes: newMin,
+      maxMinutes: newMax,
+      template: isMx
+        ? "{¡Hola|Hola} {nome}! Te escribo para ver si pudiste revisar tu orden de {produto}. Si prefieres alguna otra opción de pago me puedes comentar por aquí."
+        : "{Oi|Olá} {nome}! Passando para ver se precisa de ajuda com o seu pedido do {produto}. Caso tenha preferência por outra forma de pagamento, me avisa por aqui!"
+    });
+
+    this.renderQuizRecoveryStages();
+    this.saveQuiz(true);
+  },
+
+  removeQuizRecoveryStage(idx) {
+    if (!this.currentQuiz || !this.currentQuiz.recovery) return;
+    const stages = this.currentQuiz.recovery.stages || [];
+    if (stages.length <= 1) {
+      alert('Mantenha pelo menos 1 etapa no funil.');
+      return;
+    }
+    if (!confirm('Deseja realmente remover esta etapa?')) return;
+    stages.splice(idx, 1);
+    this.renderQuizRecoveryStages();
+    this.saveQuiz(true);
+  },
+
+  updateQuizRecoveryStage(idx, field, val) {
+    if (!this.currentQuiz || !this.currentQuiz.recovery) return;
+    const stage = (this.currentQuiz.recovery.stages || [])[idx];
+    if (!stage) return;
+    if (field === 'minMinutes' || field === 'maxMinutes') {
+      stage[field] = Math.max(0, parseInt(val, 10) || 0);
+    } else {
+      stage[field] = val;
+    }
+  },
+
+  insertQuizRecoveryVariable(idx, variable) {
+    const textarea = document.getElementById('quiz-recov-stage-tpl-' + idx);
+    if (!textarea) return;
+    const start = textarea.selectionStart || 0;
+    const end = textarea.selectionEnd || 0;
+    const text = textarea.value;
+    textarea.value = text.substring(0, start) + variable + text.substring(end);
+    textarea.focus();
+    textarea.selectionStart = textarea.selectionEnd = start + variable.length;
+    this.updateQuizRecoveryStage(idx, 'template', textarea.value);
+  },
+
+  testQuizRecoverySpintax(idx) {
+    if (!this.currentQuiz || !this.currentQuiz.recovery) return;
+    const stage = (this.currentQuiz.recovery.stages || [])[idx];
+    if (!stage) return;
+    const isMx = this.currentQuiz.recovery.country === 'MX';
+
+    let sample = this.parseRecoverySpintax(stage.template || '');
+    sample = sample.replace(/{nome}/g, isMx ? 'Carlos' : 'João');
+    sample = sample.replace(/{nome_completo}/g, isMx ? 'Carlos González' : 'João Silva');
+    sample = sample.replace(/{produto}/g, this.currentQuiz.productTitle || this.currentQuiz.title || 'Produto');
+    sample = sample.replace(/{valor}/g, isMx ? '$497 MXN' : 'R$ 27,90');
+
+    const previewEl = document.getElementById('quiz-recov-stage-preview-' + idx);
+    if (previewEl) {
+      previewEl.classList.remove('hidden');
+      previewEl.innerHTML = '<div class="text-[10px] uppercase font-bold text-emerald-400 mb-1 flex items-center gap-1">' +
+        '<i class="ph ph-chat-circle-dots"></i> Exemplo gerado agora (WhatsApp ' + (isMx ? 'México' : 'Brasil') + '):' +
+      '</div>' +
+      '<div class="text-xs text-slate-200 bg-slate-950 p-3 rounded-xl border border-emerald-500/30 whitespace-pre-wrap leading-relaxed shadow-inner">' +
+        sample.replace(/</g, '&lt;') +
+      '</div>';
+    }
+  },
+
+  saveCurrentQuizRecovery() {
+    if (!this.currentQuiz || !this.currentQuiz.recovery) return;
+    (this.currentQuiz.recovery.stages || []).forEach((st, idx) => {
+      const el = document.getElementById('quiz-recov-stage-tpl-' + idx);
+      if (el) st.template = el.value;
+    });
+    this.saveQuiz(true);
+    this.showToast('Mensagens de recuperação salvas para este funil!', 'success');
+  },
+
+  syncQuizRecoveryOrders() {
+    this.syncMetricsFromGoogleSheet();
+    setTimeout(() => {
+      this.renderQuizRecoveryOrders();
+    }, 1500);
+  },
+
+  renderQuizRecoveryOrders() {
+    const container = document.getElementById('quiz-recovery-orders-container');
+    if (!container || !this.currentQuiz) return;
+
+    const orders = (this.analyticsData && this.analyticsData.orders) ? this.analyticsData.orders : [];
+    const isMx = this.currentQuiz.recovery && this.currentQuiz.recovery.country === 'MX';
+    const ddi = (this.currentQuiz.recovery && this.currentQuiz.recovery.ddi) || (isMx ? '52' : '55');
+    const stages = (this.currentQuiz.recovery && this.currentQuiz.recovery.stages) || (isMx ? this.MEXICO_RECOVERY_STAGES : this.BRAZIL_RECOVERY_STAGES);
+
+    const prodTitle = String(this.currentQuiz.productTitle || '').toLowerCase();
+
+    const quizOrders = orders.filter(o => {
+      const ordProd = String(o.product || '').toLowerCase();
+      if (prodTitle && ordProd && ordProd !== '-') {
+        return ordProd.includes(prodTitle) || prodTitle.includes(ordProd);
+      }
+      return true;
+    });
+
+    const pendingOrders = quizOrders.filter(o => !['approved', 'aprovado', 'paid'].includes(String(o.status || '').toLowerCase()));
+    const paidOrders = quizOrders.filter(o => ['approved', 'aprovado', 'paid'].includes(String(o.status || '').toLowerCase()));
+
+    const elStatPending = document.getElementById('quiz-recov-stat-pending');
+    const elStatContacted = document.getElementById('quiz-recov-stat-contacted');
+    const elStatRecovered = document.getElementById('quiz-recov-stat-recovered');
+
+    if (elStatPending) elStatPending.innerText = pendingOrders.length;
+    if (elStatRecovered) elStatRecovered.innerText = paidOrders.length;
+
+    let contactedCount = 0;
+    const stateKey = 'qf_recov_state_' + this.currentQuiz.id;
+    let quizRecovState = {};
+    try {
+      quizRecovState = JSON.parse(localStorage.getItem(stateKey) || '{}');
+    } catch(e) {}
+
+    pendingOrders.forEach(o => {
+      if (quizRecovState[o.id] && quizRecovState[o.id].lastSentAt) contactedCount++;
+    });
+    if (elStatContacted) elStatContacted.innerText = contactedCount;
+
+    if (pendingOrders.length === 0) {
+      container.innerHTML = '<div class="bg-slate-950/50 border border-slate-800 rounded-xl p-6 text-center space-y-2">' +
+        '<i class="ph ph-check-circle text-3xl text-emerald-400"></i>' +
+        '<p class="text-xs text-slate-300 font-bold">Nenhum PIX pendente aguardando recuperação neste funil!</p>' +
+        '<p class="text-[11px] text-slate-500">Quando novos clientes gerarem PIX na sua página ou quiz, eles aparecerão aqui automaticamente.</p>' +
+      '</div>';
+      return;
+    }
+
+    container.innerHTML = pendingOrders.map(order => {
+      const ordState = quizRecovState[order.id] || {};
+      const rawName = (order.name || 'Cliente').trim();
+      const firstName = rawName.split(/\s+/)[0];
+      const initials = rawName.slice(0, 2).toUpperCase();
+
+      let stageIdx = 0;
+      if (ordState.lastStageIdx != null) {
+        stageIdx = ordState.lastStageIdx + 1;
+      }
+      const allSent = stageIdx >= stages.length;
+      const activeStage = stages[allSent ? stages.length - 1 : stageIdx] || stages[0];
+
+      let cleanPhone = String(order.whatsapp || order.phone || '').replace(/\D/g, '');
+      if (cleanPhone && cleanPhone.indexOf(ddi) !== 0 && cleanPhone.length >= 8) {
+        cleanPhone = ddi + cleanPhone;
+      }
+
+      let msg = this.parseRecoverySpintax(activeStage.template || '');
+      msg = msg.replace(/{nome}/g, firstName);
+      msg = msg.replace(/{nome_completo}/g, rawName);
+      msg = msg.replace(/{produto}/g, this.currentQuiz.productTitle || this.currentQuiz.title || 'Produto');
+      msg = msg.replace(/{valor}/g, order.amount ? (isMx ? ('$' + order.amount + ' MXN') : ('R$ ' + Number(order.amount).toFixed(2))) : '');
+
+      const waUrl = cleanPhone ? ('https://wa.me/' + cleanPhone + '?text=' + encodeURIComponent(msg)) : null;
+
+      const stageBadgeText = activeStage.title ? activeStage.title.split(' - ')[0] : ('Etapa ' + (stageIdx + 1));
+      const valText = order.amount ? (isMx ? ('$' + order.amount + ' MXN') : ('R$ ' + Number(order.amount).toFixed(2))) : 'PIX';
+
+      const waBtn = waUrl 
+        ? '<a href="' + waUrl + '" target="_blank" onclick="App.trackQuizRecoverySent(\'' + order.id + '\', ' + stageIdx + ')" class="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition flex items-center gap-1.5 shadow-sm">' +
+            '<i class="ph ph-whatsapp-logo text-sm"></i>' +
+            '<span>Enviar ' + stageBadgeText + ' (' + (isMx ? 'México' : 'Brasil') + ')</span>' +
+          '</a>'
+        : '<span class="text-[10px] text-amber-400 font-semibold flex items-center gap-1"><i class="ph ph-warning"></i> Sem WhatsApp</span>';
+
+      return '<div class="bg-slate-950/70 border border-slate-800 rounded-xl p-3.5 space-y-2.5 transition hover:border-slate-700">' +
+        '<div class="flex items-start justify-between gap-2">' +
+          '<div class="flex items-center gap-2.5">' +
+            '<div class="w-8 h-8 rounded-lg bg-emerald-600/20 text-emerald-400 font-black text-xs flex items-center justify-center shrink-0">' +
+              initials +
+            '</div>' +
+            '<div>' +
+              '<h5 class="text-xs font-bold text-white flex items-center gap-1.5">' +
+                '<span>' + rawName + '</span>' +
+                '<span class="text-[9px] font-bold px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">' +
+                  stageBadgeText +
+                '</span>' +
+              '</h5>' +
+              '<p class="text-[10px] text-slate-400 mt-0.5 flex items-center gap-1.5">' +
+                '<span class="font-mono text-slate-300">' + (order.whatsapp || order.phone || 'Sem telefone') + '</span>' +
+                '<span>•</span>' +
+                '<span>' + (order.date || 'Hoje') + '</span>' +
+                (ordState.lastSentAt ? '<span class="text-emerald-400 font-semibold">• Enviado</span>' : '') +
+              '</p>' +
+            '</div>' +
+          '</div>' +
+          '<div class="text-right shrink-0">' +
+            '<span class="text-xs font-black text-emerald-400">' + valText + '</span>' +
+          '</div>' +
+        '</div>' +
+        '<div class="pt-2 border-t border-slate-800/80 flex items-center justify-between gap-2">' +
+          waBtn +
+          '<button type="button" onclick="App.copyQuizRecoveryMessage(\'' + encodeURIComponent(msg) + '\')" class="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 transition" title="Copiar mensagem">' +
+            '<i class="ph ph-copy text-xs"></i>' +
+          '</button>' +
+        '</div>' +
+      '</div>';
+    }).join('');
+  },
+
+  trackQuizRecoverySent(orderId, stageIdx) {
+    if (!this.currentQuiz) return;
+    const stateKey = 'qf_recov_state_' + this.currentQuiz.id;
+    let state = {};
+    try {
+      state = JSON.parse(localStorage.getItem(stateKey) || '{}');
+    } catch(e) {}
+    state[orderId] = {
+      lastStageIdx: stageIdx,
+      lastSentAt: new Date().toISOString()
+    };
+    try {
+      localStorage.setItem(stateKey, JSON.stringify(state));
+    } catch(e) {}
+    setTimeout(() => {
+      this.renderQuizRecoveryOrders();
+    }, 500);
+  },
+
+  copyQuizRecoveryMessage(encodedMsg) {
+    const msg = decodeURIComponent(encodedMsg);
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(msg).then(() => {
+        this.showToast('Mensagem copiada para a área de transferência!', 'success');
+      }).catch(() => {
+        prompt('Copie a mensagem abaixo:', msg);
+      });
+    } else {
+      prompt('Copie a mensagem abaixo:', msg);
+    }
+  },
+
   loadRecoveryStages() {
     try {
       const raw = localStorage.getItem('qf_recovery_stages_v2');
@@ -5968,27 +6416,17 @@ const App = {
           return this.recoveryStages;
         }
       }
-      // Migração de formato legado se existir
-      const oldRaw = localStorage.getItem('qf_recovery_templates');
-      if (oldRaw) {
-        const oldParsed = JSON.parse(oldRaw);
-        if (oldParsed && oldParsed.msg1) {
-          this.recoveryStages = JSON.parse(JSON.stringify(this.DEFAULT_RECOVERY_STAGES));
-          if (oldParsed.msg1) this.recoveryStages[0].template = oldParsed.msg1;
-          if (oldParsed.msg2 && this.recoveryStages[1]) this.recoveryStages[1].template = oldParsed.msg2;
-          if (oldParsed.msg3 && this.recoveryStages[2]) this.recoveryStages[2].template = oldParsed.msg3;
-          localStorage.setItem('qf_recovery_stages_v2', JSON.stringify(this.recoveryStages));
-          return this.recoveryStages;
-        }
-      }
-    } catch(e) {
-      console.warn('[Recovery] Erro ao carregar etapas:', e);
-    }
+    } catch(e) {}
     this.recoveryStages = JSON.parse(JSON.stringify(this.DEFAULT_RECOVERY_STAGES));
     return this.recoveryStages;
   },
 
   openRecoveryModal() {
+    // Se estiver editando um quiz, abre diretamente a aba de recuperação daquele funil!
+    if (this.currentQuiz) {
+      this.switchEditorTab('recovery');
+      return;
+    }
     this.closeModals();
     this.loadRecoveryStages();
     this.renderRecoveryModalStages();
@@ -6008,90 +6446,57 @@ const App = {
       const minHours = (stage.minMinutes / 60).toFixed(1).replace('.0', '');
       const maxHours = (stage.maxMinutes / 60).toFixed(1).replace('.0', '');
       const timeLabel = stage.minMinutes < 60 && stage.maxMinutes <= 60 
-        ? `${stage.minMinutes} a ${stage.maxMinutes} min`
-        : `${minHours}h a ${maxHours}h`;
+        ? (stage.minMinutes + ' a ' + stage.maxMinutes + ' min')
+        : (minHours + 'h a ' + maxHours + 'h');
 
-      return `
-        <div class="bg-slate-950/70 border border-slate-800 hover:border-slate-700/80 rounded-2xl p-4 sm:p-5 transition shadow-sm space-y-4">
-          <!-- Topo da Etapa -->
-          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-800/80">
-            <div class="flex items-center gap-2.5 flex-1">
-              <span class="w-7 h-7 rounded-lg bg-indigo-600/20 text-indigo-400 border border-indigo-500/30 flex items-center justify-center text-xs font-black shrink-0">
-                #${idx + 1}
-              </span>
-              <input type="text" 
-                     value="${(stage.title || `Etapa ${idx + 1}`).replace(/"/g, '&quot;')}" 
-                     onchange="App.updateRecoveryStage(${idx}, 'title', this.value)"
-                     class="w-full bg-slate-900 border border-slate-700/80 focus:border-indigo-500 px-3 py-1.5 rounded-xl text-xs font-bold text-white outline-none"
-                     placeholder="Título da Etapa">
-            </div>
+      const safeTitle = (stage.title || ('Etapa ' + (idx + 1))).replace(/"/g, '&quot;');
+      const safeTpl = (stage.template || '').replace(/</g, '&lt;');
+      const deleteBtn = this.recoveryStages.length > 1 
+        ? '<button type="button" onclick="App.removeRecoveryStage(' + idx + ')" class="p-1.5 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 transition" title="Excluir Etapa"><i class="ph ph-trash text-base"></i></button>' 
+        : '';
 
-            <!-- Janela de Tempo & Ações -->
-            <div class="flex items-center gap-2 shrink-0">
-              <div class="flex items-center gap-1.5 bg-slate-900 border border-slate-800 px-2.5 py-1 rounded-xl text-[11px] text-slate-300">
-                <i class="ph ph-clock text-amber-400"></i>
-                <span class="text-slate-400 text-[10px]">De:</span>
-                <input type="number" min="0" value="${stage.minMinutes || 0}" 
-                       onchange="App.updateRecoveryStage(${idx}, 'minMinutes', this.value)" 
-                       class="w-12 bg-slate-950 border border-slate-700 text-center rounded px-1 text-white font-mono text-[11px] outline-none">
-                <span class="text-slate-400 text-[10px]">Até:</span>
-                <input type="number" min="1" value="${stage.maxMinutes || 60}" 
-                       onchange="App.updateRecoveryStage(${idx}, 'maxMinutes', this.value)" 
-                       class="w-12 bg-slate-950 border border-slate-700 text-center rounded px-1 text-white font-mono text-[11px] outline-none">
-                <span class="text-slate-400 text-[10px]">min</span>
-              </div>
-
-              ${this.recoveryStages.length > 1 ? `
-                <button type="button" onclick="App.removeRecoveryStage(${idx})" class="p-1.5 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 transition" title="Excluir Etapa">
-                  <i class="ph ph-trash text-base"></i>
-                </button>
-              ` : ''}
-            </div>
-          </div>
-
-          <!-- Mensagem com Spintax -->
-          <div class="space-y-2">
-            <div class="flex flex-wrap items-center justify-between gap-2">
-              <label class="text-[11px] font-bold text-slate-300 flex items-center gap-1.5">
-                <i class="ph ph-chat-text text-indigo-400"></i>
-                <span>Mensagem WhatsApp da Etapa</span>
-              </label>
-
-              <!-- Tags Rápidas de Variáveis -->
-              <div class="flex items-center gap-1.5">
-                <span class="text-[10px] text-slate-500 hidden sm:inline">Inserir:</span>
-                <button type="button" onclick="App.insertRecoveryVariable(${idx}, '{nome}')" class="px-2 py-0.5 rounded-md bg-indigo-950 hover:bg-indigo-900 border border-indigo-700/60 text-indigo-300 text-[10px] font-mono transition">
-                  {nome}
-                </button>
-                <button type="button" onclick="App.insertRecoveryVariable(${idx}, '{produto}')" class="px-2 py-0.5 rounded-md bg-indigo-950 hover:bg-indigo-900 border border-indigo-700/60 text-indigo-300 text-[10px] font-mono transition">
-                  {produto}
-                </button>
-                <button type="button" onclick="App.insertRecoveryVariable(${idx}, '{valor}')" class="px-2 py-0.5 rounded-md bg-indigo-950 hover:bg-indigo-900 border border-indigo-700/60 text-indigo-300 text-[10px] font-mono transition">
-                  {valor}
-                </button>
-              </div>
-            </div>
-
-            <textarea id="recov-stage-tpl-${idx}" 
-                      rows="3" 
-                      onchange="App.updateRecoveryStage(${idx}, 'template', this.value)"
-                      class="w-full bg-slate-900 border border-slate-700/80 focus:border-indigo-500 rounded-xl p-3 text-xs text-slate-200 outline-none leading-relaxed transition resize-y font-normal"
-                      placeholder="Digite a mensagem ou use Spintax {Oi|Olá}...">${(stage.template || '').replace(/</g, '&lt;')}</textarea>
-          </div>
-
-          <!-- Ação de Teste de Spintax -->
-          <div class="flex items-center justify-between pt-1">
-            <button type="button" onclick="App.testRecoverySpintax(${idx})" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white text-xs font-semibold border border-slate-800 transition">
-              <i class="ph ph-dice-five text-amber-400"></i>
-              <span>Testar Variação (Spintax)</span>
-            </button>
-            <span class="text-[10px] text-slate-500">Janela estimada: ${timeLabel}</span>
-          </div>
-
-          <!-- Box de Prévia Dinâmica -->
-          <div id="recov-stage-preview-${idx}" class="hidden"></div>
-        </div>
-      `;
+      return '<div class="bg-slate-950/70 border border-slate-800 hover:border-slate-700/80 rounded-2xl p-4 sm:p-5 transition shadow-sm space-y-4">' +
+        '<div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-800/80">' +
+          '<div class="flex items-center gap-2.5 flex-1">' +
+            '<span class="w-7 h-7 rounded-lg bg-indigo-600/20 text-indigo-400 border border-indigo-500/30 flex items-center justify-center text-xs font-black shrink-0">#' + (idx + 1) + '</span>' +
+            '<input type="text" value="' + safeTitle + '" onchange="App.updateRecoveryStage(' + idx + ', \'title\', this.value)" class="w-full bg-slate-900 border border-slate-700/80 focus:border-indigo-500 px-3 py-1.5 rounded-xl text-xs font-bold text-white outline-none" placeholder="Título da Etapa">' +
+          '</div>' +
+          '<div class="flex items-center gap-2 shrink-0">' +
+            '<div class="flex items-center gap-1.5 bg-slate-900 border border-slate-800 px-2.5 py-1 rounded-xl text-[11px] text-slate-300">' +
+              '<i class="ph ph-clock text-amber-400"></i>' +
+              '<span class="text-slate-400 text-[10px]">De:</span>' +
+              '<input type="number" min="0" value="' + (stage.minMinutes || 0) + '" onchange="App.updateRecoveryStage(' + idx + ', \'minMinutes\', this.value)" class="w-12 bg-slate-950 border border-slate-700 text-center rounded px-1 text-white font-mono text-[11px] outline-none">' +
+              '<span class="text-slate-400 text-[10px]">Até:</span>' +
+              '<input type="number" min="1" value="' + (stage.maxMinutes || 60) + '" onchange="App.updateRecoveryStage(' + idx + ', \'maxMinutes\', this.value)" class="w-12 bg-slate-950 border border-slate-700 text-center rounded px-1 text-white font-mono text-[11px] outline-none">' +
+              '<span class="text-slate-400 text-[10px]">min</span>' +
+            '</div>' +
+            deleteBtn +
+          '</div>' +
+        '</div>' +
+        '<div class="space-y-2">' +
+          '<div class="flex flex-wrap items-center justify-between gap-2">' +
+            '<label class="text-[11px] font-bold text-slate-300 flex items-center gap-1.5">' +
+              '<i class="ph ph-chat-text text-indigo-400"></i>' +
+              '<span>Mensagem WhatsApp da Etapa</span>' +
+            '</label>' +
+            '<div class="flex items-center gap-1.5">' +
+              '<span class="text-[10px] text-slate-500 hidden sm:inline">Inserir:</span>' +
+              '<button type="button" onclick="App.insertRecoveryVariable(' + idx + ', \'{nome}\')" class="px-2 py-0.5 rounded-md bg-indigo-950 hover:bg-indigo-900 border border-indigo-700/60 text-indigo-300 text-[10px] font-mono transition">{nome}</button>' +
+              '<button type="button" onclick="App.insertRecoveryVariable(' + idx + ', \'{produto}\')" class="px-2 py-0.5 rounded-md bg-indigo-950 hover:bg-indigo-900 border border-indigo-700/60 text-indigo-300 text-[10px] font-mono transition">{produto}</button>' +
+              '<button type="button" onclick="App.insertRecoveryVariable(' + idx + ', \'{valor}\')" class="px-2 py-0.5 rounded-md bg-indigo-950 hover:bg-indigo-900 border border-indigo-700/60 text-indigo-300 text-[10px] font-mono transition">{valor}</button>' +
+            '</div>' +
+          '</div>' +
+          '<textarea id="recov-stage-tpl-' + idx + '" rows="3" onchange="App.updateRecoveryStage(' + idx + ', \'template\', this.value)" class="w-full bg-slate-900 border border-slate-700/80 focus:border-indigo-500 rounded-xl p-3 text-xs text-slate-200 outline-none leading-relaxed transition resize-y font-normal" placeholder="Digite a mensagem ou use Spintax {Oi|Olá}...">' + safeTpl + '</textarea>' +
+        '</div>' +
+        '<div class="flex items-center justify-between pt-1">' +
+          '<button type="button" onclick="App.testRecoverySpintax(' + idx + ')" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white text-xs font-semibold border border-slate-800 transition">' +
+            '<i class="ph ph-dice-five text-amber-400"></i>' +
+            '<span>Testar Variação (Spintax)</span>' +
+          '</button>' +
+          '<span class="text-[10px] text-slate-500">Janela estimada: ' + timeLabel + '</span>' +
+        '</div>' +
+        '<div id="recov-stage-preview-' + idx + '" class="hidden"></div>' +
+      '</div>';
     }).join('');
   },
 
@@ -6100,17 +6505,16 @@ const App = {
     const nextIdx = list.length + 1;
     const lastStage = list[list.length - 1];
     const newMin = lastStage ? (lastStage.maxMinutes || 60) : 0;
-    const newMax = newMin + 240; // +4h por padrão
+    const newMax = newMin + 240;
 
-    const newStage = {
+    list.push({
       id: 'stage_' + Date.now(),
-      title: `Etapa ${nextIdx} - Nova Abordagem (${Math.floor(newMin/60)}h a ${Math.floor(newMax/60)}h)`,
+      title: 'Etapa ' + nextIdx + ' - Nova Abordagem (' + Math.floor(newMin/60) + 'h a ' + Math.floor(newMax/60) + 'h)',
       minMinutes: newMin,
       maxMinutes: newMax,
-      template: `{Oi|Olá} {nome}! Passando para ver se precisa de ajuda para ativar seu acesso ao {produto}. Caso tenha preferência por cartão ou outra forma, me avisa por aqui!`
-    };
+      template: "{Oi|Olá} {nome}! Passando para ver se precisa de ajuda para ativar seu acesso ao {produto}. Caso tenha preferência por cartão ou outra forma, me avisa por aqui!"
+    });
 
-    list.push(newStage);
     this.recoveryStages = list;
     this.renderRecoveryModalStages();
   },
@@ -6121,7 +6525,7 @@ const App = {
       return;
     }
     const st = this.recoveryStages[idx];
-    if (!confirm(`Deseja realmente remover a etapa "${st.title || 'Etapa ' + (idx + 1)}"?`)) return;
+    if (!confirm('Deseja realmente remover a etapa "' + (st.title || ('Etapa ' + (idx + 1))) + '"?')) return;
     this.recoveryStages.splice(idx, 1);
     this.renderRecoveryModalStages();
   },
@@ -6136,7 +6540,7 @@ const App = {
   },
 
   insertRecoveryVariable(idx, variable) {
-    const textarea = document.getElementById(`recov-stage-tpl-${idx}`);
+    const textarea = document.getElementById('recov-stage-tpl-' + idx);
     if (!textarea) return;
     const start = textarea.selectionStart || 0;
     const end = textarea.selectionEnd || 0;
@@ -6171,23 +6575,21 @@ const App = {
     sample = sample.replace(/{produto}/g, 'OrçaObra Pro');
     sample = sample.replace(/{valor}/g, 'R$ 27,90');
 
-    const previewEl = document.getElementById(`recov-stage-preview-${idx}`);
+    const previewEl = document.getElementById('recov-stage-preview-' + idx);
     if (previewEl) {
       previewEl.classList.remove('hidden');
-      previewEl.innerHTML = `
-        <div class="text-[10px] uppercase font-bold text-emerald-400 mb-1 flex items-center gap-1">
-          <i class="ph ph-chat-circle-dots"></i> Exemplo gerado agora (WhatsApp):
-        </div>
-        <div class="text-xs text-slate-200 bg-slate-950 p-3 rounded-xl border border-emerald-500/30 whitespace-pre-wrap leading-relaxed shadow-inner">
-          ${sample.replace(/</g, '&lt;')}
-        </div>
-      `;
+      previewEl.innerHTML = '<div class="text-[10px] uppercase font-bold text-emerald-400 mb-1 flex items-center gap-1">' +
+        '<i class="ph ph-chat-circle-dots"></i> Exemplo gerado agora (WhatsApp):' +
+      '</div>' +
+      '<div class="text-xs text-slate-200 bg-slate-950 p-3 rounded-xl border border-emerald-500/30 whitespace-pre-wrap leading-relaxed shadow-inner">' +
+        sample.replace(/</g, '&lt;') +
+      '</div>';
     }
   },
 
   saveRecoveryStages() {
     (this.recoveryStages || []).forEach((st, idx) => {
-      const textarea = document.getElementById(`recov-stage-tpl-${idx}`);
+      const textarea = document.getElementById('recov-stage-tpl-' + idx);
       if (textarea) st.template = textarea.value;
     });
 

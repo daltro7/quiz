@@ -1069,7 +1069,19 @@
 
       renderOrders() {
         const container = document.getElementById('orders-list-container');
-        const orders = this.data.orders || [];
+        const allOrders = this.data.orders || [];
+        const activeQuiz = (this.quizzes || []).find(q => q.id === this.selectedQuizId);
+        const prodTitle = activeQuiz ? String(activeQuiz.productTitle || activeQuiz.title || '').toLowerCase() : '';
+
+        // Filtra pedidos pertencentes a este funil/produto
+        const orders = allOrders.filter(o => {
+          if (!activeQuiz || this.selectedQuizId === 'demo') return true;
+          const ordProd = String(o.product || '').toLowerCase();
+          if (prodTitle && ordProd && ordProd !== '-') {
+            return ordProd.includes(prodTitle) || prodTitle.includes(ordProd);
+          }
+          return true;
+        });
 
         const isApproved = this.ordersFilter === 'approved';
         const search = this.ordersSearch || '';
@@ -1331,8 +1343,9 @@
           return;
         }
 
-        if (cleanPhone.length === 10 || cleanPhone.length === 11) {
-          cleanPhone = '55' + cleanPhone;
+        const ddi = this.settings.recoveryDdi || (this.settings.recoveryCountry === 'MX' ? '52' : '55');
+        if (cleanPhone.indexOf(ddi) !== 0) {
+          cleanPhone = ddi + cleanPhone;
         }
 
         const msg = this.buildRecoveryMessage(stage, order);
