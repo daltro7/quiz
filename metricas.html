@@ -1118,18 +1118,23 @@
         }
 
         container.innerHTML = filtered.map(order => {
-          const rawName = (order.name || 'Cliente').trim();
-          const firstName = rawName.split(/\s+/)[0];
-          const initials = rawName.slice(0, 2).toUpperCase();
+          const rawName = this.resolveCustomerName(order);
+          const hasRealName = rawName && !["cliente", "anônimo", "anonimo", "-", "null", "undefined"].includes(rawName.toLowerCase());
+          const firstName = hasRealName ? rawName.split(/\s+/)[0] : "Cliente";
+          const initials = (hasRealName ? rawName : "CL").slice(0, 2).toUpperCase();
 
-          let cleanPhone = String(order.whatsapp || order.phone || '').replace(/\D/g, '');
-          if (cleanPhone && cleanPhone.indexOf('55') !== 0 && cleanPhone.length >= 10) {
-            cleanPhone = '55' + cleanPhone;
+          const ddi = this.settings.recoveryDdi || (this.settings.recoveryCountry === "MX" ? "52" : "55");
+          let cleanPhone = String(order.whatsapp || order.phone || "").replace(/\D/g, "");
+          if (cleanPhone && cleanPhone.indexOf(ddi) !== 0 && cleanPhone.length >= 8) {
+            cleanPhone = ddi + cleanPhone;
           }
 
-          const msg = this.settings.whatsappTemplate
-            .replace(/{nome}/g, firstName)
-            .replace(/{produto}/g, order.product || 'OrçaObra Pro');
+          const valFormatted = Number(order.amount || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+          let msg = this.settings.whatsappTemplate || "";
+          msg = msg.replace(/\{{1,2}\s*(nome|primeiro_nome|primeironome|cliente|name|first_name)\s*\}{1,2}/gi, firstName);
+          msg = msg.replace(/\{{1,2}\s*(nome_completo|nomecompleto|full_name)\s*\}{1,2}/gi, rawName);
+          msg = msg.replace(/\{{1,2}\s*(produto|product|oferta|quiz)\s*\}{1,2}/gi, order.product || "OrçaObra Pro");
+          msg = msg.replace(/\{{1,2}\s*(valor|preco|preço|amount|price)\s*\}{1,2}/gi, valFormatted);
           const waUrl = cleanPhone ? `https://wa.me/${cleanPhone}?text=${encodeURIComponent(msg)}` : null;
 
           const isPaid = ['approved', 'aprovado', 'paid'].includes(String(order.status || '').toLowerCase());
@@ -1289,28 +1294,73 @@
         return result;
       },
 
+      resolveCustomerName(order) {
+        if (!order) return "Cliente";
+        const candidates = [
+          order.name, order.nome, order.buyer_name, order.customer_name,
+          order.buyer, order.customer, order.cliente, order.client_name,
+          order.lead_name, order.leadName, order.payer_name
+        ];
+        for (let i = 0; i < candidates.length; i++) {
+          const val = String(candidates[i] || "").trim();
+          if (val && !["cliente", "anônimo", "anonimo", "-", "null", "undefined"].includes(val.toLowerCase())) {
+            return val;
+          }
+        }
+        const leads = (this.data && this.data.recentLeads) || [];
+        const phone = String(order.whatsapp || order.phone || "").replace(/\D/g, "");
+        const email = String(order.email || "").trim().toLowerCase();
+        if (leads.length > 0) {
+          const foundLead = leads.find(l => {
+            const lPhone = String(l.whatsapp || l.phone || "").replace(/\D/g, "");
+            const lEmail = String(l.email || "").trim().toLowerCase();
+            const lName = String(l.name || "").trim();
+            const isNameValid = lName && !["cliente", "anônimo", "anonimo", "-", "null", "undefined"].includes(lName.toLowerCase());
+            if (!isNameValid) return false;
+            if (phone && lPhone && (phone.includes(lPhone) || lPhone.includes(phone))) return true;
+            if (email && lEmail && email === lEmail) return true;
+            return false;
+          });
+          if (foundLead && foundLead.name) {
+            return String(foundLead.name).trim();
+          }
+        }
+        return String(order.name || "").trim() || "Cliente";
+      },
+
       buildRecoveryMessage(stage, order) {
-        let tpl = '';
+        let tpl = "";
         if (this.settings.recoveryStages && this.settings.recoveryStages.length > 0) {
-          const stageIdx = (typeof stage === 'number') ? (stage - 1) : 0;
+          const stageIdx = (typeof stage === "number") ? (stage - 1) : 0;
           const st = this.settings.recoveryStages[stageIdx] || this.settings.recoveryStages[0];
-          tpl = st ? st.template : '';
+          tpl = st ? st.template : "";
         }
         if (!tpl) {
           const tpls = this.settings.recoveryTemplates;
           tpl = stage === 1 ? tpls.msg1 : (stage === 2 ? tpls.msg2 : tpls.msg3);
         }
-        const rawName = (order.name || 'Cliente').trim();
-        const firstName = rawName.split(/\s+/)[0];
-        const prod = order.product || 'OrçaObra Pro';
-        const val = Number(order.amount || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+        const rawName = this.resolveCustomerName(order);
+        const hasRealName = rawName && !["cliente", "anônimo", "anonimo", "-", "null", "undefined"].includes(rawName.toLowerCase());
+        const firstName = hasRealName ? rawName.split(/\s+/)[0] : "";
+        const prod = order.product || "OrçaObra Pro";
 
-        let msg = this.parseSpintax(tpl);
-        msg = msg.replace(/{nome}/g, firstName);
-        msg = msg.replace(/{nome_completo}/g, rawName);
-        msg = msg.replace(/{produto}/g, prod);
-        msg = msg.replace(/{valor}/g, val);
-        return msg;
+        const isMx = this.settings.recoveryCountry === "MX" || (this.settings.recoveryDdi === "52");
+        const val = order.amount
+          ? (isMx ? ("$" + order.amount + " MXN") : Number(order.amount).toLocaleString("pt-BR", { style: "currency", currency: "BRL" }))
+          : (isMx ? "$497 MXN" : "R$ 27,90");
+
+        let msg = this.parseSpintax(tpl || "");
+
+        const nameReplacement = firstName || (hasRealName ? rawName : (isMx ? "Amigo" : ""));
+        const fullNameReplacement = hasRealName ? rawName : nameReplacement;
+
+        msg = msg.replace(/\{{1,2}\s*(nome|primeiro_nome|primeironome|cliente|name|first_name)\s*\}{1,2}/gi, nameReplacement);
+        msg = msg.replace(/\{{1,2}\s*(nome_completo|nomecompleto|full_name)\s*\}{1,2}/gi, fullNameReplacement);
+        msg = msg.replace(/\{{1,2}\s*(produto|product|oferta|quiz)\s*\}{1,2}/gi, prod);
+        msg = msg.replace(/\{{1,2}\s*(valor|preco|preço|amount|price)\s*\}{1,2}/gi, val);
+        msg = msg.replace(/\s+([,\.!?])/g, "$1").replace(/\s{2,}/g, " ");
+
+        return msg.trim();
       },
 
       setRecoveryStageFilter(stage) {
@@ -1538,11 +1588,15 @@
         }
 
         container.innerHTML = filtered.map(order => {
-          const rawName = (order.name || 'Cliente').trim();
-          const firstName = rawName.split(/\s+/)[0];
-          const initials = rawName.slice(0, 2).toUpperCase();
+          const rawName = this.resolveCustomerName(order);
+          const hasRealName = rawName && !["cliente", "anônimo", "anonimo", "-", "null", "undefined"].includes(rawName.toLowerCase());
+          const firstName = hasRealName ? rawName.split(/\s+/)[0] : "Cliente";
+          const initials = (hasRealName ? rawName : "CL").slice(0, 2).toUpperCase();
 
-          const val = Number(order.amount || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+          const isMx = this.settings.recoveryCountry === "MX" || (this.settings.recoveryDdi === "52");
+          const val = order.amount
+            ? (isMx ? ("$" + order.amount + " MXN") : Number(order.amount).toLocaleString("pt-BR", { style: "currency", currency: "BRL" }))
+            : (isMx ? "$497 MXN" : "R$ 27,90");
           const srcVal = (order.src && order.src !== '-') ? order.src : ((order.utm && order.utm !== '-') ? order.utm : 'Direto');
           const platVal = order.platform || 'Mivvo';
 

@@ -486,11 +486,29 @@ function doGet(e) {
     var lastCol = sheet.getLastColumn();
     var rows = sheet.getRange(1, 1, lastRow, lastCol).getValues();
     var headers = rows[0], colMap = {};
-    for (var c = 0; c < headers.length; c++) colMap[String(headers[c] || '').trim().toLowerCase()] = c;
+    for (var c = 0; c < headers.length; c++) {
+      var hClean = String(headers[c] || '').trim().toLowerCase();
+      if (hClean) colMap[hClean] = c;
+    }
     function getCol(row, candidates) {
+      if (!row) return '';
+      // 1. Match exato
       for (var j = 0; j < candidates.length; j++) {
-        var idx = colMap[candidates[j].toLowerCase()];
-        if (idx !== undefined && row[idx] !== undefined) return row[idx];
+        var c = String(candidates[j] || '').trim().toLowerCase();
+        if (!c) continue;
+        var idx = colMap[c];
+        if (idx !== undefined && row[idx] !== undefined && String(row[idx]).trim() !== '') return row[idx];
+      }
+      // 2. Match parcial / busca por palavra-chave no cabeçalho
+      for (var j = 0; j < candidates.length; j++) {
+        var c = String(candidates[j] || '').trim().toLowerCase();
+        if (!c) continue;
+        for (var hKey in colMap) {
+          if (hKey.indexOf(c) !== -1 || c.indexOf(hKey) !== -1) {
+            var idx2 = colMap[hKey];
+            if (idx2 !== undefined && row[idx2] !== undefined && String(row[idx2]).trim() !== '') return row[idx2];
+          }
+        }
       }
       return '';
     }
@@ -498,6 +516,7 @@ function doGet(e) {
     var stepVisitors = {}, uniqueStarts = {}, uniqueCompletions = {}, uniqueCheckouts = {};
     var leadsMap = {}, recentLeads = [];
     var orders = [], ordersMap = {};
+    var leadNamesByPhone = {}, leadNamesByEmail = {}, leadNamesBySession = {};
     var totalSalesApproved = 0, revenueApproved = 0;
     var totalSalesPending = 0, revenuePending = 0;
 
@@ -556,9 +575,17 @@ function doGet(e) {
       var rawSession = String(getCol(row, ['sessão (id)', 'sessão', 'sessao', 'session', 'sessao (id)']) || '').trim();
       var event = String(getCol(row, ['evento', 'event']) || '').trim();
       var stepIdx = String(getCol(row, ['etapa', 'step']) || '').trim();
-      var leadName = String(getCol(row, ['nome', 'cliente']) || '').trim();
-      var leadPhone = String(getCol(row, ['whatsapp', 'telefone', 'phone']) || '').trim();
-      var leadEmail = String(getCol(row, ['email', 'e-mail']) || '').trim();
+      var leadName = String(getCol(row, [
+        'nome', 'cliente', 'nome do cliente', 'nome cliente', 'comprador',
+        'nome do comprador', 'buyer', 'buyer name', 'customer', 'customer name',
+        'nome completo', 'first name', 'name', 'full name', 'lead', 'nome lead', 'pagador', 'nome pagador'
+      ]) || '').trim();
+      var leadPhone = String(getCol(row, [
+        'whatsapp', 'telefone', 'phone', 'celular', 'fone', 'tel', 'checkout_phone', 'phone_number', 'telefone celular'
+      ]) || '').trim();
+      var leadEmail = String(getCol(row, [
+        'email', 'e-mail', 'mail', 'buyer email', 'customer email'
+      ]) || '').trim();
       var points = getCol(row, ['pontos / score', 'pontos', 'score']);
       var src = String(getCol(row, ['src', 'src (rastreamento)', 'sck']) || '').trim();
       var utmSrc = String(getCol(row, ['utm_source', 'source']) || '').trim();
@@ -567,7 +594,7 @@ function doGet(e) {
       var saleValRaw = getCol(row, ['valor (r$)', 'valor', 'sale_amount', 'total_price']);
       var payMethod = String(getCol(row, ['método', 'metodo', 'payment_method', 'forma pagamento']) || 'PIX').trim();
       var platform = String(getCol(row, ['plataforma', 'platform', 'gateway']) || '').trim();
-      var product = String(getCol(row, ['quiz / produto', 'produto', 'product']) || '').trim();
+      var product = String(getCol(row, ['quiz / produto', 'produto', 'product', 'quiz', 'oferta', 'item']) || '').trim();
 
       var saleVal = 0;
       if (typeof saleValRaw === 'number') saleVal = saleValRaw;
@@ -580,6 +607,16 @@ function doGet(e) {
       if (!sessionKey) {
         var timeCluster = rowDate ? Utilities.formatDate(new Date(rowDate), "GMT", "yyyy-MM-dd_HH") + '_' + Math.floor(new Date(rowDate).getMinutes() / 15) : ('leg_' + i);
         sessionKey = (leadPhone || leadEmail || 'visitante') + '_' + timeCluster;
+      }
+
+      // Registro cruzado de nomes de leads válidos para recuperar pedidos sem nome
+      var isRealName = leadName && !['cliente', 'anônimo', 'anonimo', '-', 'null', 'undefined'].includes(leadName.toLowerCase());
+      if (isRealName) {
+        var cPh = leadPhone.replace(/\D/g, '');
+        if (cPh) leadNamesByPhone[cPh] = leadName;
+        if (leadEmail) leadNamesByEmail[leadEmail.toLowerCase()] = leadName;
+        if (sessionKey) leadNamesBySession[sessionKey] = leadName;
+        if (rawSession) leadNamesBySession[rawSession] = leadName;
       }
 
       // Filtro de Robôs de Revisão da Meta (Facebook_Right_Column & Scanners)
@@ -621,7 +658,7 @@ function doGet(e) {
         uniqueCheckouts[sessionKey] = true;
       }
 
-      // Funil e Métricas: Vendas (Mivvo, Kirvano, PerfectPay)
+      // Funil e Métricas: Vendas (Mivvo, Kirvano, PerfectPay, Hotmart)
       var isSaleApproved = (event === 'Venda_Aprovada' || event === 'sale.paid' || saleStatus === 'approved' || saleStatus === 'aprovado' || saleStatus === 'paid');
       var isSalePending = (event === 'Aguardando_Pagamento' || event === 'sale.pending' || saleStatus === 'waiting_payment' || saleStatus === 'pending' || saleStatus === 'billet_printed' || saleStatus === 'pix_generated');
 
@@ -630,11 +667,20 @@ function doGet(e) {
         var originTag = src ? ('SRC: ' + src) : [utmSrc, utmCmp].filter(Boolean).join(' / ');
         var formattedVal = 'R$ ' + saleVal.toFixed(2).replace('.', ',');
 
+        // Tenta resolver nome se vazio
+        var effectiveName = leadName;
+        if (!effectiveName || !isRealName) {
+          var cPhOrd = leadPhone.replace(/\D/g, '');
+          effectiveName = (cPhOrd && leadNamesByPhone[cPhOrd]) ||
+                          (leadEmail && leadNamesByEmail[leadEmail.toLowerCase()]) ||
+                          (sessionKey && leadNamesBySession[sessionKey]) || 'Cliente';
+        }
+
         if (!ordersMap[ordKey]) {
           ordersMap[ordKey] = {
             id: rawSession || sessionKey || ('ord_' + i),
             date: rowDate ? Utilities.formatDate(new Date(rowDate), Session.getScriptTimeZone() || "GMT-3", "dd/MM/yyyy HH:mm") : '',
-            name: leadName || 'Cliente',
+            name: effectiveName || 'Cliente',
             whatsapp: leadPhone || '',
             email: leadEmail || '',
             amount: saleVal,
@@ -648,6 +694,13 @@ function doGet(e) {
             sessionKey: sessionKey
           };
         } else {
+          // Atualiza nome se a nova linha contiver um nome real
+          if (isRealName && (!ordersMap[ordKey].name || ordersMap[ordKey].name === 'Cliente' || ordersMap[ordKey].name === 'Anônimo')) {
+            ordersMap[ordKey].name = leadName;
+          }
+          if (leadPhone && !ordersMap[ordKey].whatsapp) ordersMap[ordKey].whatsapp = leadPhone;
+          if (leadEmail && !ordersMap[ordKey].email) ordersMap[ordKey].email = leadEmail;
+
           // Se o pedido já existia (ex: Pix gerado) e agora veio a linha de pagamento aprovado, promove para Aprovado!
           if (isSaleApproved && ordersMap[ordKey].status !== 'approved') {
             ordersMap[ordKey].status = 'approved';
@@ -680,6 +733,18 @@ function doGet(e) {
 
     for (var oKey in ordersMap) {
       var ord = ordersMap[oKey];
+      // Segunda passagem: se o pedido ainda não tiver nome real, consulta no mapa global de leads
+      if (!ord.name || ['cliente', 'anônimo', 'anonimo', '-', ''].includes(String(ord.name).toLowerCase())) {
+        var ordPh = String(ord.whatsapp || '').replace(/\D/g, '');
+        var ordEm = String(ord.email || '').toLowerCase();
+        var ordSess = String(ord.sessionKey || ord.id || '');
+        var resolvedLeadName = (ordPh && leadNamesByPhone[ordPh]) ||
+                               (ordEm && leadNamesByEmail[ordEm]) ||
+                               (ordSess && leadNamesBySession[ordSess]) || '';
+        if (resolvedLeadName) {
+          ord.name = resolvedLeadName;
+        }
+      }
       if (ord.status === 'approved') {
         totalSalesApproved++;
         revenueApproved += ord.amount;
@@ -767,9 +832,22 @@ function doPost(e) {
     var newRow = new Array(headers.length);
     for (var k = 0; k < newRow.length; k++) newRow[k] = '';
     function setVal(candidates, val) {
+      if (val === undefined || val === null) val = '';
       for (var j = 0; j < candidates.length; j++) {
-        var idx = colMap[candidates[j].toLowerCase()];
+        var c = String(candidates[j] || '').trim().toLowerCase();
+        if (!c) continue;
+        var idx = colMap[c];
         if (idx !== undefined) { newRow[idx] = val; return; }
+      }
+      for (var j = 0; j < candidates.length; j++) {
+        var c = String(candidates[j] || '').trim().toLowerCase();
+        if (!c) continue;
+        for (var hKey in colMap) {
+          if (hKey.indexOf(c) !== -1 || c.indexOf(hKey) !== -1) {
+            var idx2 = colMap[hKey];
+            if (idx2 !== undefined) { newRow[idx2] = val; return; }
+          }
+        }
       }
     }
 
