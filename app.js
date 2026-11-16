@@ -6219,11 +6219,12 @@ const App = {
     if (!stage) return;
     const isMx = this.currentQuiz.recovery.country === 'MX';
 
-    let sample = this.parseRecoverySpintax(stage.template || "");
+    let sample = stage.template || "";
     sample = sample.replace(/\{{1,2}\s*(nome|primeiro_nome|primeironome|cliente|name|first_name)\s*\}{1,2}/gi, isMx ? "Carlos" : "João");
     sample = sample.replace(/\{{1,2}\s*(nome_completo|nomecompleto|full_name)\s*\}{1,2}/gi, isMx ? "Carlos González" : "João Silva");
     sample = sample.replace(/\{{1,2}\s*(produto|product|oferta|quiz)\s*\}{1,2}/gi, this.currentQuiz.productTitle || this.currentQuiz.title || "Produto");
     sample = sample.replace(/\{{1,2}\s*(valor|preco|preço|amount|price)\s*\}{1,2}/gi, isMx ? "$497 MXN" : "R$ 27,90");
+    sample = this.parseRecoverySpintax(sample);
     sample = sample.replace(/\s+([,\.!?])/g, "$1").replace(/\s{2,}/g, " ").trim();
 
     const previewEl = document.getElementById('quiz-recov-stage-preview-' + idx);
@@ -6358,16 +6359,20 @@ const App = {
         cleanPhone = ddi + cleanPhone;
       }
 
-      let msg = this.parseRecoverySpintax(activeStage.template || "");
       const nameReplacement = firstName || (hasRealName ? rawName : (isMx ? "Amigo" : ""));
       const fullNameReplacement = hasRealName ? rawName : nameReplacement;
       const valFormatted = order.amount ? (isMx ? ("$" + order.amount + " MXN") : ("R$ " + Number(order.amount).toFixed(2).replace(".", ","))) : (isMx ? "$497 MXN" : "R$ 27,90");
       const prod = this.currentQuiz.productTitle || this.currentQuiz.title || "Produto";
 
-      msg = msg.replace(/\{{1,2}\s*(nome|primeiro_nome|primeironome|cliente|name|first_name)\s*\}{1,2}/gi, nameReplacement);
+      let msg = activeStage.template || "";
       msg = msg.replace(/\{{1,2}\s*(nome_completo|nomecompleto|full_name)\s*\}{1,2}/gi, fullNameReplacement);
+      msg = msg.replace(/\{{1,2}\s*(nome|primeiro_nome|primeironome|cliente|name|first_name)\s*\}{1,2}/gi, nameReplacement);
       msg = msg.replace(/\{{1,2}\s*(produto|product|oferta|quiz)\s*\}{1,2}/gi, prod);
       msg = msg.replace(/\{{1,2}\s*(valor|preco|preço|amount|price)\s*\}{1,2}/gi, valFormatted);
+      if (firstName && firstName.toLowerCase() !== 'nome') {
+        msg = msg.replace(/(oi|olá|ola|hola|hey)\s+nome\b/gi, '$1 ' + firstName);
+      }
+      msg = this.parseRecoverySpintax(msg);
       msg = msg.replace(/\s+([,\.!?])/g, "$1").replace(/\s{2,}/g, " ").trim();
       const waUrl = cleanPhone ? ('https://wa.me/' + cleanPhone + '?text=' + encodeURIComponent(msg)) : null;
 
@@ -6598,12 +6603,15 @@ const App = {
     let result = text;
     const regex = /\{([^{}]+)\}/;
     let count = 0;
-    while (regex.test(result) && count < 25) {
+    while (regex.test(result) && count < 30) {
       count++;
+      const before = result;
       result = result.replace(regex, (match, choices) => {
+        if (!choices.includes('|')) return match; // Não toca em {variaveis} sem pipe!
         const parts = choices.split('|');
         return parts[Math.floor(Math.random() * parts.length)];
       });
+      if (result === before) break;
     }
     return result;
   },

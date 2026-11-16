@@ -553,7 +553,7 @@
     // Registro do Service Worker PWA
     let deferredPrompt = null;
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('./sw.js').catch(err => console.log('SW fail:', err));
+      navigator.serviceWorker.register('./sw.js?v=3').catch(err => console.log('SW fail:', err));
     }
 
     window.addEventListener('beforeinstallprompt', (e) => {
@@ -728,6 +728,16 @@
         }
 
         const quiz = this.quizzes.find(q => q.id === quizId);
+        if (quiz && quiz.recovery) {
+          this.settings.recoveryCountry = quiz.recovery.country || 'BR';
+          this.settings.recoveryDdi = quiz.recovery.ddi || (quiz.recovery.country === 'MX' ? '52' : '55');
+          if (Array.isArray(quiz.recovery.stages) && quiz.recovery.stages.length > 0) {
+            this.settings.recoveryStages = quiz.recovery.stages;
+            if (quiz.recovery.stages[0]) this.settings.recoveryTemplates.msg1 = quiz.recovery.stages[0].template;
+            if (quiz.recovery.stages[1]) this.settings.recoveryTemplates.msg2 = quiz.recovery.stages[1].template;
+            if (quiz.recovery.stages[2]) this.settings.recoveryTemplates.msg3 = quiz.recovery.stages[2].template;
+          }
+        }
         if (quiz && quiz.tracking && (quiz.tracking.sheetUrl || quiz.tracking.webhookUrl)) {
           this.settings.sheetUrl = (quiz.tracking.sheetUrl || quiz.tracking.webhookUrl).trim();
           if (sheetStatus) {
@@ -1284,12 +1294,15 @@
         let result = text;
         const regex = /\{([^{}]+)\}/;
         let count = 0;
-        while (regex.test(result) && count < 20) {
+        while (regex.test(result) && count < 30) {
           count++;
+          const before = result;
           result = result.replace(regex, (match, choices) => {
+            if (!choices.includes('|')) return match; // Deixa {variaveis} intactas!
             const parts = choices.split('|');
             return parts[Math.floor(Math.random() * parts.length)];
           });
+          if (result === before) break;
         }
         return result;
       },
@@ -1349,15 +1362,26 @@
           ? (isMx ? ("$" + order.amount + " MXN") : Number(order.amount).toLocaleString("pt-BR", { style: "currency", currency: "BRL" }))
           : (isMx ? "$497 MXN" : "R$ 27,90");
 
-        let msg = this.parseSpintax(tpl || "");
+        let msg = tpl || "";
 
         const nameReplacement = firstName || (hasRealName ? rawName : (isMx ? "Amigo" : ""));
         const fullNameReplacement = hasRealName ? rawName : nameReplacement;
 
-        msg = msg.replace(/\{{1,2}\s*(nome|primeiro_nome|primeironome|cliente|name|first_name)\s*\}{1,2}/gi, nameReplacement);
+        // 1. Substitui variáveis {nome_completo}, {nome}, etc. ANTES do spintax
         msg = msg.replace(/\{{1,2}\s*(nome_completo|nomecompleto|full_name)\s*\}{1,2}/gi, fullNameReplacement);
+        msg = msg.replace(/\{{1,2}\s*(nome|primeiro_nome|primeironome|cliente|name|first_name)\s*\}{1,2}/gi, nameReplacement);
         msg = msg.replace(/\{{1,2}\s*(produto|product|oferta|quiz)\s*\}{1,2}/gi, prod);
         msg = msg.replace(/\{{1,2}\s*(valor|preco|preço|amount|price)\s*\}{1,2}/gi, val);
+
+        // Fallback de saudação se o template tiver 'Oi nome' sem chaves
+        if (firstName && firstName.toLowerCase() !== 'nome') {
+          msg = msg.replace(/(oi|olá|ola|hola|hey)\s+nome\b/gi, '$1 ' + firstName);
+        }
+
+        // 2. Processa o Spintax APENAS em opções com pipe {Oi|Olá}
+        msg = this.parseSpintax(msg);
+
+        // 3. Limpeza de pontuação e espaços
         msg = msg.replace(/\s+([,\.!?])/g, "$1").replace(/\s{2,}/g, " ");
 
         return msg.trim();
