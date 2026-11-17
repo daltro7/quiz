@@ -5451,11 +5451,29 @@ ${raw}
           if (pvSent) return;
           pvSent = true;
 
-          // Se for bot de verificação da Meta, descarta o envio
-          if (window.IS_BOT) return;
+          // Se for bot de verificação da Meta ou automação headless, descarta o envio
+          if (window.IS_BOT || navigator.webdriver) return;
 
           if (webhookUrl) {
             try {
+              var srcVal = utmObj.src || utmObj.sck || utmObj.SRC || utmObj.SCK || '';
+              var uSource = utmObj.utm_source || utmObj.source || '';
+              var uCampaign = utmObj.utm_campaign || utmObj.campaign || '';
+              var uMedium = utmObj.utm_medium || utmObj.medium || '';
+              var uContent = utmObj.utm_content || utmObj.content || '';
+
+              if (srcVal && (!uSource || !uCampaign)) {
+                if (srcVal.indexOf('|') !== -1) {
+                  var p = srcVal.split('|');
+                  if (!uCampaign && p[0]) uCampaign = p[0].trim();
+                  if (!uMedium && p[1]) uMedium = p[1].trim();
+                  if (!uContent && p[2]) uContent = p[2].trim();
+                  if (!uSource && p[3]) uSource = p[3].trim();
+                }
+                if (!uSource) uSource = srcVal;
+                if (!uCampaign) uCampaign = srcVal;
+              }
+
               fetch(webhookUrl, {
                 method: 'POST',
                 mode: 'no-cors',
@@ -5465,6 +5483,13 @@ ${raw}
                   event: 'PageView',
                   quizTitle: "${((quiz && quiz.title) || 'Página de Vendas').replace(/"/g, '\\"')}",
                   data: { stepIndex: 0 },
+                  src: srcVal,
+                  utm_source: uSource,
+                  utm_campaign: uCampaign,
+                  utm_medium: uMedium,
+                  utm_content: uContent,
+                  client_user_agent: (navigator.userAgent || ''),
+                  isBot: false,
                   utms: utmObj
                 })
               }).catch(function(){});
@@ -5472,12 +5497,17 @@ ${raw}
           }
         };
 
-        // Filtro de Atenção Humana: dispara ao rolar, tocar ou passar pelo menos 2.5s na página
-        if (!window.IS_BOT) {
+        // Filtro de Atenção Humana: dispara ao rolar, tocar ou clicar na página
+        if (!window.IS_BOT && !navigator.webdriver) {
           ['scroll', 'touchstart', 'mousemove', 'click', 'keydown'].forEach(function(evt) {
             window.addEventListener(evt, triggerPageView, { once: true, passive: true });
           });
-          setTimeout(triggerPageView, 2500);
+          // Só dispara por tempo se a janela estiver visível e focada por humano
+          setTimeout(function() {
+            if (!document.hidden && document.hasFocus && document.hasFocus() && !window.IS_BOT) {
+              triggerPageView();
+            }
+          }, 3500);
         }
 
         // 2. Preserva UTMs em todos os links de checkout e dispara InitiateCheckout ao clicar

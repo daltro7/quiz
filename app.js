@@ -111,6 +111,14 @@ const App = {
     }
   },
 
+  saveQuiz(immediateCloud = false) {
+    this.saveQuizzesToStorage();
+    if (immediateCloud && this.firebaseUser && this.firestore && this.currentQuiz) {
+      clearTimeout(this.cloudSyncDebounceTimer);
+      this.cloudSaveQuiz(this.currentQuiz, true);
+    }
+  },
+
   showSavingBadge() {
     const badge = document.getElementById('save-status-badge');
     if (badge) {
@@ -6240,13 +6248,17 @@ const App = {
   },
 
   saveCurrentQuizRecovery() {
-    if (!this.currentQuiz || !this.currentQuiz.recovery) return;
+    if (!this.currentQuiz) return;
+    if (!this.currentQuiz.recovery) this.currentQuiz.recovery = {};
+    if (!this.currentQuiz.recovery.stages) this.currentQuiz.recovery.stages = [];
+
     (this.currentQuiz.recovery.stages || []).forEach((st, idx) => {
       const el = document.getElementById('quiz-recov-stage-tpl-' + idx);
       if (el) st.template = el.value;
     });
+
     this.saveQuiz(true);
-    this.showToast('Mensagens de recuperação salvas para este funil!', 'success');
+    this.showToast('Mensagens salvas e sincronizadas com a nuvem (PWA)!', 'success');
   },
 
   syncQuizRecoveryOrders() {

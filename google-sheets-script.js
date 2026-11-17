@@ -621,9 +621,18 @@ function doGet(e) {
 
       // Filtro de Robôs de Revisão da Meta (Facebook_Right_Column & Scanners)
       var srcLower = String(src || utmSrc || '').toLowerCase();
-      var isMetaBotTraffic = (srcLower.indexOf('facebook_right_column') !== -1 || srcLower.indexOf('right_column') !== -1 || event === 'Bot_Meta');
+      var isMetaBotTraffic = (
+        srcLower.indexOf('facebook_right_column') !== -1 ||
+        srcLower.indexOf('right_column') !== -1 ||
+        srcLower.indexOf('bot_meta') !== -1 ||
+        srcLower.indexOf('bot_ignorado') !== -1 ||
+        event === 'Bot_Meta' ||
+        event === 'bot_ignorado' ||
+        saleStatus === 'bot_ignorado' ||
+        saleStatus === 'bot'
+      );
       if (isMetaBotTraffic && !isSaleApproved && !isSalePending) {
-        continue; // Ignora o bot de revisão da Meta do funil e das métricas!
+        continue; // Ignora 100% o bot de revisão da Meta do funil e das métricas!
       }
 
       // Funil: Etapas do Quiz ou Visualização de Página (PageView)
@@ -1120,6 +1129,24 @@ function doPost(e) {
     // ==========================================
     var utms = data.utms || {};
     var src = data.src || utms.src || utms.sck || utms.SRC || utms.SCK || '';
+    var uSource = data.utm_source || utms.utm_source || data.source || utms.source || '';
+    var uCampaign = data.utm_campaign || utms.utm_campaign || data.campaign || utms.campaign || '';
+    var uMedium = data.utm_medium || utms.utm_medium || data.medium || utms.medium || '';
+    var uContent = data.utm_content || utms.utm_content || data.content || utms.content || '';
+
+    // Se o link do anúncio passou apenas 'src' sem as UTMs tradicionais preenchidas, extrai automaticamente:
+    if (src && (!uSource || !uCampaign)) {
+      if (src.indexOf('|') !== -1) {
+        var parts = src.split('|');
+        if (!uCampaign && parts[0]) uCampaign = parts[0].trim();
+        if (!uMedium && parts[1]) uMedium = parts[1].trim();
+        if (!uContent && parts[2]) uContent = parts[2].trim();
+        if (!uSource && parts[3]) uSource = parts[3].trim();
+      }
+      if (!uSource) uSource = src;
+      if (!uCampaign) uCampaign = src;
+    }
+
     setVal(['sessão (id)', 'sessão', 'sessao'], data.sessionId || '');
     setVal(['evento', 'event'], data.event || '');
     setVal(['quiz / produto', 'quiz'], data.quizTitle || '');
@@ -1128,17 +1155,34 @@ function doPost(e) {
     setVal(['whatsapp', 'telefone', 'phone'], (data.lead && data.lead.whatsapp) || '');
     setVal(['email', 'e-mail'], (data.lead && data.lead.email) || '');
     setVal(['src', 'sck'], src);
-    setVal(['utm_source', 'source'], data.utm_source || utms.utm_source || '');
-    setVal(['utm_campaign', 'campaign'], data.utm_campaign || utms.utm_campaign || '');
-    setVal(['utm_medium', 'medium'], data.utm_medium || utms.utm_medium || '');
-    setVal(['utm_content', 'content'], data.utm_content || utms.utm_content || '');
+    setVal(['utm_source', 'source'], uSource);
+    setVal(['utm_campaign', 'campaign'], uCampaign);
+    setVal(['utm_medium', 'medium'], uMedium);
+    setVal(['utm_content', 'content'], uContent);
 
-    // Filtro inteligente de Bots de Verificação da Meta (Facebook_Right_Column)
+    // Filtro inteligente de Bots de Verificação da Meta e Scanners Headless
+    var uaClean = String(data.client_user_agent || data.userAgent || (data.data && data.data.userAgent) || '').toLowerCase();
+    var botUaPatterns = [
+      'facebookexternalhit', 'facebot', 'meta-externalagent', 'meta-externalfetcher',
+      'facebookcatalog', 'meta-webindexer', 'googlebot', 'bingbot', 'yandexbot',
+      'baiduspider', 'bytespider', 'headless', 'phantomjs', 'puppeteer', 'selenium',
+      'crawler', 'spider'
+    ];
+    var isBotUa = botUaPatterns.some(function(sig) { return uaClean.indexOf(sig) !== -1; });
     var srcClean = String(src).toLowerCase();
-    var isRightColumnBot = (srcClean.indexOf('facebook_right_column') !== -1 || srcClean.indexOf('right_column') !== -1 || data.isBot === true);
-    if (isRightColumnBot && (data.event === 'PageView' || data.event === 'page_view')) {
+    var isBotParam = (
+      srcClean.indexOf('facebook_right_column') !== -1 ||
+      srcClean.indexOf('right_column') !== -1 ||
+      srcClean.indexOf('bot') !== -1 ||
+      srcClean.indexOf('crawler') !== -1 ||
+      srcClean.indexOf('preview') !== -1 ||
+      data.isBot === true
+    );
+
+    if (isBotUa || isBotParam) {
       setVal(['evento', 'event'], 'Bot_Meta');
       setVal(['status venda', 'status_venda'], 'bot_ignorado');
+      setVal(['quiz / produto', 'quiz'], (data.quizTitle || 'Quiz') + ' [Bot Meta Ignorado]');
       sheet.appendRow(newRow);
       return ContentService.createTextOutput(JSON.stringify({ status: 'ignored_bot' })).setMimeType(ContentService.MimeType.JSON);
     }

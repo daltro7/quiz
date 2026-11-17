@@ -685,7 +685,7 @@
 
       loadQuizzesFromLocalStorage() {
         try {
-          const raw = localStorage.getItem('quizforge_quizzes');
+          const raw = (localStorage.getItem('quizforge_quizzes_v2') || localStorage.getItem('quizforge_quizzes'));
           if (raw) {
             this.quizzes = JSON.parse(raw);
           }
