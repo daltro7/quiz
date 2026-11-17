@@ -1267,32 +1267,32 @@ function sha256(input) {
   var clean = String(input).trim().toLowerCase();
   if (!clean) return null;
   var rawHash = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, clean, Utilities.Charset.UTF_8);
-  var txt = &apos;&apos;;
+  var txt = &#039;&#039;;
   for (var i = 0; i &lt; rawHash.length; i++) {
     var b = rawHash[i];
     if (b &lt; 0) b += 256;
     var hex = b.toString(16);
-    if (hex.length === 1) hex = &apos;0&apos; + hex;
+    if (hex.length === 1) hex = &#039;0&#039; + hex;
     txt += hex;
   }
   return txt;
 }
 
 function normalizePhoneForMeta(rawPhone) {
-  if (!rawPhone) return &apos;&apos;;
-  var digits = String(rawPhone).replace(/\D/g, &apos;&apos;);
-  if (!digits) return &apos;&apos;;
-  if (digits.indexOf(&apos;0&apos;) === 0) digits = digits.substring(1);
-  if (digits.indexOf(&apos;55&apos;) === 0 &amp;&amp; digits.length &gt;= 12) return digits;
-  if (digits.length === 10 || digits.length === 11) return &apos;55&apos; + digits;
+  if (!rawPhone) return &#039;&#039;;
+  var digits = String(rawPhone).replace(/\D/g, &#039;&#039;);
+  if (!digits) return &#039;&#039;;
+  if (digits.indexOf(&#039;0&#039;) === 0) digits = digits.substring(1);
+  if (digits.indexOf(&#039;55&#039;) === 0 &amp;&amp; digits.length &gt;= 12) return digits;
+  if (digits.length === 10 || digits.length === 11) return &#039;55&#039; + digits;
   return digits;
 }
 
 function sendMetaCapiPurchase(params) {
-  var pixelId = (META_PIXEL_ID || &apos;&apos;).trim();
-  var token = (META_API_TOKEN || &apos;&apos;).trim();
+  var pixelId = (META_PIXEL_ID || &#039;&#039;).trim();
+  var token = (META_API_TOKEN || &#039;&#039;).trim();
   if (!pixelId || !token) {
-    return { success: false, reason: &apos;META_PIXEL_ID ou META_API_TOKEN não preenchidos no topo do script.&apos; };
+    return { success: false, reason: &#039;META_PIXEL_ID ou META_API_TOKEN não preenchidos no topo do script.&#039; };
   }
   try {
     var nowSec = Math.floor(Date.now() / 1000);
@@ -1319,17 +1319,17 @@ function sendMetaCapiPurchase(params) {
         if (hFn) userData.fn = [hFn];
       }
       if (parts.length &gt; 1) {
-        var hLn = sha256(parts.slice(1).join(&apos; &apos;));
+        var hLn = sha256(parts.slice(1).join(&#039; &#039;));
         if (hLn) userData.ln = [hLn];
       }
     }
 
     // 4. País (country)
-    userData.country = [sha256(&apos;br&apos;)];
+    userData.country = [sha256(&#039;br&#039;)];
 
     // 5. Código Postal / CEP (zp) - +13% qualidade
     if (params.zipCode || params.cep || params.postalCode) {
-      var cleanZp = String(params.zipCode || params.cep || params.postalCode).replace(/\D/g, &apos;&apos;);
+      var cleanZp = String(params.zipCode || params.cep || params.postalCode).replace(/\D/g, &#039;&#039;);
       if (cleanZp) {
         var hZp = sha256(cleanZp);
         if (hZp) userData.zp = [hZp];
@@ -1340,9 +1340,9 @@ function sendMetaCapiPurchase(params) {
     if (params.city || params.cidade) {
       var cleanCt = String(params.city || params.cidade)
         .toLowerCase()
-        .normalize(&apos;NFD&apos;)
-        .replace(/[\u0300-\u036f]/g, &apos;&apos;)
-        .replace(/[^a-z0-9]/g, &apos;&apos;)
+        .normalize(&#039;NFD&#039;)
+        .replace(/[\u0300-\u036f]/g, &#039;&#039;)
+        .replace(/[^a-z0-9]/g, &#039;&#039;)
         .trim();
       if (cleanCt) {
         var hCt = sha256(cleanCt);
@@ -1355,7 +1355,7 @@ function sendMetaCapiPurchase(params) {
       var cleanSt = String(params.state || params.estado || params.uf)
         .toLowerCase()
         .trim()
-        .replace(/[^a-z]/g, &apos;&apos;);
+        .replace(/[^a-z]/g, &#039;&#039;);
       if (cleanSt.length &gt; 2) cleanSt = cleanSt.substring(0, 2);
       if (cleanSt) {
         var hSt = sha256(cleanSt);
@@ -1365,7 +1365,7 @@ function sendMetaCapiPurchase(params) {
 
     // 8. Data de Nascimento (dob) - +13% qualidade
     if (params.dob || params.birthDate || params.dataNascimento) {
-      var cleanDob = String(params.dob || params.birthDate || params.dataNascimento).replace(/\D/g, &apos;&apos;);
+      var cleanDob = String(params.dob || params.birthDate || params.dataNascimento).replace(/\D/g, &#039;&#039;);
       if (cleanDob &amp;&amp; cleanDob.length === 8) {
         if (parseInt(cleanDob.substring(4, 8), 10) &gt; 1900) {
           cleanDob = cleanDob.substring(4, 8) + cleanDob.substring(2, 4) + cleanDob.substring(0, 2);
@@ -1376,19 +1376,19 @@ function sendMetaCapiPurchase(params) {
     }
 
     // 9. Identificador Externo (external_id) - +22% qualidade
-    var extId = params.externalId || params.sessionId || params.orderId || &apos;&apos;;
+    var extId = params.externalId || params.sessionId || params.orderId || &#039;&#039;;
     if (extId) {
       userData.external_id = [String(extId)];
     }
 
     // 10. Click ID da Meta (fbc) - +28% qualidade (NÃO hasheado)
-    var rawFbc = params.fbc || params.fbclid || &apos;&apos;;
+    var rawFbc = params.fbc || params.fbclid || &#039;&#039;;
     if (rawFbc) {
       rawFbc = String(rawFbc).trim();
-      if (rawFbc.indexOf(&apos;fb.1.&apos;) === 0) {
+      if (rawFbc.indexOf(&#039;fb.1.&#039;) === 0) {
         userData.fbc = rawFbc;
       } else {
-        userData.fbc = &apos;fb.1.&apos; + nowMs + &apos;.&apos; + rawFbc;
+        userData.fbc = &#039;fb.1.&#039; + nowMs + &#039;.&#039; + rawFbc;
       }
     }
 
@@ -1411,31 +1411,31 @@ function sendMetaCapiPurchase(params) {
     }
 
     var evt = {
-      event_name: &apos;Purchase&apos;,
+      event_name: &#039;Purchase&#039;,
       event_time: nowSec,
-      event_id: String(params.orderId || (&apos;ord_&apos; + nowMs)),
-      action_source: &apos;website&apos;,
-      event_source_url: (META_QUIZ_URL || &apos;https://seudominio.com.br&apos;).trim(),
+      event_id: String(params.orderId || (&#039;ord_&#039; + nowMs)),
+      action_source: &#039;website&#039;,
+      event_source_url: (META_QUIZ_URL || &#039;https://seudominio.com.br&#039;).trim(),
       user_data: userData,
       custom_data: {
-        currency: &apos;BRL&apos;,
+        currency: (params.currency || &#039;BRL&#039;).toUpperCase(),
         value: Number(params.amount) || 0,
-        content_name: params.productName || &apos;Oferta&apos;,
-        order_id: String(params.orderId || &apos;&apos;)
+        content_name: params.productName || &#039;Oferta&#039;,
+        order_id: String(params.orderId || &#039;&#039;)
       }
     };
 
     var payload = {
       data: [evt]
     };
-    if (META_TEST_EVENT_CODE &amp;&amp; String(META_TEST_EVENT_CODE).trim() !== &apos;&apos;) {
+    if (META_TEST_EVENT_CODE &amp;&amp; String(META_TEST_EVENT_CODE).trim() !== &#039;&#039;) {
       payload.test_event_code = String(META_TEST_EVENT_CODE).trim();
     }
 
-    var url = &apos;https://graph.facebook.com/v19.0/&apos; + encodeURIComponent(pixelId) + &apos;/events?access_token=&apos; + encodeURIComponent(token);
+    var url = &#039;https://graph.facebook.com/v19.0/&#039; + encodeURIComponent(pixelId) + &#039;/events?access_token=&#039; + encodeURIComponent(token);
     var options = {
-      method: &apos;post&apos;,
-      contentType: &apos;application/json&apos;,
+      method: &#039;post&#039;,
+      contentType: &#039;application/json&#039;,
       payload: JSON.stringify(payload),
       muteHttpExceptions: true
     };
@@ -1455,12 +1455,12 @@ function sendMetaCapiPurchase(params) {
 // ==========================================
 function liberarAcessoFirebase30Dias(email) {
   if (!LIBERAR_FIREBASE_AUTOMATICO) return &quot;Desativado&quot;;
-  if (!email || String(email).indexOf(&apos;@&apos;) === -1) return &quot;❌ E-mail inválido&quot;;
+  if (!email || String(email).indexOf(&#039;@&#039;) === -1) return &quot;❌ E-mail inválido&quot;;
   var rawEmail = String(email).trim();
   var cleanEmail = rawEmail.toLowerCase();
   var capEmail = cleanEmail.charAt(0).toUpperCase() + cleanEmail.slice(1);
-  var projectId = (FIREBASE_PROJECT_ID || &apos;&apos;).trim();
-  if (projectId === &apos;446382097009&apos;) projectId = &apos;orcaora-pro&apos;;
+  var projectId = (FIREBASE_PROJECT_ID || &#039;&#039;).trim();
+  if (projectId === &#039;446382097009&#039;) projectId = &#039;orcaora-pro&#039;;
   if (!projectId) return &quot;⚠️ FIREBASE_PROJECT_ID não configurado&quot;;
   if (/^\d+$/.test(projectId)) {
     return &quot;⚠️ Use o ID do projeto em texto (ex: orcaora-pro) e não o número do projeto (&quot; + projectId + &quot;)&quot;;
@@ -1471,9 +1471,9 @@ function liberarAcessoFirebase30Dias(email) {
   dataExpiracao.setDate(dataExpiracao.getDate() + dias);
   var dataIso = dataExpiracao.toISOString();
 
-  var apiKey = (FIREBASE_API_KEY || &apos;&apos;).trim();
-  if (!apiKey &amp;&amp; (projectId === &apos;orcaora-pro&apos; || projectId === &apos;446382097009&apos;)) {
-    apiKey = &apos;AIzaSyBRXWhnlI3D34ctsDRNn03e_JWFtAiR7oc&apos;;
+  var apiKey = (FIREBASE_API_KEY || &#039;&#039;).trim();
+  if (!apiKey &amp;&amp; (projectId === &#039;orcaora-pro&#039; || projectId === &#039;446382097009&#039;)) {
+    apiKey = &#039;AIzaSyBRXWhnlI3D34ctsDRNn03e_JWFtAiR7oc&#039;;
   }
 
   var urlBusca = &quot;https://firestore.googleapis.com/v1/projects/&quot; + encodeURIComponent(projectId) + &quot;/databases/(default)/documents:runQuery&quot; + (apiKey ? &quot;?key=&quot; + encodeURIComponent(apiKey) : &quot;&quot;);
@@ -1523,7 +1523,7 @@ function liberarAcessoFirebase30Dias(email) {
       if (!errMsg) errMsg = respostaTexto.substring(0, 80);
       
       if (statusCode === 403 || statusCode === 401) {
-        return &quot;❌ Firebase (403): Permissão negada nas Regras do Firestore. No Firebase Console > Firestore > Regras, permita leitura/escrita em /usuarios&quot;;
+        return &quot;❌ Firebase (403): Permissão negada nas Regras do Firestore. No Firebase Console &gt; Firestore &gt; Regras, permita leitura/escrita em /usuarios&quot;;
       }
       return &quot;❌ Erro Firebase (&quot; + statusCode + &quot;): &quot; + errMsg;
     }
@@ -1582,32 +1582,32 @@ function liberarFirebaseLinhaSelecionada() {
   var sheet = getTargetSheet();
   var rowIdx = sheet.getActiveCell().getRow();
   if (rowIdx &lt;= 1) {
-    ui.alert(&apos;Selecione uma linha de cliente (linha 2 em diante) para liberar no Firebase.&apos;);
+    ui.alert(&#039;Selecione uma linha de cliente (linha 2 em diante) para liberar no Firebase.&#039;);
     return;
   }
   var lastCol = sheet.getLastColumn();
   var headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
   var rowVals = sheet.getRange(rowIdx, 1, 1, lastCol).getValues()[0];
   var colMap = {};
-  for (var c = 0; c &lt; headers.length; c++) colMap[String(headers[c] || &apos;&apos;).trim().toLowerCase()] = c;
+  for (var c = 0; c &lt; headers.length; c++) colMap[String(headers[c] || &#039;&#039;).trim().toLowerCase()] = c;
 
-  var emailIdx = colMap[&apos;email&apos;] !== undefined ? colMap[&apos;email&apos;] : colMap[&apos;e-mail&apos;];
-  var email = emailIdx !== undefined ? String(rowVals[emailIdx] || &apos;&apos;).trim() : &apos;&apos;;
+  var emailIdx = colMap[&#039;email&#039;] !== undefined ? colMap[&#039;email&#039;] : colMap[&#039;e-mail&#039;];
+  var email = emailIdx !== undefined ? String(rowVals[emailIdx] || &#039;&#039;).trim() : &#039;&#039;;
 
-  if (!email || email.indexOf(&apos;@&apos;) === -1) {
-    ui.alert(&apos;Linha &apos; + rowIdx + &apos; não contém um e-mail válido.&apos;);
+  if (!email || email.indexOf(&#039;@&#039;) === -1) {
+    ui.alert(&#039;Linha &#039; + rowIdx + &#039; não contém um e-mail válido.&#039;);
     return;
   }
 
   var res = liberarAcessoFirebase30Dias(email);
-  var appColIdx = colMap[&apos;acesso app&apos;] !== undefined ? colMap[&apos;acesso app&apos;] : 
-                  (colMap[&apos;resultado&apos;] !== undefined ? colMap[&apos;resultado&apos;] : 
-                  (colMap[&apos;firebase&apos;] !== undefined ? colMap[&apos;firebase&apos;] : colMap[&apos;status app&apos;]));
+  var appColIdx = colMap[&#039;acesso app&#039;] !== undefined ? colMap[&#039;acesso app&#039;] : 
+                  (colMap[&#039;resultado&#039;] !== undefined ? colMap[&#039;resultado&#039;] : 
+                  (colMap[&#039;firebase&#039;] !== undefined ? colMap[&#039;firebase&#039;] : colMap[&#039;status app&#039;]));
   if (appColIdx !== undefined) {
     sheet.getRange(rowIdx, appColIdx + 1).setValue(res);
   }
 
-  ui.alert(&apos;Resultado da Liberação no Firebase:\n\nE-mail: &apos; + email + &apos;\nStatus: &apos; + res);
+  ui.alert(&#039;Resultado da Liberação no Firebase:\n\nE-mail: &#039; + email + &#039;\nStatus: &#039; + res);
 }
 
 
@@ -1615,12 +1615,12 @@ function liberarFirebaseLinhaSelecionada() {
 // FUNÇÕES DE SUPORTE E SEGURANÇA DA PLANILHA
 // ==========================================
 
-// Obtém com segurança a aba correta da planilha (busca &apos;Respostas&apos;, &apos;Dados&apos;, &apos;Vendas&apos;, a aba ativa ou a 1ª aba)
+// Obtém com segurança a aba correta da planilha (busca &#039;Respostas&#039;, &#039;Dados&#039;, &#039;Vendas&#039;, a aba ativa ou a 1ª aba)
 function getTargetSheet() {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
-  return ss.getSheetByName(&apos;Respostas&apos;) || 
-         ss.getSheetByName(&apos;Dados&apos;) || 
-         ss.getSheetByName(&apos;Vendas&apos;) || 
+  return ss.getSheetByName(&#039;Respostas&#039;) || 
+         ss.getSheetByName(&#039;Dados&#039;) || 
+         ss.getSheetByName(&#039;Vendas&#039;) || 
          ss.getActiveSheet() || 
          ss.getSheets()[0];
 }
@@ -1635,10 +1635,10 @@ function autorizarPermissoes() {
 function onOpen() {
   try {
     SpreadsheetApp.getUi()
-      .createMenu(&apos;🚀 QuizForge&apos;)
-      .addItem(&apos;🧪 Testar Conexão com Meta CAPI&apos;, &apos;testarEnvioMetaCapi&apos;)
-      .addItem(&apos;📤 Enviar Linha Selecionada para a Meta&apos;, &apos;enviarLinhaSelecionadaParaMeta&apos;)
-      .addItem(&apos;🔑 Liberar 30 Dias no Firebase (Linha Selecionada)&apos;, &apos;liberarFirebaseLinhaSelecionada&apos;)
+      .createMenu(&#039;🚀 QuizForge&#039;)
+      .addItem(&#039;🧪 Testar Conexão com Meta CAPI&#039;, &#039;testarEnvioMetaCapi&#039;)
+      .addItem(&#039;📤 Enviar Linha Selecionada para a Meta&#039;, &#039;enviarLinhaSelecionadaParaMeta&#039;)
+      .addItem(&#039;🔑 Liberar 30 Dias no Firebase (Linha Selecionada)&#039;, &#039;liberarFirebaseLinhaSelecionada&#039;)
       .addToUi();
   } catch(e) {}
 }
@@ -1646,16 +1646,16 @@ function onOpen() {
 // Executar esta função no Apps Script para validar o Token da Meta na hora!
 function testarEnvioMetaCapi() {
   var res = sendMetaCapiPurchase({
-    orderId: &apos;teste_&apos; + Date.now(),
+    orderId: &#039;teste_&#039; + Date.now(),
     amount: 47.90,
-    productName: &apos;Teste QuizForge&apos;,
-    name: &apos;Cliente Teste&apos;,
-    email: &apos;cliente.teste@exemplo.com&apos;,
-    phone: &apos;11999999999&apos;
+    productName: &#039;Teste QuizForge&#039;,
+    name: &#039;Cliente Teste&#039;,
+    email: &#039;cliente.teste@exemplo.com&#039;,
+    phone: &#039;11999999999&#039;
   });
   Logger.log(JSON.stringify(res));
   try {
-    SpreadsheetApp.getUi().alert(&apos;Resultado do Envio para a Meta:\n\n&apos; + JSON.stringify(res, null, 2));
+    SpreadsheetApp.getUi().alert(&#039;Resultado do Envio para a Meta:\n\n&#039; + JSON.stringify(res, null, 2));
   } catch(e) {}
   return res;
 }
@@ -1666,28 +1666,28 @@ function enviarLinhaSelecionadaParaMeta() {
   var sheet = getTargetSheet();
   var rowIdx = sheet.getActiveCell().getRow();
   if (rowIdx &lt;= 1) {
-    ui.alert(&apos;Selecione uma linha de venda (linha 2 em diante) para enviar à Meta.&apos;);
+    ui.alert(&#039;Selecione uma linha de venda (linha 2 em diante) para enviar à Meta.&#039;);
     return;
   }
   var lastCol = sheet.getLastColumn();
   var headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
   var rowVals = sheet.getRange(rowIdx, 1, 1, lastCol).getValues()[0];
   var colMap = {};
-  for (var c = 0; c &lt; headers.length; c++) colMap[String(headers[c] || &apos;&apos;).trim().toLowerCase()] = c;
+  for (var c = 0; c &lt; headers.length; c++) colMap[String(headers[c] || &#039;&#039;).trim().toLowerCase()] = c;
   function getV(keys) {
     for (var k = 0; k &lt; keys.length; k++) {
       var idx = colMap[keys[k].toLowerCase()];
       if (idx !== undefined &amp;&amp; rowVals[idx] !== undefined) return rowVals[idx];
     }
-    return &apos;&apos;;
+    return &#039;&#039;;
   }
 
-  var orderId = String(getV([&apos;sessão (id)&apos;, &apos;sessão&apos;, &apos;sessao&apos;]) || (&apos;manual_&apos; + rowIdx));
-  var amount = parseFloat(String(getV([&apos;valor (r$)&apos;, &apos;valor&apos;])).replace(/[^\d,\.]/g, &apos;&apos;).replace(&apos;,&apos;, &apos;.&apos;)) || 0;
-  var prodName = String(getV([&apos;quiz / produto&apos;, &apos;produto&apos;]) || &apos;Oferta&apos;);
-  var name = String(getV([&apos;nome&apos;, &apos;cliente&apos;]) || &apos;Cliente&apos;);
-  var email = String(getV([&apos;email&apos;, &apos;e-mail&apos;]) || &apos;&apos;);
-  var phone = String(getV([&apos;whatsapp&apos;, &apos;telefone&apos;, &apos;phone&apos;]) || &apos;&apos;);
+  var orderId = String(getV([&#039;sessão (id)&#039;, &#039;sessão&#039;, &#039;sessao&#039;]) || (&#039;manual_&#039; + rowIdx));
+  var amount = parseFloat(String(getV([&#039;valor (r$)&#039;, &#039;valor&#039;])).replace(/[^\d,\.]/g, &#039;&#039;).replace(&#039;,&#039;, &#039;.&#039;)) || 0;
+  var prodName = String(getV([&#039;quiz / produto&#039;, &#039;produto&#039;]) || &#039;Oferta&#039;);
+  var name = String(getV([&#039;nome&#039;, &#039;cliente&#039;]) || &#039;Cliente&#039;);
+  var email = String(getV([&#039;email&#039;, &#039;e-mail&#039;]) || &#039;&#039;);
+  var phone = String(getV([&#039;whatsapp&#039;, &#039;telefone&#039;, &#039;phone&#039;]) || &#039;&#039;);
 
   var res = sendMetaCapiPurchase({
     orderId: orderId,
@@ -1699,12 +1699,12 @@ function enviarLinhaSelecionadaParaMeta() {
   });
 
   // Atualiza a coluna Meta CAPI na planilha
-  var capiColIdx = colMap[&apos;meta capi&apos;] || colMap[&apos;capi&apos;];
+  var capiColIdx = colMap[&#039;meta capi&#039;] || colMap[&#039;capi&#039;];
   if (capiColIdx !== undefined) {
-    sheet.getRange(rowIdx, capiColIdx + 1).setValue(res.success ? &apos;Enviado (Purchase)&apos; : (&apos;Erro: &apos; + (res.error || res.code || res.reason)));
+    sheet.getRange(rowIdx, capiColIdx + 1).setValue(res.success ? &#039;Enviado (Purchase)&#039; : (&#039;Erro: &#039; + (res.error || res.code || res.reason)));
   }
 
-  ui.alert(&apos;Status do Envio para Meta:\n\n&apos; + JSON.stringify(res, null, 2));
+  ui.alert(&#039;Status do Envio para Meta:\n\n&#039; + JSON.stringify(res, null, 2));
 }
 
 
@@ -1717,7 +1717,7 @@ function doGet(e) {
     var lastRow = sheet.getLastRow();
     if (lastRow &lt;= 1) {
       return ContentService.createTextOutput(JSON.stringify({
-        status: &apos;success&apos;, totalStarts: 0, totalCompletions: 0, totalCheckouts: 0,
+        status: &#039;success&#039;, totalStarts: 0, totalCompletions: 0, totalCheckouts: 0,
         totalSalesApproved: 0, revenueApproved: 0, totalSalesPending: 0, revenuePending: 0,
         stepViews: {}, recentLeads: [], orders: []
       })).setMimeType(ContentService.MimeType.JSON);
@@ -1725,25 +1725,46 @@ function doGet(e) {
     var lastCol = sheet.getLastColumn();
     var rows = sheet.getRange(1, 1, lastRow, lastCol).getValues();
     var headers = rows[0], colMap = {};
-    for (var c = 0; c &lt; headers.length; c++) colMap[String(headers[c] || &apos;&apos;).trim().toLowerCase()] = c;
+    for (var c = 0; c &lt; headers.length; c++) {
+      var hClean = String(headers[c] || &#039;&#039;).trim().toLowerCase();
+      if (hClean) colMap[hClean] = c;
+    }
     function getCol(row, candidates) {
+      if (!row) return &#039;&#039;;
+      // 1. Match exato
       for (var j = 0; j &lt; candidates.length; j++) {
-        var idx = colMap[candidates[j].toLowerCase()];
-        if (idx !== undefined &amp;&amp; row[idx] !== undefined) return row[idx];
+        var c = String(candidates[j] || &#039;&#039;).trim().toLowerCase();
+        if (!c) continue;
+        var idx = colMap[c];
+        if (idx !== undefined &amp;&amp; row[idx] !== undefined &amp;&amp; String(row[idx]).trim() !== &#039;&#039;) return row[idx];
       }
-      return &apos;&apos;;
+      // 2. Match parcial / busca por palavra-chave no cabeçalho
+      for (var j = 0; j &lt; candidates.length; j++) {
+        var c = String(candidates[j] || &#039;&#039;).trim().toLowerCase();
+        if (!c) continue;
+        for (var hKey in colMap) {
+          if (hKey.indexOf(c) !== -1 || c.indexOf(hKey) !== -1) {
+            var idx2 = colMap[hKey];
+            if (idx2 !== undefined &amp;&amp; row[idx2] !== undefined &amp;&amp; String(row[idx2]).trim() !== &#039;&#039;) return row[idx2];
+          }
+        }
+      }
+      return &#039;&#039;;
     }
 
     var stepVisitors = {}, uniqueStarts = {}, uniqueCompletions = {}, uniqueCheckouts = {};
     var leadsMap = {}, recentLeads = [];
     var orders = [], ordersMap = {};
+    var leadNamesByPhone = {}, leadNamesByEmail = {}, leadNamesBySession = {};
     var totalSalesApproved = 0, revenueApproved = 0;
     var totalSalesPending = 0, revenuePending = 0;
 
-    var filter = String((e &amp;&amp; e.parameter &amp;&amp; e.parameter.filter) || &apos;today&apos;).toLowerCase();
-    var targetDate = (e &amp;&amp; e.parameter &amp;&amp; e.parameter.date) || &apos;&apos;;
-    var startDateParam = (e &amp;&amp; e.parameter &amp;&amp; e.parameter.startDate) || &apos;&apos;;
-    var endDateParam = (e &amp;&amp; e.parameter &amp;&amp; e.parameter.endDate) || &apos;&apos;;
+    var filter = String((e &amp;&amp; e.parameter &amp;&amp; e.parameter.filter) || &#039;today&#039;).toLowerCase();
+    var targetDate = (e &amp;&amp; e.parameter &amp;&amp; e.parameter.date) || &#039;&#039;;
+    var startDateParam = (e &amp;&amp; e.parameter &amp;&amp; e.parameter.startDate) || &#039;&#039;;
+    var endDateParam = (e &amp;&amp; e.parameter &amp;&amp; e.parameter.endDate) || &#039;&#039;;
+    var reqCountry = String((e &amp;&amp; e.parameter &amp;&amp; (e.parameter.country || e.parameter.pais)) || &#039;&#039;).toUpperCase().trim();
+    var reqCurrency = String((e &amp;&amp; e.parameter &amp;&amp; (e.parameter.currency || e.parameter.moeda)) || &#039;&#039;).toUpperCase().trim();
 
     function parseDateSafe(val) {
       if (!val) return null;
@@ -1756,16 +1777,16 @@ function doGet(e) {
         var day = parseInt(matchBr[1], 10);
         var month = parseInt(matchBr[2], 10) - 1;
         var year = parseInt(matchBr[3], 10);
-        var hours = parseInt(matchBr[4] || &apos;0&apos;, 10);
-        var minutes = parseInt(matchBr[5] || &apos;0&apos;, 10);
-        var seconds = parseInt(matchBr[6] || &apos;0&apos;, 10);
+        var hours = parseInt(matchBr[4] || &#039;0&#039;, 10);
+        var minutes = parseInt(matchBr[5] || &#039;0&#039;, 10);
+        var seconds = parseInt(matchBr[6] || &#039;0&#039;, 10);
         return new Date(year, month, day, hours, minutes, seconds);
       }
       return null;
     }
 
     function matchesFilter(dVal, filt, tDate, sDate, eDate) {
-      if (!dVal || filt === &apos;all&apos;) return true;
+      if (!dVal || filt === &#039;all&#039;) return true;
       var d = parseDateSafe(dVal);
       if (!d || isNaN(d.getTime())) return true;
       var now = new Date();
@@ -1774,13 +1795,13 @@ function doGet(e) {
       var yestStart = todayStart - 86400000;
       var monthStart = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
       var tTime = d.getTime();
-      if (filt === &apos;today&apos;) return tTime &gt;= todayStart &amp;&amp; tTime &lt; tomorrowStart;
-      if (filt === &apos;yesterday&apos;) return tTime &gt;= yestStart &amp;&amp; tTime &lt; todayStart;
-      if (filt === &apos;month&apos;) return tTime &gt;= monthStart;
-      if ((filt === &apos;range&apos; || filt === &apos;custom&apos;) &amp;&amp; sDate) {
-        var sp = sDate.split(&apos;-&apos;);
+      if (filt === &#039;today&#039;) return tTime &gt;= todayStart &amp;&amp; tTime &lt; tomorrowStart;
+      if (filt === &#039;yesterday&#039;) return tTime &gt;= yestStart &amp;&amp; tTime &lt; todayStart;
+      if (filt === &#039;month&#039;) return tTime &gt;= monthStart;
+      if ((filt === &#039;range&#039; || filt === &#039;custom&#039;) &amp;&amp; sDate) {
+        var sp = sDate.split(&#039;-&#039;);
         var sStart = new Date(parseInt(sp[0],10), parseInt(sp[1],10)-1, parseInt(sp[2],10), 0, 0, 0).getTime();
-        var ep = (eDate || sDate).split(&apos;-&apos;);
+        var ep = (eDate || sDate).split(&#039;-&#039;);
         var eEnd = new Date(parseInt(ep[0],10), parseInt(ep[1],10)-1, parseInt(ep[2],10), 23, 59, 59, 999).getTime();
         return tTime &gt;= sStart &amp;&amp; tTime &lt;= eEnd;
       }
@@ -1789,129 +1810,183 @@ function doGet(e) {
 
     for (var i = 1; i &lt; rows.length; i++) {
       var row = rows[i];
-      var rowDate = getCol(row, [&apos;data/hora&apos;, &apos;data&apos;, &apos;timestamp&apos;]);
+      var rowDate = getCol(row, [&#039;data/hora&#039;, &#039;data&#039;, &#039;timestamp&#039;]);
       if (!matchesFilter(rowDate, filter, targetDate, startDateParam, endDateParam)) continue;
 
-      var rawSession = String(getCol(row, [&apos;sessão (id)&apos;, &apos;sessão&apos;, &apos;sessao&apos;, &apos;session&apos;, &apos;sessao (id)&apos;]) || &apos;&apos;).trim();
-      var event = String(getCol(row, [&apos;evento&apos;, &apos;event&apos;]) || &apos;&apos;).trim();
-      var stepIdx = String(getCol(row, [&apos;etapa&apos;, &apos;step&apos;]) || &apos;&apos;).trim();
-      var leadName = String(getCol(row, [&apos;nome&apos;, &apos;cliente&apos;]) || &apos;&apos;).trim();
-      var leadPhone = String(getCol(row, [&apos;whatsapp&apos;, &apos;telefone&apos;, &apos;phone&apos;]) || &apos;&apos;).trim();
-      var leadEmail = String(getCol(row, [&apos;email&apos;, &apos;e-mail&apos;]) || &apos;&apos;).trim();
-      var points = getCol(row, [&apos;pontos / score&apos;, &apos;pontos&apos;, &apos;score&apos;]);
-      var src = String(getCol(row, [&apos;src&apos;, &apos;src (rastreamento)&apos;, &apos;sck&apos;]) || &apos;&apos;).trim();
-      var utmSrc = String(getCol(row, [&apos;utm_source&apos;, &apos;source&apos;]) || &apos;&apos;).trim();
-      var utmCmp = String(getCol(row, [&apos;utm_campaign&apos;, &apos;campaign&apos;]) || &apos;&apos;).trim();
-      var saleStatus = String(getCol(row, [&apos;status venda&apos;, &apos;status&apos;, &apos;status_venda&apos;]) || &apos;&apos;).toLowerCase().trim();
-      var saleValRaw = getCol(row, [&apos;valor (r$)&apos;, &apos;valor&apos;, &apos;sale_amount&apos;, &apos;total_price&apos;]);
-      var payMethod = String(getCol(row, [&apos;método&apos;, &apos;metodo&apos;, &apos;payment_method&apos;, &apos;forma pagamento&apos;]) || &apos;PIX&apos;).trim();
-      var platform = String(getCol(row, [&apos;plataforma&apos;, &apos;platform&apos;, &apos;gateway&apos;]) || &apos;&apos;).trim();
-      var product = String(getCol(row, [&apos;quiz / produto&apos;, &apos;produto&apos;, &apos;product&apos;]) || &apos;&apos;).trim();
+      var rawSession = String(getCol(row, [&#039;sessão (id)&#039;, &#039;sessão&#039;, &#039;sessao&#039;, &#039;session&#039;, &#039;sessao (id)&#039;]) || &#039;&#039;).trim();
+      var event = String(getCol(row, [&#039;evento&#039;, &#039;event&#039;]) || &#039;&#039;).trim();
+      var stepIdx = String(getCol(row, [&#039;etapa&#039;, &#039;step&#039;]) || &#039;&#039;).trim();
+      var leadName = String(getCol(row, [
+        &#039;nome&#039;, &#039;cliente&#039;, &#039;nome do cliente&#039;, &#039;nome cliente&#039;, &#039;comprador&#039;,
+        &#039;nome do comprador&#039;, &#039;buyer&#039;, &#039;buyer name&#039;, &#039;customer&#039;, &#039;customer name&#039;,
+        &#039;nome completo&#039;, &#039;first name&#039;, &#039;name&#039;, &#039;full name&#039;, &#039;lead&#039;, &#039;nome lead&#039;, &#039;pagador&#039;, &#039;nome pagador&#039;
+      ]) || &#039;&#039;).trim();
+      var leadPhone = String(getCol(row, [
+        &#039;whatsapp&#039;, &#039;telefone&#039;, &#039;phone&#039;, &#039;celular&#039;, &#039;fone&#039;, &#039;tel&#039;, &#039;checkout_phone&#039;, &#039;phone_number&#039;, &#039;telefone celular&#039;
+      ]) || &#039;&#039;).trim();
+      var leadEmail = String(getCol(row, [
+        &#039;email&#039;, &#039;e-mail&#039;, &#039;mail&#039;, &#039;buyer email&#039;, &#039;customer email&#039;
+      ]) || &#039;&#039;).trim();
+      var points = getCol(row, [&#039;pontos / score&#039;, &#039;pontos&#039;, &#039;score&#039;]);
+      var src = String(getCol(row, [&#039;src&#039;, &#039;src (rastreamento)&#039;, &#039;sck&#039;]) || &#039;&#039;).trim();
+      var utmSrc = String(getCol(row, [&#039;utm_source&#039;, &#039;source&#039;]) || &#039;&#039;).trim();
+      var utmCmp = String(getCol(row, [&#039;utm_campaign&#039;, &#039;campaign&#039;]) || &#039;&#039;).trim();
+      var saleStatus = String(getCol(row, [&#039;status venda&#039;, &#039;status&#039;, &#039;status_venda&#039;]) || &#039;&#039;).toLowerCase().trim();
+      var saleValRaw = getCol(row, [&#039;valor (r$)&#039;, &#039;valor&#039;, &#039;sale_amount&#039;, &#039;total_price&#039;]);
+      var payMethod = String(getCol(row, [&#039;método&#039;, &#039;metodo&#039;, &#039;payment_method&#039;, &#039;forma pagamento&#039;]) || &#039;PIX&#039;).trim();
+      var platform = String(getCol(row, [&#039;plataforma&#039;, &#039;platform&#039;, &#039;gateway&#039;]) || &#039;&#039;).trim();
+      var product = String(getCol(row, [&#039;quiz / produto&#039;, &#039;produto&#039;, &#039;product&#039;, &#039;quiz&#039;, &#039;oferta&#039;, &#039;item&#039;]) || &#039;&#039;).trim();
 
       var saleVal = 0;
-      if (typeof saleValRaw === &apos;number&apos;) saleVal = saleValRaw;
+      if (typeof saleValRaw === &#039;number&#039;) saleVal = saleValRaw;
       else if (saleValRaw) {
-        var cleanV = String(saleValRaw).replace(/[^\d,\.]/g, &apos;&apos;).replace(&apos;,&apos;, &apos;.&apos;);
+        var cleanV = String(saleValRaw).replace(/[^\d,\.]/g, &#039;&#039;).replace(&#039;,&#039;, &#039;.&#039;);
         saleVal = parseFloat(cleanV) || 0;
       }
 
       var sessionKey = rawSession;
       if (!sessionKey) {
-        var timeCluster = rowDate ? Utilities.formatDate(new Date(rowDate), &quot;GMT&quot;, &quot;yyyy-MM-dd_HH&quot;) + &apos;_&apos; + Math.floor(new Date(rowDate).getMinutes() / 15) : (&apos;leg_&apos; + i);
-        sessionKey = (leadPhone || leadEmail || &apos;visitante&apos;) + &apos;_&apos; + timeCluster;
+        var timeCluster = rowDate ? Utilities.formatDate(new Date(rowDate), &quot;GMT&quot;, &quot;yyyy-MM-dd_HH&quot;) + &#039;_&#039; + Math.floor(new Date(rowDate).getMinutes() / 15) : (&#039;leg_&#039; + i);
+        sessionKey = (leadPhone || leadEmail || &#039;visitante&#039;) + &#039;_&#039; + timeCluster;
       }
 
-      // Filtro de Robôs de Revisão da Meta (Facebook_Right_Column & Scanners)
-      var srcLower = String(src || utmSrc || &apos;&apos;).toLowerCase();
-      var isMetaBotTraffic = (srcLower.indexOf(&apos;facebook_right_column&apos;) !== -1 || srcLower.indexOf(&apos;right_column&apos;) !== -1 || event === &apos;Bot_Meta&apos;);
+      // Registro cruzado de nomes de leads válidos para recuperar pedidos sem nome
+      var isRealName = leadName &amp;&amp; ![&#039;cliente&#039;, &#039;anônimo&#039;, &#039;anonimo&#039;, &#039;-&#039;, &#039;null&#039;, &#039;undefined&#039;].includes(leadName.toLowerCase());
+      if (isRealName) {
+        var cPh = leadPhone.replace(/\D/g, &#039;&#039;);
+        if (cPh) leadNamesByPhone[cPh] = leadName;
+        if (leadEmail) leadNamesByEmail[leadEmail.toLowerCase()] = leadName;
+        if (sessionKey) leadNamesBySession[sessionKey] = leadName;
+        if (rawSession) leadNamesBySession[rawSession] = leadName;
+      }
+
+      // Filtro de Robôs de Revisão da Meta (Facebook_Right_Column &amp; Scanners)
+      var srcLower = String(src || utmSrc || &#039;&#039;).toLowerCase();
+      var isMetaBotTraffic = (
+        srcLower.indexOf(&#039;facebook_right_column&#039;) !== -1 ||
+        srcLower.indexOf(&#039;right_column&#039;) !== -1 ||
+        srcLower.indexOf(&#039;bot_meta&#039;) !== -1 ||
+        srcLower.indexOf(&#039;bot_ignorado&#039;) !== -1 ||
+        event === &#039;Bot_Meta&#039; ||
+        event === &#039;bot_ignorado&#039; ||
+        saleStatus === &#039;bot_ignorado&#039; ||
+        saleStatus === &#039;bot&#039;
+      );
       if (isMetaBotTraffic &amp;&amp; !isSaleApproved &amp;&amp; !isSalePending) {
-        continue; // Ignora o bot de revisão da Meta do funil e das métricas!
+        continue; // Ignora 100% o bot de revisão da Meta do funil e das métricas!
       }
 
       // Funil: Etapas do Quiz ou Visualização de Página (PageView)
-      if (event === &apos;PageView&apos; || event === &apos;page_view&apos; || event === &apos;Pagina_Visualizada&apos; || event === &apos;Quiz_Iniciado&apos;) {
-        if (!stepVisitors[&apos;step_0&apos;]) stepVisitors[&apos;step_0&apos;] = {};
-        stepVisitors[&apos;step_0&apos;][sessionKey] = true;
+      if (event === &#039;PageView&#039; || event === &#039;page_view&#039; || event === &#039;Pagina_Visualizada&#039; || event === &#039;Quiz_Iniciado&#039;) {
+        if (!stepVisitors[&#039;step_0&#039;]) stepVisitors[&#039;step_0&#039;] = {};
+        stepVisitors[&#039;step_0&#039;][sessionKey] = true;
         uniqueStarts[sessionKey] = true;
         uniqueCompletions[sessionKey] = true;
-      } else if (event.indexOf(&apos;Quiz_Etapa_&apos;) === 0) {
-        var numStep = parseInt(event.replace(&apos;Quiz_Etapa_&apos;, &apos;&apos;), 10);
+      } else if (event.indexOf(&#039;Quiz_Etapa_&#039;) === 0) {
+        var numStep = parseInt(event.replace(&#039;Quiz_Etapa_&#039;, &#039;&#039;), 10);
         if (!isNaN(numStep) &amp;&amp; numStep &gt;= 1) {
-          var k = &apos;step_&apos; + (numStep - 1);
+          var k = &#039;step_&#039; + (numStep - 1);
           if (!stepVisitors[k]) stepVisitors[k] = {};
           stepVisitors[k][sessionKey] = true;
           if (numStep === 1) uniqueStarts[sessionKey] = true;
         }
-      } else if (stepIdx !== &apos;&apos; &amp;&amp; !isNaN(parseInt(stepIdx, 10)) &amp;&amp; event !== &apos;Quiz_Resposta&apos;) {
+      } else if (stepIdx !== &#039;&#039; &amp;&amp; !isNaN(parseInt(stepIdx, 10)) &amp;&amp; event !== &#039;Quiz_Resposta&#039;) {
         var num = parseInt(stepIdx, 10);
         if (num &gt;= 0) {
-          var k2 = num === 0 ? &apos;step_0&apos; : (&apos;step_&apos; + (num - 1));
+          var k2 = num === 0 ? &#039;step_0&#039; : (&#039;step_&#039; + (num - 1));
           if (!stepVisitors[k2]) stepVisitors[k2] = {};
           stepVisitors[k2][sessionKey] = true;
           if (num &lt;= 1) uniqueStarts[sessionKey] = true;
         }
       }
-      if (event === &apos;Quiz_Concluido&apos; || event === &apos;Oferta_Visualizada&apos;) uniqueCompletions[sessionKey] = true;
+      if (event === &#039;Quiz_Concluido&#039; || event === &#039;Oferta_Visualizada&#039;) uniqueCompletions[sessionKey] = true;
 
       // Funil: Checkout Iniciado
-      if (event === &apos;Checkout_Iniciado&apos; || event === &apos;InitiateCheckout&apos;) {
-        if (!stepVisitors[&apos;step_checkout&apos;]) stepVisitors[&apos;step_checkout&apos;] = {};
-        stepVisitors[&apos;step_checkout&apos;][sessionKey] = true;
+      if (event === &#039;Checkout_Iniciado&#039; || event === &#039;InitiateCheckout&#039;) {
+        if (!stepVisitors[&#039;step_checkout&#039;]) stepVisitors[&#039;step_checkout&#039;] = {};
+        stepVisitors[&#039;step_checkout&#039;][sessionKey] = true;
         uniqueCheckouts[sessionKey] = true;
       }
 
-      // Funil e Métricas: Vendas (Mivvo, Kirvano, PerfectPay)
-      var isSaleApproved = (event === &apos;Venda_Aprovada&apos; || event === &apos;sale.paid&apos; || saleStatus === &apos;approved&apos; || saleStatus === &apos;aprovado&apos; || saleStatus === &apos;paid&apos;);
-      var isSalePending = (event === &apos;Aguardando_Pagamento&apos; || event === &apos;sale.pending&apos; || saleStatus === &apos;waiting_payment&apos; || saleStatus === &apos;pending&apos; || saleStatus === &apos;billet_printed&apos; || saleStatus === &apos;pix_generated&apos;);
+      // Funil e Métricas: Vendas (Mivvo, Kirvano, PerfectPay, Hotmart)
+      var isSaleApproved = (event === &#039;Venda_Aprovada&#039; || event === &#039;sale.paid&#039; || saleStatus === &#039;approved&#039; || saleStatus === &#039;aprovado&#039; || saleStatus === &#039;paid&#039;);
+      var isSalePending = (event === &#039;Aguardando_Pagamento&#039; || event === &#039;sale.pending&#039; || saleStatus === &#039;waiting_payment&#039; || saleStatus === &#039;pending&#039; || saleStatus === &#039;billet_printed&#039; || saleStatus === &#039;pix_generated&#039;);
 
       if (isSaleApproved || isSalePending) {
-        var ordKey = (rawSession ? (platform + &apos;_&apos; + rawSession) : &apos;&apos;) || ((leadPhone || leadEmail || leadName) + &apos;_&apos; + Math.round(saleVal) + &apos;_&apos; + (platform || &apos;gw&apos;));
-        var originTag = src ? (&apos;SRC: &apos; + src) : [utmSrc, utmCmp].filter(Boolean).join(&apos; / &apos;);
-        var formattedVal = &apos;R$ &apos; + saleVal.toFixed(2).replace(&apos;.&apos;, &apos;,&apos;);
+        var ordKey = (rawSession ? (platform + &#039;_&#039; + rawSession) : &#039;&#039;) || ((leadPhone || leadEmail || leadName) + &#039;_&#039; + Math.round(saleVal) + &#039;_&#039; + (platform || &#039;gw&#039;));
+        var originTag = src ? (&#039;SRC: &#039; + src) : [utmSrc, utmCmp].filter(Boolean).join(&#039; / &#039;);
+        
+        var rowCur = String(getCol(row, [&#039;moeda&#039;, &#039;currency&#039;, &#039;currency_code&#039;]) || &#039;&#039;).toUpperCase().trim();
+        var cleanPhoneNum = leadPhone.replace(/\D/g, &#039;&#039;);
+        var isMx = (rowCur === &#039;MXN&#039;) || 
+                   (String(saleValRaw || &#039;&#039;).toUpperCase().indexOf(&#039;MXN&#039;) !== -1) ||
+                   (cleanPhoneNum.indexOf(&#039;52&#039;) === 0 &amp;&amp; cleanPhoneNum.length &gt;= 10 &amp;&amp; cleanPhoneNum.length &lt;= 13) ||
+                   (reqCountry === &#039;MX&#039; || reqCurrency === &#039;MXN&#039;);
+
+        var ordCurrency = isMx ? &#039;MXN&#039; : (rowCur || &#039;BRL&#039;);
+        var formattedVal = isMx ? (&#039;$ &#039; + saleVal.toFixed(2) + &#039; MXN&#039;) : (&#039;R$ &#039; + saleVal.toFixed(2).replace(&#039;.&#039;, &#039;,&#039;));
+
+        // Tenta resolver nome se vazio
+        var effectiveName = leadName;
+        if (!effectiveName || !isRealName) {
+          var cPhOrd = leadPhone.replace(/\D/g, &#039;&#039;);
+          effectiveName = (cPhOrd &amp;&amp; leadNamesByPhone[cPhOrd]) ||
+                          (leadEmail &amp;&amp; leadNamesByEmail[leadEmail.toLowerCase()]) ||
+                          (sessionKey &amp;&amp; leadNamesBySession[sessionKey]) || &#039;Cliente&#039;;
+        }
 
         if (!ordersMap[ordKey]) {
           ordersMap[ordKey] = {
-            id: rawSession || sessionKey || (&apos;ord_&apos; + i),
-            date: rowDate ? Utilities.formatDate(new Date(rowDate), Session.getScriptTimeZone() || &quot;GMT-3&quot;, &quot;dd/MM/yyyy HH:mm&quot;) : &apos;&apos;,
-            name: leadName || &apos;Cliente&apos;,
-            whatsapp: leadPhone || &apos;&apos;,
-            email: leadEmail || &apos;&apos;,
+            id: rawSession || sessionKey || (&#039;ord_&#039; + i),
+            date: rowDate ? Utilities.formatDate(new Date(rowDate), Session.getScriptTimeZone() || &quot;GMT-3&quot;, &quot;dd/MM/yyyy HH:mm&quot;) : &#039;&#039;,
+            name: effectiveName || &#039;Cliente&#039;,
+            whatsapp: leadPhone || &#039;&#039;,
+            email: leadEmail || &#039;&#039;,
             amount: saleVal,
             amountFormatted: formattedVal,
-            method: payMethod || &apos;PIX&apos;,
-            status: isSaleApproved ? &apos;approved&apos; : &apos;waiting_payment&apos;,
-            platform: platform || (event.indexOf(&apos;Kirvano&apos;) !== -1 ? &apos;Kirvano&apos; : (event.indexOf(&apos;Mivvo&apos;) !== -1 ? &apos;Mivvo&apos; : (event.indexOf(&apos;Hotmart&apos;) !== -1 ? &apos;Hotmart&apos; : &apos;PerfectPay&apos;))),
-            product: product || &apos;Oferta&apos;,
-            src: src || &apos;-&apos;,
-            utm: originTag || &apos;-&apos;,
+            currency: ordCurrency,
+            method: payMethod || &#039;PIX&#039;,
+            status: isSaleApproved ? &#039;approved&#039; : &#039;waiting_payment&#039;,
+            platform: platform || (event.indexOf(&#039;Kirvano&#039;) !== -1 ? &#039;Kirvano&#039; : (event.indexOf(&#039;Mivvo&#039;) !== -1 ? &#039;Mivvo&#039; : (event.indexOf(&#039;Hotmart&#039;) !== -1 ? &#039;Hotmart&#039; : &#039;PerfectPay&#039;))),
+            product: product || &#039;Oferta&#039;,
+            src: src || &#039;-&#039;,
+            utm: originTag || &#039;-&#039;,
             sessionKey: sessionKey
           };
         } else {
+          // Atualiza nome se a nova linha contiver um nome real
+          if (isRealName &amp;&amp; (!ordersMap[ordKey].name || ordersMap[ordKey].name === &#039;Cliente&#039; || ordersMap[ordKey].name === &#039;Anônimo&#039;)) {
+            ordersMap[ordKey].name = leadName;
+          }
+          if (leadPhone &amp;&amp; !ordersMap[ordKey].whatsapp) ordersMap[ordKey].whatsapp = leadPhone;
+          if (leadEmail &amp;&amp; !ordersMap[ordKey].email) ordersMap[ordKey].email = leadEmail;
+
           // Se o pedido já existia (ex: Pix gerado) e agora veio a linha de pagamento aprovado, promove para Aprovado!
-          if (isSaleApproved &amp;&amp; ordersMap[ordKey].status !== &apos;approved&apos;) {
-            ordersMap[ordKey].status = &apos;approved&apos;;
+          if (isSaleApproved &amp;&amp; ordersMap[ordKey].status !== &#039;approved&#039;) {
+            ordersMap[ordKey].status = &#039;approved&#039;;
             if (rowDate) {
               ordersMap[ordKey].date = Utilities.formatDate(new Date(rowDate), Session.getScriptTimeZone() || &quot;GMT-3&quot;, &quot;dd/MM/yyyy HH:mm&quot;);
             }
             if (saleVal &gt; 0) {
               ordersMap[ordKey].amount = saleVal;
               ordersMap[ordKey].amountFormatted = formattedVal;
+              ordersMap[ordKey].currency = ordCurrency;
             }
             if (payMethod) ordersMap[ordKey].method = payMethod;
-            if (src &amp;&amp; (!ordersMap[ordKey].src || ordersMap[ordKey].src === &apos;-&apos;)) ordersMap[ordKey].src = src;
+            if (src &amp;&amp; (!ordersMap[ordKey].src || ordersMap[ordKey].src === &#039;-&#039;)) ordersMap[ordKey].src = src;
           }
         }
       }
 
       // Leads capturados no formulário do quiz
       if (leadName || leadPhone || leadEmail) {
-        var lKey = leadPhone || leadEmail || (leadName + &apos;_&apos; + sessionKey);
+        var lKey = leadPhone || leadEmail || (leadName + &#039;_&#039; + sessionKey);
         if (!leadsMap[lKey] &amp;&amp; !isSaleApproved &amp;&amp; !isSalePending) {
           leadsMap[lKey] = true;
-          var originTag2 = src ? (&apos;SRC: &apos; + src) : [utmSrc, utmCmp].filter(Boolean).join(&apos; / &apos;);
+          var originTag2 = src ? (&#039;SRC: &#039; + src) : [utmSrc, utmCmp].filter(Boolean).join(&#039; / &#039;);
           recentLeads.unshift({
-            date: rowDate ? Utilities.formatDate(new Date(rowDate), Session.getScriptTimeZone() || &quot;GMT-3&quot;, &quot;dd/MM/yyyy HH:mm&quot;) : &apos;&apos;,
-            name: leadName || &apos;Anônimo&apos;, whatsapp: leadPhone || &apos;&apos;, email: leadEmail || &apos;&apos;, score: points || 0, src: src || &apos;-&apos;, utm: originTag2 || &apos;-&apos;
+            date: rowDate ? Utilities.formatDate(new Date(rowDate), Session.getScriptTimeZone() || &quot;GMT-3&quot;, &quot;dd/MM/yyyy HH:mm&quot;) : &#039;&#039;,
+            name: leadName || &#039;Anônimo&#039;, whatsapp: leadPhone || &#039;&#039;, email: leadEmail || &#039;&#039;, score: points || 0, src: src || &#039;-&#039;, utm: originTag2 || &#039;-&#039;
           });
         }
       }
@@ -1919,11 +1994,23 @@ function doGet(e) {
 
     for (var oKey in ordersMap) {
       var ord = ordersMap[oKey];
-      if (ord.status === &apos;approved&apos;) {
+      // Segunda passagem: se o pedido ainda não tiver nome real, consulta no mapa global de leads
+      if (!ord.name || [&#039;cliente&#039;, &#039;anônimo&#039;, &#039;anonimo&#039;, &#039;-&#039;, &#039;&#039;].includes(String(ord.name).toLowerCase())) {
+        var ordPh = String(ord.whatsapp || &#039;&#039;).replace(/\D/g, &#039;&#039;);
+        var ordEm = String(ord.email || &#039;&#039;).toLowerCase();
+        var ordSess = String(ord.sessionKey || ord.id || &#039;&#039;);
+        var resolvedLeadName = (ordPh &amp;&amp; leadNamesByPhone[ordPh]) ||
+                               (ordEm &amp;&amp; leadNamesByEmail[ordEm]) ||
+                               (ordSess &amp;&amp; leadNamesBySession[ordSess]) || &#039;&#039;;
+        if (resolvedLeadName) {
+          ord.name = resolvedLeadName;
+        }
+      }
+      if (ord.status === &#039;approved&#039;) {
         totalSalesApproved++;
         revenueApproved += ord.amount;
-        if (!stepVisitors[&apos;step_sales&apos;]) stepVisitors[&apos;step_sales&apos;] = {};
-        if (ord.sessionKey) stepVisitors[&apos;step_sales&apos;][ord.sessionKey] = true;
+        if (!stepVisitors[&#039;step_sales&#039;]) stepVisitors[&#039;step_sales&#039;] = {};
+        if (ord.sessionKey) stepVisitors[&#039;step_sales&#039;][ord.sessionKey] = true;
       } else {
         totalSalesPending++;
         revenuePending += ord.amount;
@@ -1937,7 +2024,7 @@ function doGet(e) {
     if (orders.length &gt; 100) orders = orders.slice(0, 100);
 
     return ContentService.createTextOutput(JSON.stringify({
-      status: &apos;success&apos;,
+      status: &#039;success&#039;,
       totalStarts: Object.keys(uniqueStarts).length,
       totalCompletions: Object.keys(uniqueCompletions).length,
       totalCheckouts: Object.keys(uniqueCheckouts).length,
@@ -1946,13 +2033,15 @@ function doGet(e) {
       totalSalesPending: totalSalesPending,
       revenuePending: revenuePending,
       totalLeads: Object.keys(leadsMap).length,
+      currency: (reqCountry === &#039;MX&#039; || reqCurrency === &#039;MXN&#039;) ? &#039;MXN&#039; : &#039;BRL&#039;,
+      country: reqCountry || &#039;BR&#039;,
       stepViews: stepViews,
       recentLeads: recentLeads,
       orders: orders,
       lastUpdated: new Date().toISOString()
     })).setMimeType(ContentService.MimeType.JSON);
   } catch(err) {
-    return ContentService.createTextOutput(JSON.stringify({ status: &apos;error&apos;, message: err.toString() })).setMimeType(ContentService.MimeType.JSON);
+    return ContentService.createTextOutput(JSON.stringify({ status: &#039;error&#039;, message: err.toString() })).setMimeType(ContentService.MimeType.JSON);
   }
 }
 
@@ -1965,15 +2054,15 @@ function doPost(e) {
     var sheet = getTargetSheet();
     var lastCol = sheet.getLastColumn();
     var expectedHeaders = [
-      &apos;Data/Hora&apos;, &apos;Sessão (ID)&apos;, &apos;Evento&apos;, &apos;Quiz / Produto&apos;, &apos;Etapa&apos;, 
-      &apos;Status Venda&apos;, &apos;Valor (R$)&apos;, &apos;Método&apos;, &apos;Plataforma&apos;, &apos;Nome&apos;, 
-      &apos;WhatsApp&apos;, &apos;Email&apos;, &apos;Documento&apos;, &apos;SRC&apos;, &apos;UTM_Source&apos;, 
-      &apos;UTM_Campaign&apos;, &apos;UTM_Medium&apos;, &apos;UTM_Content&apos;, &apos;Meta CAPI&apos;, &apos;Acesso App&apos;
+      &#039;Data/Hora&#039;, &#039;Sessão (ID)&#039;, &#039;Evento&#039;, &#039;Quiz / Produto&#039;, &#039;Etapa&#039;, 
+      &#039;Status Venda&#039;, &#039;Valor (R$)&#039;, &#039;Moeda&#039;, &#039;Método&#039;, &#039;Plataforma&#039;, &#039;Nome&#039;, 
+      &#039;WhatsApp&#039;, &#039;Email&#039;, &#039;Documento&#039;, &#039;SRC&#039;, &#039;UTM_Source&#039;, 
+      &#039;UTM_Campaign&#039;, &#039;UTM_Medium&#039;, &#039;UTM_Content&#039;, &#039;Meta CAPI&#039;, &#039;Acesso App&#039;
     ];
 
     if (lastCol === 0) {
       sheet.appendRow(expectedHeaders);
-      sheet.getRange(1, 1, 1, expectedHeaders.length).setFontWeight(&apos;bold&apos;).setBackground(&apos;#e2e8f0&apos;);
+      sheet.getRange(1, 1, 1, expectedHeaders.length).setFontWeight(&#039;bold&#039;).setBackground(&#039;#e2e8f0&#039;);
       sheet.setFrozenRows(1);
       lastCol = expectedHeaders.length;
     } else {
@@ -1983,17 +2072,17 @@ function doPost(e) {
         var found = curHeaders.some(function(cur) { return String(cur).trim().toLowerCase() === hName.toLowerCase(); });
         if (!found) {
           lastCol++;
-          sheet.getRange(1, lastCol).setValue(hName).setFontWeight(&apos;bold&apos;).setBackground(&apos;#e2e8f0&apos;);
+          sheet.getRange(1, lastCol).setValue(hName).setFontWeight(&#039;bold&#039;).setBackground(&#039;#e2e8f0&#039;);
         }
       }
       SpreadsheetApp.flush();
     }
 
-    var raw = (e.postData &amp;&amp; e.postData.contents) ? e.postData.contents : &apos;&apos;;
+    var raw = (e.postData &amp;&amp; e.postData.contents) ? e.postData.contents : &#039;&#039;;
     var data = {};
     try {
       data = JSON.parse(raw);
-      if (data.request &amp;&amp; typeof data.request.body === &apos;string&apos;) {
+      if (data.request &amp;&amp; typeof data.request.body === &#039;string&#039;) {
         try { data = JSON.parse(data.request.body); } catch(p) {}
       }
     } catch(errJson) {
@@ -2002,114 +2091,136 @@ function doPost(e) {
 
     var headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
     var colMap = {};
-    for (var c = 0; c &lt; headers.length; c++) colMap[String(headers[c] || &apos;&apos;).trim().toLowerCase()] = c;
+    for (var c = 0; c &lt; headers.length; c++) colMap[String(headers[c] || &#039;&#039;).trim().toLowerCase()] = c;
     var newRow = new Array(headers.length);
-    for (var k = 0; k &lt; newRow.length; k++) newRow[k] = &apos;&apos;;
+    for (var k = 0; k &lt; newRow.length; k++) newRow[k] = &#039;&#039;;
     function setVal(candidates, val) {
+      if (val === undefined || val === null) val = &#039;&#039;;
       for (var j = 0; j &lt; candidates.length; j++) {
-        var idx = colMap[candidates[j].toLowerCase()];
+        var c = String(candidates[j] || &#039;&#039;).trim().toLowerCase();
+        if (!c) continue;
+        var idx = colMap[c];
         if (idx !== undefined) { newRow[idx] = val; return; }
+      }
+      for (var j = 0; j &lt; candidates.length; j++) {
+        var c = String(candidates[j] || &#039;&#039;).trim().toLowerCase();
+        if (!c) continue;
+        for (var hKey in colMap) {
+          if (hKey.indexOf(c) !== -1 || c.indexOf(hKey) !== -1) {
+            var idx2 = colMap[hKey];
+            if (idx2 !== undefined) { newRow[idx2] = val; return; }
+          }
+        }
       }
     }
 
-    setVal([&apos;data/hora&apos;, &apos;data&apos;, &apos;timestamp&apos;], new Date());
+    setVal([&#039;data/hora&#039;, &#039;data&#039;, &#039;timestamp&#039;], new Date());
 
 
     // ==========================================
     // CASO A: WEBHOOK MIVVO / NOVA PLATAFORMA (sale.paid ou sale.pending)
     // ==========================================
-    if ((data.event &amp;&amp; String(data.event).indexOf(&apos;sale.&apos;) === 0) || (data.data &amp;&amp; data.data.sale_id &amp;&amp; data.data.charged_amount !== undefined)) {
+    if ((data.event &amp;&amp; String(data.event).indexOf(&#039;sale.&#039;) === 0) || (data.data &amp;&amp; data.data.sale_id &amp;&amp; data.data.charged_amount !== undefined)) {
       var dM = data.data || {};
-      var isAppM = (data.event === &apos;sale.paid&apos; || dM.status === &apos;paid&apos; || dM.status === &apos;approved&apos;);
-      var isWaitM = (data.event === &apos;sale.pending&apos; || dM.status === &apos;pending&apos; || dM.status === &apos;waiting_payment&apos;);
-      var statusStrM = isAppM ? &apos;approved&apos; : (isWaitM ? &apos;waiting_payment&apos; : (dM.status || &apos;&apos;));
-      var eventStrM = isAppM ? &apos;Venda_Aprovada&apos; : &apos;Aguardando_Pagamento&apos;;
+      var isAppM = (data.event === &#039;sale.paid&#039; || dM.status === &#039;paid&#039; || dM.status === &#039;approved&#039;);
+      var isWaitM = (data.event === &#039;sale.pending&#039; || dM.status === &#039;pending&#039; || dM.status === &#039;waiting_payment&#039;);
+      var statusStrM = isAppM ? &#039;approved&#039; : (isWaitM ? &#039;waiting_payment&#039; : (dM.status || &#039;&#039;));
+      var eventStrM = isAppM ? &#039;Venda_Aprovada&#039; : &#039;Aguardando_Pagamento&#039;;
       var custM = dM.customer || {};
       var utmsM = dM.utms || dM.utm || {};
       var amountValM = Number(dM.charged_amount !== undefined ? dM.charged_amount : dM.amount) || 0;
-      var prodNameM = (dM.product &amp;&amp; dM.product.name) || (dM.offer &amp;&amp; dM.offer.name) || &apos;Oferta&apos;;
+      var prodNameM = (dM.product &amp;&amp; dM.product.name) || (dM.offer &amp;&amp; dM.offer.name) || &#039;Oferta&#039;;
 
       // Se comprou order bump, adiciona ao nome do produto
       if (dM.order_bumps &amp;&amp; dM.order_bumps.length &gt; 0) {
-        var bumpNames = dM.order_bumps.map(function(b) { return b.product_name || b.offer_name || &apos;Bump&apos;; }).join(&apos; + &apos;);
-        prodNameM += &apos; (+ &apos; + bumpNames + &apos;)&apos;;
+        var bumpNames = dM.order_bumps.map(function(b) { return b.product_name || b.offer_name || &#039;Bump&#039;; }).join(&#039; + &#039;);
+        prodNameM += &#039; (+ &#039; + bumpNames + &#039;)&#039;;
       }
 
-      setVal([&apos;sessão (id)&apos;, &apos;sessão&apos;, &apos;sessao&apos;], dM.sale_id || (&apos;miv_&apos; + Date.now()));
-      setVal([&apos;evento&apos;, &apos;event&apos;], eventStrM);
-      setVal([&apos;quiz / produto&apos;, &apos;produto&apos;], prodNameM);
-      setVal([&apos;status venda&apos;, &apos;status_venda&apos;, &apos;status&apos;], statusStrM);
-      setVal([&apos;valor (r$)&apos;, &apos;valor&apos;], amountValM);
-      setVal([&apos;método&apos;, &apos;metodo&apos;], dM.payment_method || &apos;PIX&apos;);
-      setVal([&apos;plataforma&apos;, &apos;platform&apos;], &apos;Mivvo&apos;);
-      setVal([&apos;nome&apos;, &apos;cliente&apos;], custM.name || &apos;&apos;);
-      setVal([&apos;whatsapp&apos;, &apos;telefone&apos;], custM.phone || &apos;&apos;);
-      setVal([&apos;email&apos;, &apos;e-mail&apos;], custM.email || &apos;&apos;);
-      setVal([&apos;documento&apos;, &apos;cpf&apos;], custM.document || &apos;&apos;);
-      setVal([&apos;src&apos;, &apos;sck&apos;], utmsM.src || utmsM.sck || &apos;&apos;);
-      setVal([&apos;utm_source&apos;, &apos;source&apos;], utmsM.source || utmsM.utm_source || &apos;&apos;);
-      setVal([&apos;utm_campaign&apos;, &apos;campaign&apos;], utmsM.campaign || utmsM.utm_campaign || &apos;&apos;);
-      setVal([&apos;utm_medium&apos;, &apos;medium&apos;], utmsM.medium || utmsM.utm_medium || &apos;&apos;);
-      setVal([&apos;utm_content&apos;, &apos;content&apos;], utmsM.content || utmsM.utm_content || &apos;&apos;);
+      var curM = String(dM.currency || (data.data &amp;&amp; data.data.currency) || data.currency || (custM.phone &amp;&amp; String(custM.phone).indexOf(&#039;52&#039;) === 0 ? &#039;MXN&#039; : &#039;BRL&#039;)).toUpperCase().trim();
+      if (!curM || curM === &#039;UNDEFINED&#039; || curM === &#039;NULL&#039;) curM = &#039;BRL&#039;;
+
+      setVal([&#039;sessão (id)&#039;, &#039;sessão&#039;, &#039;sessao&#039;], dM.sale_id || (&#039;miv_&#039; + Date.now()));
+      setVal([&#039;evento&#039;, &#039;event&#039;], eventStrM);
+      setVal([&#039;quiz / produto&#039;, &#039;produto&#039;], prodNameM);
+      setVal([&#039;status venda&#039;, &#039;status_venda&#039;, &#039;status&#039;], statusStrM);
+      setVal([&#039;valor (r$)&#039;, &#039;valor&#039;], amountValM);
+      setVal([&#039;moeda&#039;, &#039;currency&#039;], curM);
+      setVal([&#039;método&#039;, &#039;metodo&#039;], dM.payment_method || &#039;PIX&#039;);
+      setVal([&#039;plataforma&#039;, &#039;platform&#039;], &#039;Mivvo&#039;);
+      setVal([&#039;nome&#039;, &#039;cliente&#039;], custM.name || &#039;&#039;);
+      setVal([&#039;whatsapp&#039;, &#039;telefone&#039;], custM.phone || &#039;&#039;);
+      setVal([&#039;email&#039;, &#039;e-mail&#039;], custM.email || &#039;&#039;);
+      setVal([&#039;documento&#039;, &#039;cpf&#039;], custM.document || &#039;&#039;);
+      setVal([&#039;src&#039;, &#039;sck&#039;], utmsM.src || utmsM.sck || &#039;&#039;);
+      setVal([&#039;utm_source&#039;, &#039;source&#039;], utmsM.source || utmsM.utm_source || &#039;&#039;);
+      setVal([&#039;utm_campaign&#039;, &#039;campaign&#039;], utmsM.campaign || utmsM.utm_campaign || &#039;&#039;);
+      setVal([&#039;utm_medium&#039;, &#039;medium&#039;], utmsM.medium || utmsM.utm_medium || &#039;&#039;);
+      setVal([&#039;utm_content&#039;, &#039;content&#039;], utmsM.content || utmsM.utm_content || &#039;&#039;);
 
       // 1. Disparo Meta CAPI para vendas aprovadas
       if (isAppM) {
         var capiResM = sendMetaCapiPurchase({
-          orderId: dM.sale_id || (&apos;miv_&apos; + Date.now()),
+          orderId: dM.sale_id || (&#039;miv_&#039; + Date.now()),
           amount: amountValM,
+          currency: curM,
           productName: prodNameM,
-          name: custM.name || &apos;&apos;,
-          email: custM.email || &apos;&apos;,
-          phone: custM.phone || &apos;&apos;,
-          clientIp: dM.client_ip || utmsM.client_ip || &apos;&apos;,
-          clientUserAgent: dM.client_user_agent || utmsM.client_user_agent || &apos;&apos;,
-          fbc: utmsM.fbc || utmsM.fbclid || &apos;&apos;,
-          fbp: utmsM.fbp || &apos;&apos;,
-          externalId: utmsM.external_id || dM.sale_id || (&apos;miv_&apos; + Date.now())
+          name: custM.name || &#039;&#039;,
+          email: custM.email || &#039;&#039;,
+          phone: custM.phone || &#039;&#039;,
+          clientIp: dM.client_ip || utmsM.client_ip || &#039;&#039;,
+          clientUserAgent: dM.client_user_agent || utmsM.client_user_agent || &#039;&#039;,
+          fbc: utmsM.fbc || utmsM.fbclid || &#039;&#039;,
+          fbp: utmsM.fbp || &#039;&#039;,
+          externalId: utmsM.external_id || dM.sale_id || (&#039;miv_&#039; + Date.now())
         });
-        setVal([&apos;meta capi&apos;, &apos;capi&apos;], capiResM.success ? &apos;Enviado (Purchase)&apos; : (&apos;Erro: &apos; + (capiResM.error || capiResM.code || capiResM.reason)));
+        setVal([&#039;meta capi&#039;, &#039;capi&#039;], capiResM.success ? &#039;Enviado (Purchase)&#039; : (&#039;Erro: &#039; + (capiResM.error || capiResM.code || capiResM.reason)));
 
         // 2. Liberação Automática no Firebase (30 dias)
         if (LIBERAR_FIREBASE_AUTOMATICO &amp;&amp; custM.email) {
           var fbResM = liberarAcessoFirebase30Dias(custM.email);
-          setVal([&apos;acesso app&apos;, &apos;resultado&apos;, &apos;firebase&apos;, &apos;status app&apos;], fbResM);
+          setVal([&#039;acesso app&#039;, &#039;resultado&#039;, &#039;firebase&#039;, &#039;status app&#039;], fbResM);
         }
       }
 
       sheet.appendRow(newRow);
-      return ContentService.createTextOutput(JSON.stringify({ status: &apos;success&apos;, platform: &apos;Mivvo&apos; })).setMimeType(ContentService.MimeType.JSON);
+      return ContentService.createTextOutput(JSON.stringify({ status: &#039;success&#039;, platform: &#039;Mivvo&#039; })).setMimeType(ContentService.MimeType.JSON);
     }
 
 
     // ==========================================
     // CASO B: WEBHOOK DA KIRVANO
     // ==========================================
-    if (data.sale_id || data.checkout_id || data.event === &apos;SALE_APPROVED&apos; || (data.fiscal &amp;&amp; data.fiscal.total_value !== undefined)) {
-      var isApprovedK = (data.status === &apos;APPROVED&apos; || data.event === &apos;SALE_APPROVED&apos; || data.event === &apos;ORDER_PAID&apos;);
-      var isWaitingK = (data.status === &apos;WAITING_PAYMENT&apos; || data.event === &apos;WAITING_PAYMENT&apos; || data.event === &apos;PIX_GENERATED&apos; || data.event === &apos;ORDER_WAITING_PAYMENT&apos;);
-      var statusStrK = isApprovedK ? &apos;approved&apos; : (isWaitingK ? &apos;waiting_payment&apos; : (data.status || &apos;&apos;));
-      var eventStrK = isApprovedK ? &apos;Venda_Aprovada&apos; : &apos;Aguardando_Pagamento&apos;;
+    if (data.sale_id || data.checkout_id || data.event === &#039;SALE_APPROVED&#039; || (data.fiscal &amp;&amp; data.fiscal.total_value !== undefined)) {
+      var isApprovedK = (data.status === &#039;APPROVED&#039; || data.event === &#039;SALE_APPROVED&#039; || data.event === &#039;ORDER_PAID&#039;);
+      var isWaitingK = (data.status === &#039;WAITING_PAYMENT&#039; || data.event === &#039;WAITING_PAYMENT&#039; || data.event === &#039;PIX_GENERATED&#039; || data.event === &#039;ORDER_WAITING_PAYMENT&#039;);
+      var statusStrK = isApprovedK ? &#039;approved&#039; : (isWaitingK ? &#039;waiting_payment&#039; : (data.status || &#039;&#039;));
+      var eventStrK = isApprovedK ? &#039;Venda_Aprovada&#039; : &#039;Aguardando_Pagamento&#039;;
       var custK = data.customer || {};
       var utmsK = data.utm || {};
-      var amountValK = (data.fiscal &amp;&amp; data.fiscal.total_value) || (data.total_price ? parseFloat(String(data.total_price).replace(/[^\d,\.]/g, &apos;&apos;).replace(&apos;,&apos;, &apos;.&apos;)) : 0);
-      var prodNameK = (data.products &amp;&amp; data.products[0] &amp;&amp; data.products[0].name) || &apos;Kirvano Oferta&apos;;
+      var amountValK = (data.fiscal &amp;&amp; data.fiscal.total_value) || (data.total_price ? parseFloat(String(data.total_price).replace(/[^\d,\.]/g, &#039;&#039;).replace(&#039;,&#039;, &#039;.&#039;)) : 0);
+      var prodNameK = (data.products &amp;&amp; data.products[0] &amp;&amp; data.products[0].name) || &#039;Kirvano Oferta&#039;;
 
-      setVal([&apos;sessão (id)&apos;, &apos;sessão&apos;, &apos;sessao&apos;], data.sale_id || (&apos;kirv_&apos; + Date.now()));
-      setVal([&apos;evento&apos;, &apos;event&apos;], eventStrK);
-      setVal([&apos;quiz / produto&apos;, &apos;produto&apos;], prodNameK);
-      setVal([&apos;status venda&apos;, &apos;status_venda&apos;, &apos;status&apos;], statusStrK);
-      setVal([&apos;valor (r$)&apos;, &apos;valor&apos;], amountValK);
-      setVal([&apos;método&apos;, &apos;metodo&apos;], data.payment_method || (data.payment &amp;&amp; data.payment.method) || &apos;PIX&apos;);
-      setVal([&apos;plataforma&apos;, &apos;platform&apos;], &apos;Kirvano&apos;);
-      setVal([&apos;nome&apos;, &apos;cliente&apos;], custK.name || &apos;&apos;);
-      setVal([&apos;whatsapp&apos;, &apos;telefone&apos;], custK.phone_number || &apos;&apos;);
-      setVal([&apos;email&apos;, &apos;e-mail&apos;], custK.email || &apos;&apos;);
-      setVal([&apos;documento&apos;, &apos;cpf&apos;], custK.document || &apos;&apos;);
-      setVal([&apos;src&apos;, &apos;sck&apos;], utmsK.src || utmsK.sck || &apos;&apos;);
-      setVal([&apos;utm_source&apos;, &apos;source&apos;], utmsK.utm_source || &apos;&apos;);
-      setVal([&apos;utm_campaign&apos;, &apos;campaign&apos;], utmsK.utm_campaign || &apos;&apos;);
-      setVal([&apos;utm_medium&apos;, &apos;medium&apos;], utmsK.utm_medium || &apos;&apos;);
-      setVal([&apos;utm_content&apos;, &apos;content&apos;], utmsK.utm_content || &apos;&apos;);
+      var curK = String(data.currency || (data.fiscal &amp;&amp; data.fiscal.currency) || (custK.phone_number &amp;&amp; String(custK.phone_number).indexOf(&#039;52&#039;) === 0 ? &#039;MXN&#039; : &#039;BRL&#039;)).toUpperCase().trim();
+      if (!curK || curK === &#039;UNDEFINED&#039; || curK === &#039;NULL&#039;) curK = &#039;BRL&#039;;
+
+      setVal([&#039;sessão (id)&#039;, &#039;sessão&#039;, &#039;sessao&#039;], data.sale_id || (&#039;kirv_&#039; + Date.now()));
+      setVal([&#039;evento&#039;, &#039;event&#039;], eventStrK);
+      setVal([&#039;quiz / produto&#039;, &#039;produto&#039;], prodNameK);
+      setVal([&#039;status venda&#039;, &#039;status_venda&#039;, &#039;status&#039;], statusStrK);
+      setVal([&#039;valor (r$)&#039;, &#039;valor&#039;], amountValK);
+      setVal([&#039;moeda&#039;, &#039;currency&#039;], curK);
+      setVal([&#039;método&#039;, &#039;metodo&#039;], data.payment_method || (data.payment &amp;&amp; data.payment.method) || &#039;PIX&#039;);
+      setVal([&#039;plataforma&#039;, &#039;platform&#039;], &#039;Kirvano&#039;);
+      setVal([&#039;nome&#039;, &#039;cliente&#039;], custK.name || &#039;&#039;);
+      setVal([&#039;whatsapp&#039;, &#039;telefone&#039;], custK.phone_number || &#039;&#039;);
+      setVal([&#039;email&#039;, &#039;e-mail&#039;], custK.email || &#039;&#039;);
+      setVal([&#039;documento&#039;, &#039;cpf&#039;], custK.document || &#039;&#039;);
+      setVal([&#039;src&#039;, &#039;sck&#039;], utmsK.src || utmsK.sck || &#039;&#039;);
+      setVal([&#039;utm_source&#039;, &#039;source&#039;], utmsK.utm_source || &#039;&#039;);
+      setVal([&#039;utm_campaign&#039;, &#039;campaign&#039;], utmsK.utm_campaign || &#039;&#039;);
+      setVal([&#039;utm_medium&#039;, &#039;medium&#039;], utmsK.utm_medium || &#039;&#039;);
+      setVal([&#039;utm_content&#039;, &#039;content&#039;], utmsK.utm_content || &#039;&#039;);
 
       // Disparo Meta CAPI para vendas aprovadas
       if (isApprovedK) {
@@ -2117,199 +2228,251 @@ function doPost(e) {
         var metaK = data.metadata || data.custom_fields || {};
         var trackingK = data.tracking || {};
         var capiResK = sendMetaCapiPurchase({
-          orderId: data.sale_id || (&apos;kirv_&apos; + Date.now()),
+          orderId: data.sale_id || (&#039;kirv_&#039; + Date.now()),
           amount: amountValK,
+          currency: curK,
           productName: prodNameK,
-          name: custK.name || &apos;&apos;,
-          email: custK.email || &apos;&apos;,
-          phone: custK.phone_number || &apos;&apos;,
-          zipCode: addrK.zip_code || addrK.cep || custK.zip_code || custK.cep || utmsK.cep || &apos;&apos;,
-          city: addrK.city || custK.city || utmsK.city || &apos;&apos;,
-          state: addrK.state || custK.state || utmsK.state || utmsK.uf || &apos;&apos;,
-          clientIp: data.client_ip || data.ip || trackingK.ip || utmsK.ip || &apos;&apos;,
-          clientUserAgent: data.client_user_agent || data.user_agent || trackingK.user_agent || utmsK.user_agent || &apos;&apos;,
-          fbc: utmsK.fbc || utmsK.fbclid || metaK.fbc || metaK.fbclid || data.fbc || &apos;&apos;,
-          fbp: utmsK.fbp || metaK.fbp || data.fbp || &apos;&apos;,
-          externalId: utmsK.external_id || metaK.external_id || data.sale_id || (&apos;kirv_&apos; + Date.now())
+          name: custK.name || &#039;&#039;,
+          email: custK.email || &#039;&#039;,
+          phone: custK.phone_number || &#039;&#039;,
+          zipCode: addrK.zip_code || addrK.cep || custK.zip_code || custK.cep || utmsK.cep || &#039;&#039;,
+          city: addrK.city || custK.city || utmsK.city || &#039;&#039;,
+          state: addrK.state || custK.state || utmsK.state || utmsK.uf || &#039;&#039;,
+          clientIp: data.client_ip || data.ip || trackingK.ip || utmsK.ip || &#039;&#039;,
+          clientUserAgent: data.client_user_agent || data.user_agent || trackingK.user_agent || utmsK.user_agent || &#039;&#039;,
+          fbc: utmsK.fbc || utmsK.fbclid || metaK.fbc || metaK.fbclid || data.fbc || &#039;&#039;,
+          fbp: utmsK.fbp || metaK.fbp || data.fbp || &#039;&#039;,
+          externalId: utmsK.external_id || metaK.external_id || data.sale_id || (&#039;kirv_&#039; + Date.now())
         });
-        setVal([&apos;meta capi&apos;, &apos;capi&apos;], capiResK.success ? &apos;Enviado (Purchase)&apos; : (&apos;Erro: &apos; + (capiResK.error || capiResK.code || capiResK.reason)));
+        setVal([&#039;meta capi&#039;, &#039;capi&#039;], capiResK.success ? &#039;Enviado (Purchase)&#039; : (&#039;Erro: &#039; + (capiResK.error || capiResK.code || capiResK.reason)));
 
         // Liberação Automática no Firebase (30 dias)
         if (LIBERAR_FIREBASE_AUTOMATICO &amp;&amp; custK.email) {
           var fbResK = liberarAcessoFirebase30Dias(custK.email);
-          setVal([&apos;acesso app&apos;, &apos;resultado&apos;, &apos;firebase&apos;, &apos;status app&apos;], fbResK);
+          setVal([&#039;acesso app&#039;, &#039;resultado&#039;, &#039;firebase&#039;, &#039;status app&#039;], fbResK);
         }
       }
 
       sheet.appendRow(newRow);
-      return ContentService.createTextOutput(JSON.stringify({ status: &apos;success&apos;, platform: &apos;Kirvano&apos; })).setMimeType(ContentService.MimeType.JSON);
+      return ContentService.createTextOutput(JSON.stringify({ status: &#039;success&#039;, platform: &#039;Kirvano&#039; })).setMimeType(ContentService.MimeType.JSON);
     }
 
 
     // ==========================================
     // CASO C: WEBHOOK DA PERFECTPAY
     // ==========================================
-    if (data.sale_status_enum_key !== undefined || data.sale_amount !== undefined || (data.code &amp;&amp; String(data.code).indexOf(&apos;PP&apos;) === 0) || data.webhook_owner) {
-      var isAppP = (data.sale_status_enum === 2 || data.sale_status_enum_key === &apos;approved&apos; || data.sale_status_detail === &apos;approved&apos;);
-      var isWaitP = (data.sale_status_enum === 1 || data.sale_status_enum_key === &apos;waiting_payment&apos; || data.sale_status_enum_key === &apos;billet_printed&apos; || data.sale_status_detail === &apos;waiting_payment&apos;);
-      var statusStrP = isAppP ? &apos;approved&apos; : (isWaitP ? &apos;waiting_payment&apos; : (data.sale_status_enum_key || &apos;&apos;));
-      var eventStrP = isAppP ? &apos;Venda_Aprovada&apos; : &apos;Aguardando_Pagamento&apos;;
+    if (data.sale_status_enum_key !== undefined || data.sale_amount !== undefined || (data.code &amp;&amp; String(data.code).indexOf(&#039;PP&#039;) === 0) || data.webhook_owner) {
+      var isAppP = (data.sale_status_enum === 2 || data.sale_status_enum_key === &#039;approved&#039; || data.sale_status_detail === &#039;approved&#039;);
+      var isWaitP = (data.sale_status_enum === 1 || data.sale_status_enum_key === &#039;waiting_payment&#039; || data.sale_status_enum_key === &#039;billet_printed&#039; || data.sale_status_detail === &#039;waiting_payment&#039;);
+      var statusStrP = isAppP ? &#039;approved&#039; : (isWaitP ? &#039;waiting_payment&#039; : (data.sale_status_enum_key || &#039;&#039;));
+      var eventStrP = isAppP ? &#039;Venda_Aprovada&#039; : &#039;Aguardando_Pagamento&#039;;
       var custP = data.customer || {};
       var metaP = data.metadata || {};
       var amountValP = data.sale_amount || (data.plan &amp;&amp; data.plan.sale_amount) || 0;
-      var prodNameP = (data.product &amp;&amp; data.product.name) || (data.plan &amp;&amp; data.plan.name) || &apos;PerfectPay Oferta&apos;;
-      var phoneP = custP.phone_formated_ddi || custP.phone_formated || custP.phone_number || &apos;&apos;;
+      var prodNameP = (data.product &amp;&amp; data.product.name) || (data.plan &amp;&amp; data.plan.name) || &#039;PerfectPay Oferta&#039;;
+      var phoneP = custP.phone_formated_ddi || custP.phone_formated || custP.phone_number || &#039;&#039;;
 
-      setVal([&apos;sessão (id)&apos;, &apos;sessão&apos;, &apos;sessao&apos;], data.code || (&apos;pp_&apos; + Date.now()));
-      setVal([&apos;evento&apos;, &apos;event&apos;], eventStrP);
-      setVal([&apos;quiz / produto&apos;, &apos;produto&apos;], prodNameP);
-      setVal([&apos;status venda&apos;, &apos;status_venda&apos;, &apos;status&apos;], statusStrP);
-      setVal([&apos;valor (r$)&apos;, &apos;valor&apos;], amountValP);
-      setVal([&apos;método&apos;, &apos;metodo&apos;], data.payment_type_enum_key || &apos;pix&apos;);
-      setVal([&apos;plataforma&apos;, &apos;platform&apos;], &apos;PerfectPay&apos;);
-      setVal([&apos;nome&apos;, &apos;cliente&apos;], custP.full_name || custP.name || &apos;&apos;);
-      setVal([&apos;whatsapp&apos;, &apos;telefone&apos;], phoneP);
-      setVal([&apos;email&apos;, &apos;e-mail&apos;], custP.email || &apos;&apos;);
-      setVal([&apos;documento&apos;, &apos;cpf&apos;], custP.identification_number || &apos;&apos;);
-      setVal([&apos;src&apos;, &apos;sck&apos;], metaP.src || metaP.sck || &apos;&apos;);
-      setVal([&apos;utm_source&apos;, &apos;source&apos;], metaP.utm_source || &apos;&apos;);
-      setVal([&apos;utm_campaign&apos;, &apos;campaign&apos;], metaP.utm_campaign || &apos;&apos;);
-      setVal([&apos;utm_medium&apos;, &apos;medium&apos;], metaP.utm_medium || &apos;&apos;);
-      setVal([&apos;utm_content&apos;, &apos;content&apos;], metaP.utm_content || &apos;&apos;);
+      var curP = String(data.currency || (data.plan &amp;&amp; data.plan.currency) || (phoneP &amp;&amp; String(phoneP).indexOf(&#039;52&#039;) === 0 ? &#039;MXN&#039; : &#039;BRL&#039;)).toUpperCase().trim();
+      if (!curP || curP === &#039;UNDEFINED&#039; || curP === &#039;NULL&#039;) curP = &#039;BRL&#039;;
+
+      setVal([&#039;sessão (id)&#039;, &#039;sessão&#039;, &#039;sessao&#039;], data.code || (&#039;pp_&#039; + Date.now()));
+      setVal([&#039;evento&#039;, &#039;event&#039;], eventStrP);
+      setVal([&#039;quiz / produto&#039;, &#039;produto&#039;], prodNameP);
+      setVal([&#039;status venda&#039;, &#039;status_venda&#039;, &#039;status&#039;], statusStrP);
+      setVal([&#039;valor (r$)&#039;, &#039;valor&#039;], amountValP);
+      setVal([&#039;moeda&#039;, &#039;currency&#039;], curP);
+      setVal([&#039;método&#039;, &#039;metodo&#039;], data.payment_type_enum_key || &#039;pix&#039;);
+      setVal([&#039;plataforma&#039;, &#039;platform&#039;], &#039;PerfectPay&#039;);
+      setVal([&#039;nome&#039;, &#039;cliente&#039;], custP.full_name || custP.name || &#039;&#039;);
+      setVal([&#039;whatsapp&#039;, &#039;telefone&#039;], phoneP);
+      setVal([&#039;email&#039;, &#039;e-mail&#039;], custP.email || &#039;&#039;);
+      setVal([&#039;documento&#039;, &#039;cpf&#039;], custP.identification_number || &#039;&#039;);
+      setVal([&#039;src&#039;, &#039;sck&#039;], metaP.src || metaP.sck || &#039;&#039;);
+      setVal([&#039;utm_source&#039;, &#039;source&#039;], metaP.utm_source || &#039;&#039;);
+      setVal([&#039;utm_campaign&#039;, &#039;campaign&#039;], metaP.utm_campaign || &#039;&#039;);
+      setVal([&#039;utm_medium&#039;, &#039;medium&#039;], metaP.utm_medium || &#039;&#039;);
+      setVal([&#039;utm_content&#039;, &#039;content&#039;], metaP.utm_content || &#039;&#039;);
 
       // Disparo Meta CAPI para vendas aprovadas
       if (isAppP) {
         var paramsP = data.params || data.query_params || {};
         var capiResP = sendMetaCapiPurchase({
-          orderId: data.code || (&apos;pp_&apos; + Date.now()),
+          orderId: data.code || (&#039;pp_&#039; + Date.now()),
           amount: amountValP,
+          currency: curP,
           productName: prodNameP,
-          name: custP.full_name || custP.name || &apos;&apos;,
-          email: custP.email || &apos;&apos;,
+          name: custP.full_name || custP.name || &#039;&#039;,
+          email: custP.email || &#039;&#039;,
           phone: phoneP,
-          zipCode: custP.address_zip_code || custP.zip_code || custP.cep || metaP.zip_code || metaP.cep || &apos;&apos;,
-          city: custP.address_city || custP.city || metaP.city || &apos;&apos;,
-          state: custP.address_state || custP.state || custP.uf || metaP.state || &apos;&apos;,
-          dob: custP.birth_date || custP.dob || custP.data_nascimento || &apos;&apos;,
-          clientIp: data.client_ip || data.ip || metaP.client_ip || metaP.ip || &apos;&apos;,
-          clientUserAgent: data.client_user_agent || data.user_agent || metaP.client_user_agent || metaP.user_agent || &apos;&apos;,
-          fbc: metaP.fbc || metaP.fbclid || paramsP.fbc || paramsP.fbclid || data.fbc || &apos;&apos;,
-          fbp: metaP.fbp || paramsP.fbp || data.fbp || &apos;&apos;,
-          externalId: metaP.external_id || metaP.session_id || metaP.sessionId || paramsP.external_id || data.code || (&apos;pp_&apos; + Date.now())
+          zipCode: custP.address_zip_code || custP.zip_code || custP.cep || metaP.zip_code || metaP.cep || &#039;&#039;,
+          city: custP.address_city || custP.city || metaP.city || &#039;&#039;,
+          state: custP.address_state || custP.state || custP.uf || metaP.state || &#039;&#039;,
+          dob: custP.birth_date || custP.dob || custP.data_nascimento || &#039;&#039;,
+          clientIp: data.client_ip || data.ip || metaP.client_ip || metaP.ip || &#039;&#039;,
+          clientUserAgent: data.client_user_agent || data.user_agent || metaP.client_user_agent || metaP.user_agent || &#039;&#039;,
+          fbc: metaP.fbc || metaP.fbclid || paramsP.fbc || paramsP.fbclid || data.fbc || &#039;&#039;,
+          fbp: metaP.fbp || paramsP.fbp || data.fbp || &#039;&#039;,
+          externalId: metaP.external_id || metaP.session_id || metaP.sessionId || paramsP.external_id || data.code || (&#039;pp_&#039; + Date.now())
         });
-        setVal([&apos;meta capi&apos;, &apos;capi&apos;], capiResP.success ? &apos;Enviado (Purchase)&apos; : (&apos;Erro: &apos; + (capiResP.error || capiResP.code || capiResP.reason)));
+        setVal([&#039;meta capi&#039;, &#039;capi&#039;], capiResP.success ? &#039;Enviado (Purchase)&#039; : (&#039;Erro: &#039; + (capiResP.error || capiResP.code || capiResP.reason)));
 
         // Liberação Automática no Firebase (30 dias)
         if (LIBERAR_FIREBASE_AUTOMATICO &amp;&amp; custP.email) {
           var fbResP = liberarAcessoFirebase30Dias(custP.email);
-          setVal([&apos;acesso app&apos;, &apos;resultado&apos;, &apos;firebase&apos;, &apos;status app&apos;], fbResP);
+          setVal([&#039;acesso app&#039;, &#039;resultado&#039;, &#039;firebase&#039;, &#039;status app&#039;], fbResP);
         }
       }
 
       sheet.appendRow(newRow);
-      return ContentService.createTextOutput(JSON.stringify({ status: &apos;success&apos;, platform: &apos;PerfectPay&apos; })).setMimeType(ContentService.MimeType.JSON);
+      return ContentService.createTextOutput(JSON.stringify({ status: &#039;success&#039;, platform: &#039;PerfectPay&#039; })).setMimeType(ContentService.MimeType.JSON);
     }
 
 
     // ==========================================
     // CASO D: WEBHOOK DA HOTMART (Webhook 2.0)
     // ==========================================
-    if (data.event &amp;&amp; (String(data.event).indexOf(&apos;PURCHASE_&apos;) === 0 || String(data.event).indexOf(&apos;SWITCH_PLAN&apos;) === 0 || (data.data &amp;&amp; data.data.buyer &amp;&amp; data.data.purchase))) {
+    if (data.event &amp;&amp; (String(data.event).indexOf(&#039;PURCHASE_&#039;) === 0 || String(data.event).indexOf(&#039;SWITCH_PLAN&#039;) === 0 || (data.data &amp;&amp; data.data.buyer &amp;&amp; data.data.purchase))) {
       var dH = data.data || {};
       var purH = dH.purchase || {};
       var buyH = dH.buyer || {};
       var prodH = dH.product || {};
       var origH = dH.origin || purH.origin || {};
 
-      var isAppH = (data.event === &apos;PURCHASE_APPROVED&apos; || data.event === &apos;PURCHASE_COMPLETE&apos; || purH.status === &apos;APPROVED&apos; || purH.status === &apos;COMPLETE&apos;);
-      var isWaitH = (data.event === &apos;PURCHASE_WAITING_PAYMENT&apos; || data.event === &apos;PURCHASE_BILLET_PRINTED&apos; || purH.status === &apos;WAITING_PAYMENT&apos; || purH.status === &apos;BILLET_PRINTED&apos;);
-      var statusStrH = isAppH ? &apos;approved&apos; : (isWaitH ? &apos;waiting_payment&apos; : (purH.status || data.event || &apos;&apos;));
-      var eventStrH = isAppH ? &apos;Venda_Aprovada&apos; : &apos;Aguardando_Pagamento&apos;;
+      var isAppH = (data.event === &#039;PURCHASE_APPROVED&#039; || data.event === &#039;PURCHASE_COMPLETE&#039; || purH.status === &#039;APPROVED&#039; || purH.status === &#039;COMPLETE&#039;);
+      var isWaitH = (data.event === &#039;PURCHASE_WAITING_PAYMENT&#039; || data.event === &#039;PURCHASE_BILLET_PRINTED&#039; || purH.status === &#039;WAITING_PAYMENT&#039; || purH.status === &#039;BILLET_PRINTED&#039;);
+      var statusStrH = isAppH ? &#039;approved&#039; : (isWaitH ? &#039;waiting_payment&#039; : (purH.status || data.event || &#039;&#039;));
+      var eventStrH = isAppH ? &#039;Venda_Aprovada&#039; : &#039;Aguardando_Pagamento&#039;;
 
       var amountValH = (purH.price &amp;&amp; purH.price.value !== undefined) ? Number(purH.price.value) : (Number(purH.original_offer_price &amp;&amp; purH.original_offer_price.value) || 0);
-      var prodNameH = (prodH.name) || (purH.offer &amp;&amp; purH.offer.name) || &apos;Hotmart Oferta&apos;;
-      var payMethodH = (purH.payment &amp;&amp; purH.payment.type) || &apos;HOTMART&apos;;
-      var phoneH = buyH.checkout_phone || buyH.phone || &apos;&apos;;
+      var prodNameH = (prodH.name) || (purH.offer &amp;&amp; purH.offer.name) || &#039;Hotmart Oferta&#039;;
+      var payMethodH = (purH.payment &amp;&amp; purH.payment.type) || &#039;HOTMART&#039;;
+      var phoneH = buyH.checkout_phone || buyH.phone || &#039;&#039;;
 
-      setVal([&apos;sessão (id)&apos;, &apos;sessão&apos;, &apos;sessao&apos;], purH.transaction || (&apos;hot_&apos; + Date.now()));
-      setVal([&apos;evento&apos;, &apos;event&apos;], eventStrH);
-      setVal([&apos;quiz / produto&apos;, &apos;produto&apos;], prodNameH);
-      setVal([&apos;status venda&apos;, &apos;status_venda&apos;, &apos;status&apos;], statusStrH);
-      setVal([&apos;valor (r$)&apos;, &apos;valor&apos;], amountValH);
-      setVal([&apos;método&apos;, &apos;metodo&apos;], payMethodH);
-      setVal([&apos;plataforma&apos;, &apos;platform&apos;], &apos;Hotmart&apos;);
-      setVal([&apos;nome&apos;, &apos;cliente&apos;], buyH.name || ([buyH.first_name, buyH.last_name].filter(Boolean).join(&apos; &apos;)) || &apos;&apos;);
-      setVal([&apos;whatsapp&apos;, &apos;telefone&apos;], phoneH);
-      setVal([&apos;email&apos;, &apos;e-mail&apos;], buyH.email || &apos;&apos;);
-      setVal([&apos;documento&apos;, &apos;cpf&apos;], buyH.document || &apos;&apos;);
-      setVal([&apos;src&apos;, &apos;sck&apos;], origH.src || origH.sck || &apos;&apos;);
-      setVal([&apos;utm_source&apos;, &apos;source&apos;], origH.src || origH.utm_source || &apos;&apos;);
-      setVal([&apos;utm_campaign&apos;, &apos;campaign&apos;], origH.utm_campaign || &apos;&apos;);
-      setVal([&apos;utm_medium&apos;, &apos;medium&apos;], origH.utm_medium || &apos;&apos;);
-      setVal([&apos;utm_content&apos;, &apos;content&apos;], origH.sck || origH.utm_content || &apos;&apos;);
+      var curH = (purH.price &amp;&amp; (purH.price.currency_code_from || purH.price.currency_value)) || 
+                 (purH.original_offer_price &amp;&amp; purH.original_offer_price.currency_value) || 
+                 (prodH &amp;&amp; prodH.currency) || 
+                 (data.currency) || 
+                 (phoneH &amp;&amp; (String(phoneH).indexOf(&#039;52&#039;) === 0 || String(phoneH).indexOf(&#039;+52&#039;) === 0) ? &#039;MXN&#039; : &#039;BRL&#039;);
+      curH = String(curH).toUpperCase().trim();
+      if (!curH || curH === &#039;UNDEFINED&#039; || curH === &#039;NULL&#039;) curH = &#039;BRL&#039;;
+
+      setVal([&#039;sessão (id)&#039;, &#039;sessão&#039;, &#039;sessao&#039;], purH.transaction || (&#039;hot_&#039; + Date.now()));
+      setVal([&#039;evento&#039;, &#039;event&#039;], eventStrH);
+      setVal([&#039;quiz / produto&#039;, &#039;produto&#039;], prodNameH);
+      setVal([&#039;status venda&#039;, &#039;status_venda&#039;, &#039;status&#039;], statusStrH);
+      setVal([&#039;valor (r$)&#039;, &#039;valor&#039;], amountValH);
+      setVal([&#039;moeda&#039;, &#039;currency&#039;], curH);
+      setVal([&#039;método&#039;, &#039;metodo&#039;], payMethodH);
+      setVal([&#039;plataforma&#039;, &#039;platform&#039;], &#039;Hotmart&#039;);
+      setVal([&#039;nome&#039;, &#039;cliente&#039;], buyH.name || ([buyH.first_name, buyH.last_name].filter(Boolean).join(&#039; &#039;)) || &#039;&#039;);
+      setVal([&#039;whatsapp&#039;, &#039;telefone&#039;], phoneH);
+      setVal([&#039;email&#039;, &#039;e-mail&#039;], buyH.email || &#039;&#039;);
+      setVal([&#039;documento&#039;, &#039;cpf&#039;], buyH.document || &#039;&#039;);
+      setVal([&#039;src&#039;, &#039;sck&#039;], origH.src || origH.sck || &#039;&#039;);
+      setVal([&#039;utm_source&#039;, &#039;source&#039;], origH.src || origH.utm_source || &#039;&#039;);
+      setVal([&#039;utm_campaign&#039;, &#039;campaign&#039;], origH.utm_campaign || &#039;&#039;);
+      setVal([&#039;utm_medium&#039;, &#039;medium&#039;], origH.utm_medium || &#039;&#039;);
+      setVal([&#039;utm_content&#039;, &#039;content&#039;], origH.sck || origH.utm_content || &#039;&#039;);
 
       // 1. Disparo Meta CAPI para vendas aprovadas
       if (isAppH) {
         var capiResH = sendMetaCapiPurchase({
-          orderId: purH.transaction || (&apos;hot_&apos; + Date.now()),
+          orderId: purH.transaction || (&#039;hot_&#039; + Date.now()),
           amount: amountValH,
+          currency: curH,
           productName: prodNameH,
-          name: buyH.name || ([buyH.first_name, buyH.last_name].filter(Boolean).join(&apos; &apos;)) || &apos;&apos;,
-          email: buyH.email || &apos;&apos;,
+          name: buyH.name || ([buyH.first_name, buyH.last_name].filter(Boolean).join(&#039; &#039;)) || &#039;&#039;,
+          email: buyH.email || &#039;&#039;,
           phone: phoneH,
-          clientIp: purH.client_ip || &apos;&apos;,
-          clientUserAgent: purH.client_user_agent || &apos;&apos;,
-          fbc: origH.fbc || origH.fbclid || &apos;&apos;,
-          fbp: origH.fbp || &apos;&apos;,
-          externalId: purH.transaction || (&apos;hot_&apos; + Date.now())
+          clientIp: purH.client_ip || &#039;&#039;,
+          clientUserAgent: purH.client_user_agent || &#039;&#039;,
+          fbc: origH.fbc || origH.fbclid || &#039;&#039;,
+          fbp: origH.fbp || &#039;&#039;,
+          externalId: purH.transaction || (&#039;hot_&#039; + Date.now())
         });
-        setVal([&apos;meta capi&apos;, &apos;capi&apos;], capiResH.success ? &apos;Enviado (Purchase)&apos; : (&apos;Erro: &apos; + (capiResH.error || capiResH.code || capiResH.reason)));
+        setVal([&#039;meta capi&#039;, &#039;capi&#039;], capiResH.success ? &#039;Enviado (Purchase)&#039; : (&#039;Erro: &#039; + (capiResH.error || capiResH.code || capiResH.reason)));
 
         // 2. Liberação Automática no Firebase (30 dias)
         if (LIBERAR_FIREBASE_AUTOMATICO &amp;&amp; buyH.email) {
           var fbResH = liberarAcessoFirebase30Dias(buyH.email);
-          setVal([&apos;acesso app&apos;, &apos;resultado&apos;, &apos;firebase&apos;, &apos;status app&apos;], fbResH);
+          setVal([&#039;acesso app&#039;, &#039;resultado&#039;, &#039;firebase&#039;, &#039;status app&#039;], fbResH);
         }
       }
 
       sheet.appendRow(newRow);
-      return ContentService.createTextOutput(JSON.stringify({ status: &apos;success&apos;, platform: &apos;Hotmart&apos; })).setMimeType(ContentService.MimeType.JSON);
+      return ContentService.createTextOutput(JSON.stringify({ status: &#039;success&#039;, platform: &#039;Hotmart&#039; })).setMimeType(ContentService.MimeType.JSON);
     }
-
 
     // ==========================================
     // CASO E: DISPARO PADRÃO DO QUIZFORGE
     // ==========================================
     var utms = data.utms || {};
-    var src = data.src || utms.src || utms.sck || utms.SRC || utms.SCK || &apos;&apos;;
-    setVal([&apos;sessão (id)&apos;, &apos;sessão&apos;, &apos;sessao&apos;], data.sessionId || &apos;&apos;);
-    setVal([&apos;evento&apos;, &apos;event&apos;], data.event || &apos;&apos;);
-    setVal([&apos;quiz / produto&apos;, &apos;quiz&apos;], data.quizTitle || &apos;&apos;);
-    setVal([&apos;etapa&apos;, &apos;step&apos;], (data.data &amp;&amp; data.data.stepIndex) || &apos;&apos;);
-    setVal([&apos;nome&apos;, &apos;leadname&apos;], (data.lead &amp;&amp; data.lead.name) || &apos;&apos;);
-    setVal([&apos;whatsapp&apos;, &apos;telefone&apos;, &apos;phone&apos;], (data.lead &amp;&amp; data.lead.whatsapp) || &apos;&apos;);
-    setVal([&apos;email&apos;, &apos;e-mail&apos;], (data.lead &amp;&amp; data.lead.email) || &apos;&apos;);
-    setVal([&apos;src&apos;, &apos;sck&apos;], src);
-    setVal([&apos;utm_source&apos;, &apos;source&apos;], data.utm_source || utms.utm_source || &apos;&apos;);
-    setVal([&apos;utm_campaign&apos;, &apos;campaign&apos;], data.utm_campaign || utms.utm_campaign || &apos;&apos;);
-    setVal([&apos;utm_medium&apos;, &apos;medium&apos;], data.utm_medium || utms.utm_medium || &apos;&apos;);
-    setVal([&apos;utm_content&apos;, &apos;content&apos;], data.utm_content || utms.utm_content || &apos;&apos;);
+    var src = data.src || utms.src || utms.sck || utms.SRC || utms.SCK || &#039;&#039;;
+    var uSource = data.utm_source || utms.utm_source || data.source || utms.source || &#039;&#039;;
+    var uCampaign = data.utm_campaign || utms.utm_campaign || data.campaign || utms.campaign || &#039;&#039;;
+    var uMedium = data.utm_medium || utms.utm_medium || data.medium || utms.medium || &#039;&#039;;
+    var uContent = data.utm_content || utms.utm_content || data.content || utms.content || &#039;&#039;;
 
-    // Filtro inteligente de Bots de Verificação da Meta (Facebook_Right_Column)
+    // Se o link do anúncio passou apenas &#039;src&#039; sem as UTMs tradicionais preenchidas, extrai automaticamente:
+    if (src &amp;&amp; (!uSource || !uCampaign)) {
+      if (src.indexOf(&#039;|&#039;) !== -1) {
+        var parts = src.split(&#039;|&#039;);
+        if (!uCampaign &amp;&amp; parts[0]) uCampaign = parts[0].trim();
+        if (!uMedium &amp;&amp; parts[1]) uMedium = parts[1].trim();
+        if (!uContent &amp;&amp; parts[2]) uContent = parts[2].trim();
+        if (!uSource &amp;&amp; parts[3]) uSource = parts[3].trim();
+      }
+      if (!uSource) uSource = src;
+      if (!uCampaign) uCampaign = src;
+    }
+
+    var qCur = String(data.currency || (data.country === &#039;MX&#039; ? &#039;MXN&#039; : &#039;&#039;) || ((data.lead &amp;&amp; data.lead.whatsapp &amp;&amp; String(data.lead.whatsapp).indexOf(&#039;52&#039;) === 0) ? &#039;MXN&#039; : &#039;BRL&#039;)).toUpperCase();
+    setVal([&#039;moeda&#039;, &#039;currency&#039;], qCur);
+    setVal([&#039;sessão (id)&#039;, &#039;sessão&#039;, &#039;sessao&#039;], data.sessionId || &#039;&#039;);
+    setVal([&#039;evento&#039;, &#039;event&#039;], data.event || &#039;&#039;);
+    setVal([&#039;quiz / produto&#039;, &#039;quiz&#039;], data.quizTitle || &#039;&#039;);
+    setVal([&#039;etapa&#039;, &#039;step&#039;], (data.data &amp;&amp; data.data.stepIndex) || &#039;&#039;);
+    setVal([&#039;nome&#039;, &#039;leadname&#039;], (data.lead &amp;&amp; data.lead.name) || &#039;&#039;);
+    setVal([&#039;whatsapp&#039;, &#039;telefone&#039;, &#039;phone&#039;], (data.lead &amp;&amp; data.lead.whatsapp) || &#039;&#039;);
+    setVal([&#039;email&#039;, &#039;e-mail&#039;], (data.lead &amp;&amp; data.lead.email) || &#039;&#039;);
+    setVal([&#039;src&#039;, &#039;sck&#039;], src);
+    setVal([&#039;utm_source&#039;, &#039;source&#039;], uSource);
+    setVal([&#039;utm_campaign&#039;, &#039;campaign&#039;], uCampaign);
+    setVal([&#039;utm_medium&#039;, &#039;medium&#039;], uMedium);
+    setVal([&#039;utm_content&#039;, &#039;content&#039;], uContent);
+
+    // Filtro inteligente de Bots de Verificação da Meta e Scanners Headless
+    var uaClean = String(data.client_user_agent || data.userAgent || (data.data &amp;&amp; data.data.userAgent) || &#039;&#039;).toLowerCase();
+    var botUaPatterns = [
+      &#039;facebookexternalhit&#039;, &#039;facebot&#039;, &#039;meta-externalagent&#039;, &#039;meta-externalfetcher&#039;,
+      &#039;facebookcatalog&#039;, &#039;meta-webindexer&#039;, &#039;googlebot&#039;, &#039;bingbot&#039;, &#039;yandexbot&#039;,
+      &#039;baiduspider&#039;, &#039;bytespider&#039;, &#039;headless&#039;, &#039;phantomjs&#039;, &#039;puppeteer&#039;, &#039;selenium&#039;,
+      &#039;crawler&#039;, &#039;spider&#039;
+    ];
+    var isBotUa = botUaPatterns.some(function(sig) { return uaClean.indexOf(sig) !== -1; });
     var srcClean = String(src).toLowerCase();
-    var isRightColumnBot = (srcClean.indexOf(&apos;facebook_right_column&apos;) !== -1 || srcClean.indexOf(&apos;right_column&apos;) !== -1 || data.isBot === true);
-    if (isRightColumnBot &amp;&amp; (data.event === &apos;PageView&apos; || data.event === &apos;page_view&apos;)) {
-      setVal([&apos;evento&apos;, &apos;event&apos;], &apos;Bot_Meta&apos;);
-      setVal([&apos;status venda&apos;, &apos;status_venda&apos;], &apos;bot_ignorado&apos;);
+    var isBotParam = (
+      srcClean.indexOf(&#039;facebook_right_column&#039;) !== -1 ||
+      srcClean.indexOf(&#039;right_column&#039;) !== -1 ||
+      srcClean.indexOf(&#039;bot&#039;) !== -1 ||
+      srcClean.indexOf(&#039;crawler&#039;) !== -1 ||
+      srcClean.indexOf(&#039;preview&#039;) !== -1 ||
+      data.isBot === true
+    );
+
+    if (isBotUa || isBotParam) {
+      setVal([&#039;evento&#039;, &#039;event&#039;], &#039;Bot_Meta&#039;);
+      setVal([&#039;status venda&#039;, &#039;status_venda&#039;], &#039;bot_ignorado&#039;);
+      setVal([&#039;quiz / produto&#039;, &#039;quiz&#039;], (data.quizTitle || &#039;Quiz&#039;) + &#039; [Bot Meta Ignorado]&#039;);
       sheet.appendRow(newRow);
-      return ContentService.createTextOutput(JSON.stringify({ status: &apos;ignored_bot&apos; })).setMimeType(ContentService.MimeType.JSON);
+      return ContentService.createTextOutput(JSON.stringify({ status: &#039;ignored_bot&#039; })).setMimeType(ContentService.MimeType.JSON);
     }
 
     sheet.appendRow(newRow);
-    return ContentService.createTextOutput(JSON.stringify({ status: &apos;success&apos;, platform: &apos;QuizForge&apos; })).setMimeType(ContentService.MimeType.JSON);
+    return ContentService.createTextOutput(JSON.stringify({ status: &#039;success&#039;, platform: &#039;QuizForge&#039; })).setMimeType(ContentService.MimeType.JSON);
 
   } catch (err) {
-    return ContentService.createTextOutput(JSON.stringify({ status: &apos;error&apos;, message: err.toString() })).setMimeType(ContentService.MimeType.JSON);
+    return ContentService.createTextOutput(JSON.stringify({ status: &#039;error&#039;, message: err.toString() })).setMimeType(ContentService.MimeType.JSON);
   }
 }
 </pre>
