@@ -728,6 +728,7 @@
         }
 
         const quiz = this.quizzes.find(q => q.id === quizId);
+        this.activeQuiz = quiz;
         if (quiz && quiz.recovery) {
           this.settings.recoveryCountry = quiz.recovery.country || 'BR';
           this.settings.recoveryDdi = quiz.recovery.ddi || (quiz.recovery.country === 'MX' ? '52' : '55');
@@ -975,7 +976,9 @@
         try {
           const cleanUrl = this.settings.sheetUrl.trim().replace(/^http:\/\//i, 'https://');
           const sep = cleanUrl.indexOf('?') !== -1 ? '&' : '?';
-          const fetchUrl = `${cleanUrl}${sep}action=getMetrics&filter=${this.filter}&startDate=${this.startDate}&endDate=${this.endDate}&date=${this.startDate}&nocache=${Date.now()}`;
+          const quizCountry = (this.activeQuiz && this.activeQuiz.recovery && this.activeQuiz.recovery.country) || (this.settings && this.settings.recoveryCountry) || 'BR';
+          const quizCurrency = (quizCountry === 'MX') ? 'MXN' : ((this.activeQuiz && this.activeQuiz.currency) || 'BRL');
+          const fetchUrl = `${cleanUrl}${sep}action=getMetrics&filter=${this.filter}&startDate=${this.startDate}&endDate=${this.endDate}&date=${this.startDate}&country=${encodeURIComponent(quizCountry)}&currency=${encodeURIComponent(quizCurrency)}&nocache=${Date.now()}`;
 
           const res = await fetch(fetchUrl);
           if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -1055,12 +1058,32 @@
         };
       },
 
-      renderUI() {
-        const formatBRL = (val) => Number(val || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+      formatCurrency(val, orderOrCurrency = null) {
+        let isMx = false;
+        if (typeof orderOrCurrency === 'string') {
+          isMx = orderOrCurrency.toUpperCase() === 'MXN' || orderOrCurrency.toUpperCase() === 'MX';
+        } else if (orderOrCurrency && typeof orderOrCurrency === 'object') {
+          isMx = orderOrCurrency.currency === 'MXN' || orderOrCurrency.country === 'MX' || (orderOrCurrency.whatsapp && String(orderOrCurrency.whatsapp).startsWith('52'));
+        }
+        if (!isMx) {
+          isMx = (this.settings && this.settings.recoveryCountry === 'MX') ||
+                 (this.settings && this.settings.recoveryDdi === '52') ||
+                 (this.activeQuiz && this.activeQuiz.recovery && this.activeQuiz.recovery.country === 'MX') ||
+                 (this.activeQuiz && this.activeQuiz.currency === 'MXN');
+        }
+        const num = Number(val || 0);
+        if (isMx) {
+          return '$ ' + num.toFixed(2) + ' MXN';
+        }
+        return num.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+      },
 
-        document.getElementById('card-approved-revenue').innerText = formatBRL(this.data.revenueApproved);
+      renderUI() {
+
+
+        document.getElementById('card-approved-revenue').innerText = this.formatCurrency(this.data.revenueApproved);
         document.getElementById('card-approved-count').innerText = this.data.totalSalesApproved || 0;
-        document.getElementById('card-pending-revenue').innerText = formatBRL(this.data.revenuePending);
+        document.getElementById('card-pending-revenue').innerText = this.formatCurrency(this.data.revenuePending);
         document.getElementById('card-pending-count').innerText = this.data.totalSalesPending || 0;
 
         document.getElementById('metric-starts').innerText = this.data.totalStarts || 0;
@@ -1139,7 +1162,7 @@
             cleanPhone = ddi + cleanPhone;
           }
 
-          const valFormatted = Number(order.amount || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+          const valFormatted = order.amountFormatted || this.formatCurrency(order.amount, order);
           let msg = this.settings.whatsappTemplate || "";
           msg = msg.replace(/\{{1,2}\s*(nome|primeiro_nome|primeironome|cliente|name|first_name)\s*\}{1,2}/gi, firstName);
           msg = msg.replace(/\{{1,2}\s*(nome_completo|nomecompleto|full_name)\s*\}{1,2}/gi, rawName);
@@ -1149,9 +1172,10 @@
 
           const isPaid = ['approved', 'aprovado', 'paid'].includes(String(order.status || '').toLowerCase());
           const badgeClass = isPaid ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-amber-500/10 text-amber-400 border-amber-500/20';
-          const badgeText = isPaid ? 'Aprovado ✅' : 'Aguardando PIX ⏳';
+          const isMx = this.settings.recoveryCountry === 'MX' || (this.settings.recoveryDdi === '52') || order.currency === 'MXN';
+          const badgeText = isPaid ? 'Aprovado ✅' : (isMx ? 'Pendiente ⏳' : 'Aguardando PIX ⏳');
 
-          const val = Number(order.amount || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+          const val = order.amountFormatted || this.formatCurrency(order.amount, order);
 
           const srcVal = (order.src && order.src !== '-') ? order.src : ((order.utm && order.utm !== '-') ? order.utm : 'Direto');
           const platVal = order.platform || 'Mivvo';
@@ -1545,7 +1569,7 @@
           };
         });
 
-        const formatBRL = (val) => Number(val || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+
         
         const elPendingVal = document.getElementById('recov-stat-pending-val');
         const elPendingCount = document.getElementById('recov-stat-pending-count');
@@ -1553,10 +1577,10 @@
         const elRecoveredVal = document.getElementById('recov-stat-recovered-val');
         const elRecoveredCount = document.getElementById('recov-stat-recovered-count');
 
-        if (elPendingVal) elPendingVal.innerText = formatBRL(pendingVal);
+        if (elPendingVal) elPendingVal.innerText = this.formatCurrency(pendingVal);
         if (elPendingCount) elPendingCount.innerText = `${pendingCount} ${pendingCount === 1 ? 'pedido' : 'pedidos'}`;
         if (elContactedCount) elContactedCount.innerText = contactedCount;
-        if (elRecoveredVal) elRecoveredVal.innerText = formatBRL(recoveredVal);
+        if (elRecoveredVal) elRecoveredVal.innerText = this.formatCurrency(recoveredVal);
         if (elRecoveredCount) elRecoveredCount.innerText = `${recoveredCount} ${recoveredCount === 1 ? 'venda' : 'vendas'}`;
 
         const badgeRecovery = document.getElementById('recovery-badge-count');
@@ -1618,9 +1642,9 @@
           const initials = (hasRealName ? rawName : "CL").slice(0, 2).toUpperCase();
 
           const isMx = this.settings.recoveryCountry === "MX" || (this.settings.recoveryDdi === "52");
-          const val = order.amount
-            ? (isMx ? ("$" + order.amount + " MXN") : Number(order.amount).toLocaleString("pt-BR", { style: "currency", currency: "BRL" }))
-            : (isMx ? "$497 MXN" : "R$ 27,90");
+
+
+          const val = order.amountFormatted || this.formatCurrency(order.amount, order);
           const srcVal = (order.src && order.src !== '-') ? order.src : ((order.utm && order.utm !== '-') ? order.utm : 'Direto');
           const platVal = order.platform || 'Mivvo';
 
@@ -1813,7 +1837,7 @@
         // Linha final destacada: VENDAS APROVADAS
         const salesCount = Number(this.data.totalSalesApproved || 0);
         const salesPct = base > 0 ? ((salesCount / base) * 100).toFixed(1) : '0.0';
-        const formatBRL = (val) => Number(val || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+
 
         const salesFinalHtml = `
           <div class="pt-3 mt-3 border-t border-slate-800/80 space-y-1.5 bg-emerald-500/5 -mx-4 -mb-4 p-4 rounded-b-2xl border-emerald-500/20">
@@ -1830,7 +1854,7 @@
             </div>
             <div class="flex items-center justify-between text-[11px] text-slate-400 pt-0.5">
               <span>Faturamento confirmado:</span>
-              <strong class="text-white font-bold">${formatBRL(this.data.revenueApproved)}</strong>
+              <strong class="text-white font-bold">${this.formatCurrency(this.data.revenueApproved)}</strong>
             </div>
           </div>
         `;

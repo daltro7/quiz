@@ -179,7 +179,7 @@ function sendMetaCapiPurchase(params) {
       event_source_url: (META_QUIZ_URL || 'https://seudominio.com.br').trim(),
       user_data: userData,
       custom_data: {
-        currency: 'BRL',
+        currency: (params.currency || 'BRL').toUpperCase(),
         value: Number(params.amount) || 0,
         content_name: params.productName || 'Oferta',
         order_id: String(params.orderId || '')
@@ -524,6 +524,8 @@ function doGet(e) {
     var targetDate = (e && e.parameter && e.parameter.date) || '';
     var startDateParam = (e && e.parameter && e.parameter.startDate) || '';
     var endDateParam = (e && e.parameter && e.parameter.endDate) || '';
+    var reqCountry = String((e && e.parameter && (e.parameter.country || e.parameter.pais)) || '').toUpperCase().trim();
+    var reqCurrency = String((e && e.parameter && (e.parameter.currency || e.parameter.moeda)) || '').toUpperCase().trim();
 
     function parseDateSafe(val) {
       if (!val) return null;
@@ -674,7 +676,16 @@ function doGet(e) {
       if (isSaleApproved || isSalePending) {
         var ordKey = (rawSession ? (platform + '_' + rawSession) : '') || ((leadPhone || leadEmail || leadName) + '_' + Math.round(saleVal) + '_' + (platform || 'gw'));
         var originTag = src ? ('SRC: ' + src) : [utmSrc, utmCmp].filter(Boolean).join(' / ');
-        var formattedVal = 'R$ ' + saleVal.toFixed(2).replace('.', ',');
+        
+        var rowCur = String(getCol(row, ['moeda', 'currency', 'currency_code']) || '').toUpperCase().trim();
+        var cleanPhoneNum = leadPhone.replace(/\D/g, '');
+        var isMx = (rowCur === 'MXN') || 
+                   (String(saleValRaw || '').toUpperCase().indexOf('MXN') !== -1) ||
+                   (cleanPhoneNum.indexOf('52') === 0 && cleanPhoneNum.length >= 10 && cleanPhoneNum.length <= 13) ||
+                   (reqCountry === 'MX' || reqCurrency === 'MXN');
+
+        var ordCurrency = isMx ? 'MXN' : (rowCur || 'BRL');
+        var formattedVal = isMx ? ('$ ' + saleVal.toFixed(2) + ' MXN') : ('R$ ' + saleVal.toFixed(2).replace('.', ','));
 
         // Tenta resolver nome se vazio
         var effectiveName = leadName;
@@ -694,6 +705,7 @@ function doGet(e) {
             email: leadEmail || '',
             amount: saleVal,
             amountFormatted: formattedVal,
+            currency: ordCurrency,
             method: payMethod || 'PIX',
             status: isSaleApproved ? 'approved' : 'waiting_payment',
             platform: platform || (event.indexOf('Kirvano') !== -1 ? 'Kirvano' : (event.indexOf('Mivvo') !== -1 ? 'Mivvo' : (event.indexOf('Hotmart') !== -1 ? 'Hotmart' : 'PerfectPay'))),
@@ -719,6 +731,7 @@ function doGet(e) {
             if (saleVal > 0) {
               ordersMap[ordKey].amount = saleVal;
               ordersMap[ordKey].amountFormatted = formattedVal;
+              ordersMap[ordKey].currency = ordCurrency;
             }
             if (payMethod) ordersMap[ordKey].method = payMethod;
             if (src && (!ordersMap[ordKey].src || ordersMap[ordKey].src === '-')) ordersMap[ordKey].src = src;
@@ -781,6 +794,8 @@ function doGet(e) {
       totalSalesPending: totalSalesPending,
       revenuePending: revenuePending,
       totalLeads: Object.keys(leadsMap).length,
+      currency: (reqCountry === 'MX' || reqCurrency === 'MXN') ? 'MXN' : 'BRL',
+      country: reqCountry || 'BR',
       stepViews: stepViews,
       recentLeads: recentLeads,
       orders: orders,
@@ -801,7 +816,7 @@ function doPost(e) {
     var lastCol = sheet.getLastColumn();
     var expectedHeaders = [
       'Data/Hora', 'Sessão (ID)', 'Evento', 'Quiz / Produto', 'Etapa', 
-      'Status Venda', 'Valor (R$)', 'Método', 'Plataforma', 'Nome', 
+      'Status Venda', 'Valor (R$)', 'Moeda', 'Método', 'Plataforma', 'Nome', 
       'WhatsApp', 'Email', 'Documento', 'SRC', 'UTM_Source', 
       'UTM_Campaign', 'UTM_Medium', 'UTM_Content', 'Meta CAPI', 'Acesso App'
     ];
@@ -883,11 +898,15 @@ function doPost(e) {
         prodNameM += ' (+ ' + bumpNames + ')';
       }
 
+      var curM = String(dM.currency || (data.data && data.data.currency) || data.currency || (custM.phone && String(custM.phone).indexOf('52') === 0 ? 'MXN' : 'BRL')).toUpperCase().trim();
+      if (!curM || curM === 'UNDEFINED' || curM === 'NULL') curM = 'BRL';
+
       setVal(['sessão (id)', 'sessão', 'sessao'], dM.sale_id || ('miv_' + Date.now()));
       setVal(['evento', 'event'], eventStrM);
       setVal(['quiz / produto', 'produto'], prodNameM);
       setVal(['status venda', 'status_venda', 'status'], statusStrM);
       setVal(['valor (r$)', 'valor'], amountValM);
+      setVal(['moeda', 'currency'], curM);
       setVal(['método', 'metodo'], dM.payment_method || 'PIX');
       setVal(['plataforma', 'platform'], 'Mivvo');
       setVal(['nome', 'cliente'], custM.name || '');
@@ -905,6 +924,7 @@ function doPost(e) {
         var capiResM = sendMetaCapiPurchase({
           orderId: dM.sale_id || ('miv_' + Date.now()),
           amount: amountValM,
+          currency: curM,
           productName: prodNameM,
           name: custM.name || '',
           email: custM.email || '',
@@ -942,11 +962,15 @@ function doPost(e) {
       var amountValK = (data.fiscal && data.fiscal.total_value) || (data.total_price ? parseFloat(String(data.total_price).replace(/[^\d,\.]/g, '').replace(',', '.')) : 0);
       var prodNameK = (data.products && data.products[0] && data.products[0].name) || 'Kirvano Oferta';
 
+      var curK = String(data.currency || (data.fiscal && data.fiscal.currency) || (custK.phone_number && String(custK.phone_number).indexOf('52') === 0 ? 'MXN' : 'BRL')).toUpperCase().trim();
+      if (!curK || curK === 'UNDEFINED' || curK === 'NULL') curK = 'BRL';
+
       setVal(['sessão (id)', 'sessão', 'sessao'], data.sale_id || ('kirv_' + Date.now()));
       setVal(['evento', 'event'], eventStrK);
       setVal(['quiz / produto', 'produto'], prodNameK);
       setVal(['status venda', 'status_venda', 'status'], statusStrK);
       setVal(['valor (r$)', 'valor'], amountValK);
+      setVal(['moeda', 'currency'], curK);
       setVal(['método', 'metodo'], data.payment_method || (data.payment && data.payment.method) || 'PIX');
       setVal(['plataforma', 'platform'], 'Kirvano');
       setVal(['nome', 'cliente'], custK.name || '');
@@ -967,6 +991,7 @@ function doPost(e) {
         var capiResK = sendMetaCapiPurchase({
           orderId: data.sale_id || ('kirv_' + Date.now()),
           amount: amountValK,
+          currency: curK,
           productName: prodNameK,
           name: custK.name || '',
           email: custK.email || '',
@@ -1008,11 +1033,15 @@ function doPost(e) {
       var prodNameP = (data.product && data.product.name) || (data.plan && data.plan.name) || 'PerfectPay Oferta';
       var phoneP = custP.phone_formated_ddi || custP.phone_formated || custP.phone_number || '';
 
+      var curP = String(data.currency || (data.plan && data.plan.currency) || (phoneP && String(phoneP).indexOf('52') === 0 ? 'MXN' : 'BRL')).toUpperCase().trim();
+      if (!curP || curP === 'UNDEFINED' || curP === 'NULL') curP = 'BRL';
+
       setVal(['sessão (id)', 'sessão', 'sessao'], data.code || ('pp_' + Date.now()));
       setVal(['evento', 'event'], eventStrP);
       setVal(['quiz / produto', 'produto'], prodNameP);
       setVal(['status venda', 'status_venda', 'status'], statusStrP);
       setVal(['valor (r$)', 'valor'], amountValP);
+      setVal(['moeda', 'currency'], curP);
       setVal(['método', 'metodo'], data.payment_type_enum_key || 'pix');
       setVal(['plataforma', 'platform'], 'PerfectPay');
       setVal(['nome', 'cliente'], custP.full_name || custP.name || '');
@@ -1031,6 +1060,7 @@ function doPost(e) {
         var capiResP = sendMetaCapiPurchase({
           orderId: data.code || ('pp_' + Date.now()),
           amount: amountValP,
+          currency: curP,
           productName: prodNameP,
           name: custP.full_name || custP.name || '',
           email: custP.email || '',
@@ -1079,11 +1109,20 @@ function doPost(e) {
       var payMethodH = (purH.payment && purH.payment.type) || 'HOTMART';
       var phoneH = buyH.checkout_phone || buyH.phone || '';
 
+      var curH = (purH.price && (purH.price.currency_code_from || purH.price.currency_value)) || 
+                 (purH.original_offer_price && purH.original_offer_price.currency_value) || 
+                 (prodH && prodH.currency) || 
+                 (data.currency) || 
+                 (phoneH && (String(phoneH).indexOf('52') === 0 || String(phoneH).indexOf('+52') === 0) ? 'MXN' : 'BRL');
+      curH = String(curH).toUpperCase().trim();
+      if (!curH || curH === 'UNDEFINED' || curH === 'NULL') curH = 'BRL';
+
       setVal(['sessão (id)', 'sessão', 'sessao'], purH.transaction || ('hot_' + Date.now()));
       setVal(['evento', 'event'], eventStrH);
       setVal(['quiz / produto', 'produto'], prodNameH);
       setVal(['status venda', 'status_venda', 'status'], statusStrH);
       setVal(['valor (r$)', 'valor'], amountValH);
+      setVal(['moeda', 'currency'], curH);
       setVal(['método', 'metodo'], payMethodH);
       setVal(['plataforma', 'platform'], 'Hotmart');
       setVal(['nome', 'cliente'], buyH.name || ([buyH.first_name, buyH.last_name].filter(Boolean).join(' ')) || '');
@@ -1101,6 +1140,7 @@ function doPost(e) {
         var capiResH = sendMetaCapiPurchase({
           orderId: purH.transaction || ('hot_' + Date.now()),
           amount: amountValH,
+          currency: curH,
           productName: prodNameH,
           name: buyH.name || ([buyH.first_name, buyH.last_name].filter(Boolean).join(' ')) || '',
           email: buyH.email || '',
@@ -1147,6 +1187,8 @@ function doPost(e) {
       if (!uCampaign) uCampaign = src;
     }
 
+    var qCur = String(data.currency || (data.country === 'MX' ? 'MXN' : '') || ((data.lead && data.lead.whatsapp && String(data.lead.whatsapp).indexOf('52') === 0) ? 'MXN' : 'BRL')).toUpperCase();
+    setVal(['moeda', 'currency'], qCur);
     setVal(['sessão (id)', 'sessão', 'sessao'], data.sessionId || '');
     setVal(['evento', 'event'], data.event || '');
     setVal(['quiz / produto', 'quiz'], data.quizTitle || '');

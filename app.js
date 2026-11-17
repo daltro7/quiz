@@ -4153,6 +4153,16 @@ const App = {
     this.renderFunnelDashboard();
   },
 
+  formatCurrency(val, quiz = null) {
+    const q = quiz || this.currentQuiz;
+    const isMx = (q && q.recovery && q.recovery.country === 'MX') || (q && q.currency === 'MXN');
+    const num = Number(val) || 0;
+    if (isMx) {
+      return `$ ${num.toFixed(2)} MXN`;
+    }
+    return `R$ ${num.toFixed(2).replace('.', ',')}`;
+  },
+
   renderFunnelDashboard() {
     if (!this.currentQuiz) return;
     let steps = this.currentQuiz.steps || [];
@@ -4361,9 +4371,9 @@ const App = {
     if (elCompSub) elCompSub.innerText = `${conversionRate}% concluídos`;
     if (elCheckouts) elCheckouts.innerText = totalCheckouts.toLocaleString('pt-BR');
     if (elCheckoutsSub) elCheckoutsSub.innerText = `${rateCheckout}% da oferta`;
-    if (elRevApproved) elRevApproved.innerText = 'R$ ' + revenueApproved.toFixed(2).replace('.', ',');
+    if (elRevApproved) elRevApproved.innerText = this.formatCurrency(revenueApproved);
     if (elSalesApprovedCount) elSalesApprovedCount.innerText = `${totalSalesApproved} ${totalSalesApproved === 1 ? 'venda confirmada' : 'vendas confirmadas'}`;
-    if (elRevPending) elRevPending.innerText = 'R$ ' + revenuePending.toFixed(2).replace('.', ',');
+    if (elRevPending) elRevPending.innerText = this.formatCurrency(revenuePending);
     if (elSalesPendingCount) elSalesPendingCount.innerText = `${totalSalesPending} ${totalSalesPending === 1 ? 'pedido pendente' : 'pedidos pendentes'}`;
     if (elRate) elRate.innerText = `${conversionRateSales}%`;
     if (elBiggestDropSub) elBiggestDropSub.innerText = maxDrop > 0 ? `Maior perda: ${maxDropStepTitle} (-${maxDropPct})` : 'Início ➔ Venda';
@@ -4642,7 +4652,7 @@ const App = {
                 <span class="font-bold text-white text-xs">Vendas Aprovadas (Confirmadas)</span>
               </div>
               <div class="flex items-center gap-3">
-                <span class="text-xs font-mono font-bold text-emerald-400">R$ ${revenueApproved.toFixed(2).replace('.', ',')}</span>
+                <span class="text-xs font-mono font-bold text-emerald-400">${this.formatCurrency(revenueApproved)}</span>
                 <span class="text-xs font-mono font-extrabold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-md border border-emerald-500/20">${totalSalesApproved} vendas (${conversionRateSales}%)</span>
               </div>
             </div>
@@ -4837,19 +4847,30 @@ const App = {
                   const isApproved = order.status === 'approved';
                   const isPending = order.status === 'waiting_payment';
 
+                  const isMx = (this.currentQuiz?.recovery?.country === 'MX') || (this.currentQuiz?.currency === 'MXN') || order.currency === 'MXN';
+                  const ddi = isMx ? '52' : '55';
+                  let finalPhone = rawPhone;
+                  if (finalPhone && !finalPhone.startsWith(ddi)) {
+                    finalPhone = ddi + finalPhone;
+                  }
+
                   let waBtn = '<span class="text-slate-500">-</span>';
                   if (rawPhone) {
                     if (isPending) {
-                      const msg = `Olá ${order.name || ''}, vi que você gerou o Pix para ${order.product || 'o produto'} mas ainda não concluiu. Posso te ajudar com alguma dúvida?`;
+                      const msg = isMx ? 
+                        `Hola ${order.name || ''}, vi que generaste tu pedido para ${order.product || 'el producto'} pero aún no lo completas. ¿Tienes alguna duda?` :
+                        `Olá ${order.name || ''}, vi que você gerou o Pix para ${order.product || 'o produto'} mas ainda não concluiu. Posso te ajudar com alguma dúvida?`;
                       waBtn = `
-                        <a href="https://wa.me/55${rawPhone}?text=${encodeURIComponent(msg)}" target="_blank" class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-[11px] transition shadow-md shadow-emerald-600/20" title="Enviar mensagem de recuperação no WhatsApp">
-                          <i class="ph ph-whatsapp-logo text-sm"></i> Recuperar Pix
+                        <a href="https://wa.me/${finalPhone}?text=${encodeURIComponent(msg)}" target="_blank" class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-[11px] transition shadow-md shadow-emerald-600/20" title="${isMx ? 'Recuperar Pedido WhatsApp' : 'Recuperar Pix'}">
+                          <i class="ph ph-whatsapp-logo text-sm"></i> ${isMx ? 'Recuperar Pedido' : 'Recuperar Pix'}
                         </a>
                       `;
                     } else {
-                      const msgAppr = `Olá ${order.name || ''}, seu pedido de ${order.product || 'o produto'} foi confirmado com sucesso! Seja bem-vindo(a).`;
+                      const msgAppr = isMx ?
+                        `Hola ${order.name || ''}, ¡tu pedido de ${order.product || 'el producto'} fue confirmado con éxito! Bienvenido(a).` :
+                        `Olá ${order.name || ''}, seu pedido de ${order.product || 'o produto'} foi confirmado com sucesso! Seja bem-vindo(a).`;
                       waBtn = `
-                        <a href="https://wa.me/55${rawPhone}?text=${encodeURIComponent(msgAppr)}" target="_blank" class="inline-flex items-center gap-1 text-emerald-400 hover:text-emerald-300 font-mono font-bold bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20 text-[11px]" title="Chamar no WhatsApp">
+                        <a href="https://wa.me/${finalPhone}?text=${encodeURIComponent(msgAppr)}" target="_blank" class="inline-flex items-center gap-1 text-emerald-400 hover:text-emerald-300 font-mono font-bold bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20 text-[11px]" title="Chamar no WhatsApp">
                           <i class="ph ph-whatsapp-logo text-sm"></i> ${this.escape(order.whatsapp)}
                         </a>
                       `;
@@ -4857,13 +4878,17 @@ const App = {
                   }
 
                   const isKirvano = (order.platform || '').toLowerCase().includes('kirvano');
+                  const isHotmart = (order.platform || '').toLowerCase().includes('hotmart');
+                  const isMivvo = (order.platform || '').toLowerCase().includes('mivvo');
                   const platformBadge = isKirvano ?
                     '<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-purple-500/20 text-purple-300 border border-purple-500/30">Kirvano</span>' :
-                    '<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-500/20 text-blue-300 border border-blue-500/30">PerfectPay</span>';
+                    (isHotmart ? '<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-orange-500/20 text-orange-300 border border-orange-500/30">Hotmart</span>' :
+                    (isMivvo ? '<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">Mivvo</span>' :
+                    '<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-500/20 text-blue-300 border border-blue-500/30">PerfectPay</span>'));
 
                   const statusBadge = isApproved ?
                     '<span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center justify-center gap-1 mx-auto max-w-fit"><i class="ph ph-check-circle"></i> Aprovado</span>' :
-                    '<span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30 flex items-center justify-center gap-1 mx-auto max-w-fit"><i class="ph ph-clock-countdown"></i> Aguardando Pix</span>';
+                    `<span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30 flex items-center justify-center gap-1 mx-auto max-w-fit"><i class="ph ph-clock-countdown"></i> ${isMx ? 'Pendiente' : 'Aguardando Pix'}</span>`;
 
                   return `
                     <tr class="hover:bg-slate-800/40 transition">
@@ -4876,7 +4901,7 @@ const App = {
                         ${waBtn}
                       </td>
                       <td class="py-2.5 px-3 whitespace-nowrap">
-                        <div class="font-black ${isApproved ? 'text-emerald-400' : 'text-amber-400'} text-xs">${order.amountFormatted || ('R$ ' + (parseFloat(order.amount) || 0).toFixed(2).replace('.', ','))}</div>
+                        <div class="font-black ${isApproved ? 'text-emerald-400' : 'text-amber-400'} text-xs">${order.amountFormatted || this.formatCurrency(order.amount)}</div>
                         <div class="text-[10px] text-slate-400 uppercase font-mono font-semibold">${this.escape(order.method || 'PIX')}</div>
                       </td>
                       <td class="py-2.5 px-3 text-center whitespace-nowrap">
@@ -4924,10 +4949,14 @@ const App = {
       const filterParam = this.analyticsFilter || 'today';
       const startDateParam = this.analyticsStartDate || '';
       const endDateParam = this.analyticsEndDate || '';
+      const quizCountry = (this.currentQuiz?.recovery?.country) || 'BR';
+      const quizCurrency = (quizCountry === 'MX') ? 'MXN' : (this.currentQuiz?.currency || 'BRL');
       const fetchUrl = cleanUrl + sep + 'action=getMetrics&filter=' + filterParam + 
         '&startDate=' + startDateParam + 
         '&endDate=' + endDateParam + 
         '&date=' + startDateParam + 
+        '&country=' + encodeURIComponent(quizCountry) +
+        '&currency=' + encodeURIComponent(quizCurrency) +
         '&nocache=' + Date.now();
       
       const response = await fetch(fetchUrl);
@@ -4974,7 +5003,7 @@ const App = {
         if (!silent) {
           const count = Object.values(data.stepViews || {}).reduce((a, b) => a + b, 0);
           const salesCount = data.totalSalesApproved || 0;
-          const rev = (data.revenueApproved || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+          const rev = this.formatCurrency(data.revenueApproved || 0);
           alert(`✅ Sincronizado com sucesso!\n\nDados carregados para (${filterParam.toUpperCase()}):\n• ${count} acessos registrados\n• ${(data.recentLeads || []).length} leads capturados\n• ${salesCount} vendas confirmadas (${rev})\n• ${(data.orders || []).length} pedidos processados`);
         }
       } else {

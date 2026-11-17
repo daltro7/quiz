@@ -4832,6 +4832,8 @@ const QuizTemplateEngine = {
           return;
         }
         this.refreshMetaCookies();
+        const isMxCountry = (this.config.recovery && this.config.recovery.country === 'MX') || (this.config.currency === 'MXN');
+        const quizCurrency = isMxCountry ? 'MXN' : (this.config.currency || 'BRL');
         const utms = this.utmParams || {};
         const srcVal = utms.src || utms.sck || utms.SRC || utms.SCK || '';
         const payload = {
@@ -4840,6 +4842,8 @@ const QuizTemplateEngine = {
           quizId: this.config.id || 'meu-quiz',
           quizTitle: this.config.title || 'Quiz de Vendas',
           timestamp: new Date().toISOString(),
+          currency: quizCurrency,
+          country: isMxCountry ? 'MX' : 'BR',
           src: srcVal,
           fbc: utms.fbc || this.getCookie('_fbc') || '',
           fbp: utms.fbp || this.getCookie('_fbp') || '',
@@ -4873,7 +4877,7 @@ const QuizTemplateEngine = {
                 fbq('track', 'InitiateCheckout', {
                   content_name: this.config.title || 'Oferta',
                   value: (eventData && eventData.value) ? Number(eventData.value) : 0,
-                  currency: 'BRL'
+                  currency: quizCurrency
                 });
               } else {
                 fbq('trackCustom', 'Checkout_Iniciado', eventData);
