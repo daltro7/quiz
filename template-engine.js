@@ -3074,7 +3074,7 @@ const QuizTemplateEngine = {
 
         blockHtml += '<div class="form-group">';
         blockHtml += '<label class="form-label">Seu WhatsApp com DDD:</label>';
-        blockHtml += '<input type="tel" id="lead-whatsapp" class="form-input" placeholder="(11) 99999-9999" required value="' + (lead.whatsapp || '') + '">';
+        blockHtml += '<input type="tel" id="lead-whatsapp" class="form-input" placeholder="(11) 99999-9999" required value="' + (lead.whatsapp || '') + '" oninput="window.QuizApp && QuizApp.maskPhone ? QuizApp.maskPhone(this) : null">';
         blockHtml += '</div>';
 
         if (block.requireEmail !== false) {
@@ -3313,6 +3313,21 @@ const QuizTemplateEngine = {
       stepTimers: [],
       utmParams: {},
       sessionId: null,
+
+      maskPhone(input) {
+        if (!input) return;
+        let v = input.value.replace(/\D/g, '');
+        if (v.length > 11) v = v.slice(0, 11);
+        if (v.length > 10) {
+          input.value = '(' + v.slice(0, 2) + ') ' + v.slice(2, 7) + '-' + v.slice(7);
+        } else if (v.length > 6) {
+          input.value = '(' + v.slice(0, 2) + ') ' + v.slice(2, 6) + '-' + v.slice(6);
+        } else if (v.length > 2) {
+          input.value = '(' + v.slice(0, 2) + ') ' + v.slice(2);
+        } else if (v.length > 0) {
+          input.value = '(' + v;
+        }
+      },
 
       init() {
         if (window.QUIZ_HALTED) return;
@@ -4798,9 +4813,20 @@ const QuizTemplateEngine = {
         const phoneInput = document.getElementById('lead-whatsapp');
         const emailInput = document.getElementById('lead-email');
 
+        let rawPhone = phoneInput ? phoneInput.value.trim() : '';
+        let digits = rawPhone.replace(/\D/g, '').replace(/^0+/, '');
+        const isMx = (this.config.recovery && this.config.recovery.country === 'MX') || (this.config.currency === 'MXN');
+        if (!isMx) {
+          if (digits.startsWith('55') && digits.slice(2).length === 10) {
+            digits = '55' + digits.slice(2, 4) + '9' + digits.slice(4);
+          } else if (digits.length === 10) {
+            digits = digits.slice(0, 2) + '9' + digits.slice(2);
+          }
+        }
+
         this.leadData = {
           name: nameInput ? nameInput.value.trim() : '',
-          whatsapp: phoneInput ? phoneInput.value.trim() : '',
+          whatsapp: digits || rawPhone,
           email: emailInput ? emailInput.value.trim() : ''
         };
 

@@ -661,7 +661,7 @@
         }
       },
 
-      async loadQuizzesFromFirestore(uid) {
+      async loadQuizzesFromFirestore(uid, resetSelection = true) {
         const syncStatus = document.getElementById('sync-status-text');
         if (syncStatus) syncStatus.innerText = 'Buscando funis da nuvem...';
 
@@ -673,7 +673,11 @@
               const q = doc.data();
               if (q && q.id) this.quizzes.push(q);
             });
-            this.populateQuizSelector();
+            try {
+              localStorage.setItem('quizforge_quizzes_data', JSON.stringify(this.quizzes));
+              localStorage.setItem('quizforge_quizzes_v2', JSON.stringify(this.quizzes));
+            } catch(e) {}
+            this.populateQuizSelector(resetSelection);
           } else {
             this.loadQuizzesFromLocalStorage();
           }
@@ -685,7 +689,7 @@
 
       loadQuizzesFromLocalStorage() {
         try {
-          const raw = (localStorage.getItem('quizforge_quizzes_v2') || localStorage.getItem('quizforge_quizzes'));
+          const raw = (localStorage.getItem('quizforge_quizzes_data') || localStorage.getItem('quizforge_quizzes_v2') || localStorage.getItem('quizforge_quizzes'));
           if (raw) {
             this.quizzes = JSON.parse(raw);
           }
@@ -695,7 +699,7 @@
         this.populateQuizSelector();
       },
 
-      populateQuizSelector() {
+      populateQuizSelector(resetSelection = true) {
         const selector = document.getElementById('funnel-selector');
         if (!selector) return;
 
@@ -705,7 +709,12 @@
           }).join('');
 
           // Seleciona o primeiro funil real por padrão
-          this.onSelectQuiz(this.quizzes[0].id);
+          let targetId = this.quizzes[0].id;
+          if (!resetSelection && this.selectedQuizId && this.quizzes.some(q => q.id === this.selectedQuizId)) {
+            targetId = this.selectedQuizId;
+          }
+          selector.value = targetId;
+          this.onSelectQuiz(targetId);
         } else {
           selector.innerHTML = `<option value="demo">Modo Demonstração</option>`;
           this.onSelectQuiz('demo');
@@ -960,6 +969,14 @@
         if (syncIcon) syncIcon.classList.add('animate-spin-fast');
         if (statusText) statusText.innerText = 'Sincronizando...';
 
+        if (this.currentUser && this.firestore) {
+          try {
+            await this.loadQuizzesFromFirestore(this.currentUser.uid, false);
+          } catch (e) {
+            console.warn('[PWA] Erro ao sincronizar funis do Firestore:', e);
+          }
+        }
+
         if (!this.settings.sheetUrl) {
           setTimeout(() => {
             if (syncIcon) syncIcon.classList.remove('animate-spin-fast');
@@ -1156,18 +1173,19 @@
           const firstName = hasRealName ? rawName.split(/\s+/)[0] : "Cliente";
           const initials = (hasRealName ? rawName : "CL").slice(0, 2).toUpperCase();
 
-          const ddi = this.settings.recoveryDdi || (this.settings.recoveryCountry === "MX" ? "52" : "55");
-          let cleanPhone = String(order.whatsapp || order.phone || "").replace(/\D/g, "");
-          if (cleanPhone && cleanPhone.indexOf(ddi) !== 0 && cleanPhone.length >= 8) {
-            cleanPhone = ddi + cleanPhone;
-          }
+          const country = this.settings.recoveryCountry || (activeQuiz && activeQuiz.recovery && activeQuiz.recovery.country) || 'BR';
+          const cleanPhone = this.normalizeWhatsAppPhone(order.whatsapp || order.phone, country);
 
           const valFormatted = order.amountFormatted || this.formatCurrency(order.amount, order);
-          let msg = this.settings.whatsappTemplate || "";
-          msg = msg.replace(/\{{1,2}\s*(nome|primeiro_nome|primeironome|cliente|name|first_name)\s*\}{1,2}/gi, firstName);
-          msg = msg.replace(/\{{1,2}\s*(nome_completo|nomecompleto|full_name)\s*\}{1,2}/gi, rawName);
-          msg = msg.replace(/\{{1,2}\s*(produto|product|oferta|quiz)\s*\}{1,2}/gi, order.product || "OrçaObra Pro");
-          msg = msg.replace(/\{{1,2}\s*(valor|preco|preço|amount|price)\s*\}{1,2}/gi, valFormatted);
+          const isPending = ['waiting_payment', 'pending', 'pendente'].includes(String(order.status || '').toLowerCase());
+          let msg = isPending ? this.buildRecoveryMessage(1, order) : (this.settings.whatsappTemplate || "");
+          if (!isPending) {
+            msg = msg.replace(/\{{1,2}\s*(nome|primeiro_nome|primeironome|cliente|name|first_name)\s*\}{1,2}/gi, firstName);
+            msg = msg.replace(/\{{1,2}\s*(nome_completo|nomecompleto|full_name)\s*\}{1,2}/gi, rawName);
+            msg = msg.replace(/\{{1,2}\s*(produto|product|oferta|quiz)\s*\}{1,2}/gi, order.product || (activeQuiz ? (activeQuiz.productTitle || activeQuiz.title) : "Produto"));
+            msg = msg.replace(/\{{1,2}\s*(valor|preco|preço|amount|price)\s*\}{1,2}/gi, valFormatted);
+            if (this.parseSpintax) msg = this.parseSpintax(msg);
+          }
           const waUrl = cleanPhone ? `https://wa.me/${cleanPhone}?text=${encodeURIComponent(msg)}` : null;
 
           const isPaid = ['approved', 'aprovado', 'paid'].includes(String(order.status || '').toLowerCase());
@@ -1365,6 +1383,42 @@
         return String(order.name || "").trim() || "Cliente";
       },
 
+      normalizeWhatsAppPhone(phone, country = 'BR') {
+        if (!phone) return '';
+        let digits = String(phone).replace(/\D/g, '').replace(/^0+/, '');
+        if (!digits) return '';
+
+        const isMx = country === 'MX' || digits.startsWith('52');
+        if (isMx) {
+          if (!digits.startsWith('52')) digits = '52' + digits;
+          return digits;
+        }
+
+        // Brasil (DDI 55)
+        if (digits.startsWith('55')) {
+          const national = digits.slice(2);
+          if (national.length === 10) {
+            return '55' + national.slice(0, 2) + '9' + national.slice(2);
+          }
+          return digits;
+        }
+
+        // Se tiver 10 dígitos (DDD + 8 dígitos sem o 9) -> insere 9
+        if (digits.length === 10) {
+          return '55' + digits.slice(0, 2) + '9' + digits.slice(2);
+        }
+
+        // Se tiver 11 dígitos (DDD + 9 dígitos) -> adiciona 55
+        if (digits.length === 11) {
+          return '55' + digits;
+        }
+
+        if (digits.length >= 8 && digits.length <= 11) {
+          return '55' + digits;
+        }
+        return digits;
+      },
+
       buildRecoveryMessage(stage, order) {
         let tpl = "";
         if (this.settings.recoveryStages && this.settings.recoveryStages.length > 0) {
@@ -1435,15 +1489,10 @@
         const order = (this.data.orders || []).find(o => String(o.id) === String(orderId));
         if (!order) return;
 
-        let cleanPhone = String(order.whatsapp || order.phone || '').replace(/\D/g, '');
-        if (!cleanPhone || cleanPhone.length < 8) {
+        const cleanPhone = this.normalizeWhatsAppPhone(order.whatsapp || order.phone, this.settings.recoveryCountry || 'BR');
+        if (!cleanPhone || cleanPhone.length < 10) {
           alert('⚠️ Telefone do cliente não informado ou incompleto no checkout.');
           return;
-        }
-
-        const ddi = this.settings.recoveryDdi || (this.settings.recoveryCountry === 'MX' ? '52' : '55');
-        if (cleanPhone.indexOf(ddi) !== 0) {
-          cleanPhone = ddi + cleanPhone;
         }
 
         const msg = this.buildRecoveryMessage(stage, order);

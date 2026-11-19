@@ -41,11 +41,22 @@ function sha256(input) {
 
 function normalizePhoneForMeta(rawPhone) {
   if (!rawPhone) return '';
-  var digits = String(rawPhone).replace(/\D/g, '');
+  var digits = String(rawPhone).replace(/\D/g, '').replace(/^0+/, '');
   if (!digits) return '';
-  if (digits.indexOf('0') === 0) digits = digits.substring(1);
-  if (digits.indexOf('55') === 0 && digits.length >= 12) return digits;
-  if (digits.length === 10 || digits.length === 11) return '55' + digits;
+  if (digits.indexOf('52') === 0) return digits;
+  if (digits.indexOf('55') === 0) {
+    var national = digits.substring(2);
+    if (national.length === 10) {
+      return '55' + national.substring(0, 2) + '9' + national.substring(2);
+    }
+    return digits;
+  }
+  if (digits.length === 10) {
+    return '55' + digits.substring(0, 2) + '9' + digits.substring(2);
+  }
+  if (digits.length === 11) {
+    return '55' + digits;
+  }
   return digits;
 }
 

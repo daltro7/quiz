@@ -112,6 +112,14 @@ const App = {
   },
 
   saveQuiz(immediateCloud = false) {
+    if (this.currentQuiz && this.quizzes) {
+      const idx = this.quizzes.findIndex(q => q.id === this.currentQuiz.id);
+      if (idx !== -1) {
+        this.quizzes[idx] = this.currentQuiz;
+      } else {
+        this.quizzes.push(this.currentQuiz);
+      }
+    }
     this.saveQuizzesToStorage();
     if (immediateCloud && this.firebaseUser && this.firestore && this.currentQuiz) {
       clearTimeout(this.cloudSyncDebounceTimer);
@@ -4163,6 +4171,44 @@ const App = {
     return `R$ ${num.toFixed(2).replace('.', ',')}`;
   },
 
+  normalizeWhatsAppPhone(phone, country = 'BR') {
+    if (!phone) return '';
+    let digits = String(phone).replace(/\D/g, '').replace(/^0+/, '');
+    if (!digits) return '';
+
+    const isMx = country === 'MX' || digits.startsWith('52');
+    if (isMx) {
+      if (!digits.startsWith('52')) digits = '52' + digits;
+      return digits;
+    }
+
+    // Brasil (DDI 55)
+    if (digits.startsWith('55')) {
+      const national = digits.slice(2);
+      // DDD (2 dígitos) + 8 dígitos (esqueceu o 9)
+      if (national.length === 10) {
+        return '55' + national.slice(0, 2) + '9' + national.slice(2);
+      }
+      return digits;
+    }
+
+    // Se tiver 10 dígitos: DDD (2) + 8 dígitos sem o 9 -> insere 9
+    if (digits.length === 10) {
+      return '55' + digits.slice(0, 2) + '9' + digits.slice(2);
+    }
+
+    // Se tiver 11 dígitos: DDD (2) + 9 dígitos
+    if (digits.length === 11) {
+      return '55' + digits;
+    }
+
+    if (digits.length >= 8 && digits.length <= 11) {
+      return '55' + digits;
+    }
+
+    return digits;
+  },
+
   renderFunnelDashboard() {
     if (!this.currentQuiz) return;
     let steps = this.currentQuiz.steps || [];
@@ -4330,7 +4376,7 @@ const App = {
     const totalSalesPending = pendingOrders.length;
     const revenuePending = pendingOrders.reduce((sum, o) => sum + (parseFloat(o.amount) || 0), 0);
 
-    const totalCheckouts = views['step_checkout'] || (analytics.cachedFilters && analytics.cachedFilters[this.analyticsFilter] && analytics.cachedFilters[this.analyticsFilter].totalCheckouts) || Math.max(totalSalesApproved + totalSalesPending, Math.round(totalCompleted * 0.45));
+    const totalCheckouts = views['step_checkout'] || (analytics.cachedFilters && analytics.cachedFilters[this.analyticsFilter] && analytics.cachedFilters[this.analyticsFilter].totalCheckouts) || (totalSalesApproved + totalSalesPending) || 0;
     const rateCheckout = totalCompleted > 0 ? ((totalCheckouts / totalCompleted) * 100).toFixed(1) : '0.0';
     const conversionRateSales = totalStarted > 0 ? ((totalSalesApproved / totalStarted) * 100).toFixed(1) : '0.0';
 
@@ -4848,11 +4894,8 @@ const App = {
                   const isPending = order.status === 'waiting_payment';
 
                   const isMx = (this.currentQuiz?.recovery?.country === 'MX') || (this.currentQuiz?.currency === 'MXN') || order.currency === 'MXN';
-                  const ddi = isMx ? '52' : '55';
-                  let finalPhone = rawPhone;
-                  if (finalPhone && !finalPhone.startsWith(ddi)) {
-                    finalPhone = ddi + finalPhone;
-                  }
+                  const country = isMx ? 'MX' : 'BR';
+                  const finalPhone = this.normalizeWhatsAppPhone(order.whatsapp || order.phone, country);
 
                   let waBtn = '<span class="text-slate-500">-</span>';
                   if (rawPhone) {
@@ -6175,7 +6218,7 @@ const App = {
               '<button type="button" onclick="App.insertQuizRecoveryVariable(' + idx + ', \'{valor}\')" class="px-2 py-0.5 rounded-md bg-emerald-950 hover:bg-emerald-900 border border-emerald-700/60 text-emerald-300 text-[10px] font-mono transition">{valor}</button>' +
             '</div>' +
           '</div>' +
-          '<textarea id="quiz-recov-stage-tpl-' + idx + '" rows="3" onchange="App.updateQuizRecoveryStage(' + idx + ', \'template\', this.value)" class="w-full bg-slate-900 border border-slate-700/80 focus:border-emerald-500 rounded-xl p-3 text-xs text-slate-200 outline-none leading-relaxed transition resize-y font-normal" placeholder="Mensagem em texto ou com Spintax {Oi|Olá}...">' + safeTpl + '</textarea>' +
+          '<textarea id="quiz-recov-stage-tpl-' + idx + '" rows="3" oninput="App.updateQuizRecoveryStage(' + idx + ', \'template\', this.value)" onblur="App.saveCurrentQuizRecovery()" class="w-full bg-slate-900 border border-slate-700/80 focus:border-emerald-500 rounded-xl p-3 text-xs text-slate-200 outline-none leading-relaxed transition resize-y font-normal" placeholder="Mensagem em texto ou com Spintax {Oi|Olá}...">' + safeTpl + '</textarea>' +
         '</div>' +
         '<div class="flex items-center justify-between pt-1">' +
           '<button type="button" onclick="App.testQuizRecoverySpintax(' + idx + ')" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white text-xs font-semibold border border-slate-800 transition">' +
@@ -6236,6 +6279,8 @@ const App = {
     } else {
       stage[field] = val;
     }
+    this.currentQuiz.updatedAt = new Date().toISOString();
+    this.saveQuiz(false);
   },
 
   insertQuizRecoveryVariable(idx, variable) {
@@ -6286,8 +6331,13 @@ const App = {
       if (el) st.template = el.value;
     });
 
+    this.currentQuiz.updatedAt = new Date().toISOString();
     this.saveQuiz(true);
-    this.showToast('Mensagens salvas e sincronizadas com a nuvem (PWA)!', 'success');
+    if (!this.firebaseUser) {
+      this.showToast('Mensagens salvas localmente! Conecte sua conta na nuvem (topo) para sincronizar com o celular.', 'warning');
+    } else {
+      this.showToast('Mensagens salvas e sincronizadas com a nuvem (PWA)!', 'success');
+    }
   },
 
   syncQuizRecoveryOrders() {
@@ -6395,10 +6445,7 @@ const App = {
       const allSent = stageIdx >= stages.length;
       const activeStage = stages[allSent ? stages.length - 1 : stageIdx] || stages[0];
 
-      let cleanPhone = String(order.whatsapp || order.phone || "").replace(/\D/g, "");
-      if (cleanPhone && cleanPhone.indexOf(ddi) !== 0 && cleanPhone.length >= 8) {
-        cleanPhone = ddi + cleanPhone;
-      }
+      let cleanPhone = this.normalizeWhatsAppPhone(order.whatsapp || order.phone, isMx ? 'MX' : 'BR');
 
       const nameReplacement = firstName || (hasRealName ? rawName : (isMx ? "Amigo" : ""));
       const fullNameReplacement = hasRealName ? rawName : nameReplacement;
