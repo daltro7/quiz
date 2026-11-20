@@ -5593,8 +5593,24 @@ ${raw}
         function enrichLinkWithUtms(link) {
           try {
             var href = link.getAttribute('href');
-            if (!href || href.startsWith('#') || href.startsWith('javascript:')) return;
+            if (!href || href.startsWith('#') || href.startsWith('javascript:') || href.startsWith('mailto:') || href.startsWith('tel:')) return;
             if (isCheckoutLink(href) || link.hasAttribute('data-checkout') || link.classList.contains('quiz-checkout-btn') || link.classList.contains('checkout-btn')) {
+              // Captura e repassa cookies da Meta para o checkout (fbc e fbp)
+              try {
+                var matchFbp = document.cookie.match(/(?:^|;\s*)_fbp=([^;]+)/);
+                if (matchFbp && !params.has('fbp')) params.set('fbp', decodeURIComponent(matchFbp[1]));
+
+                var matchFbc = document.cookie.match(/(?:^|;\s*)_fbc=([^;]+)/);
+                if (!matchFbc && params.has('fbclid')) {
+                  params.set('fbc', 'fb.1.' + Date.now() + '.' + params.get('fbclid'));
+                } else if (matchFbc && !params.has('fbc')) {
+                  params.set('fbc', decodeURIComponent(matchFbc[1]));
+                }
+                if (!params.has('external_id')) {
+                  params.set('external_id', sessionId);
+                }
+              } catch(cookieErr) {}
+
               var url = new URL(href, window.location.href);
               params.forEach(function(v, k) {
                 if (!url.searchParams.has(k)) {
@@ -5602,6 +5618,8 @@ ${raw}
                 }
               });
               link.href = url.toString();
+              link.setAttribute('target', '_blank');
+              link.setAttribute('rel', 'noopener noreferrer');
             }
           } catch(e) {}
         }

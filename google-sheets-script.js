@@ -9,7 +9,7 @@
 var META_PIXEL_ID = "1432706854958021";        // Seu Pixel ID da Meta
 var META_API_TOKEN = "";                       // Cole o Token de Acesso da Conversions API (gerado no Gerenciador de Eventos)
 var META_TEST_EVENT_CODE = "";                 // Opcional: Cole aqui o código de teste da aba "Testar Eventos" da Meta (ex: TEST12345)
-var META_QUIZ_URL = "https://seudominio.com.br"; // URL da sua página / quiz deste produto
+var META_QUIZ_URL = "https://financeiropro.site"; // URL da sua página / quiz deste produto
 
 // ==========================================
 // 2. CONFIGURAÇÕES FIREBASE (LIBERAÇÃO DO APP)
@@ -187,7 +187,7 @@ function sendMetaCapiPurchase(params) {
       event_time: nowSec,
       event_id: String(params.orderId || ('ord_' + nowMs)),
       action_source: 'website',
-      event_source_url: (META_QUIZ_URL || 'https://seudominio.com.br').trim(),
+      event_source_url: (params.pageUrl || params.quizUrl || (META_QUIZ_URL && META_QUIZ_URL.indexOf('seudominio.com.br') === -1 ? META_QUIZ_URL : '') || 'https://financeiropro.site').trim(),
       user_data: userData,
       custom_data: {
         currency: (params.currency || 'BRL').toUpperCase(),

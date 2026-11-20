@@ -47,6 +47,9 @@
       to { transform: rotate(360deg); }
     }
   </style>
+  <style>
+    html { scrollbar-gutter: stable; overflow-y: scroll; }
+  </style>
 </head>
 <body class="bg-[#090d16] text-slate-100 min-h-screen flex flex-col antialiased selection:bg-indigo-500 selection:text-white pb-20">
 
@@ -92,7 +95,7 @@
         <span id="auth-label-header">Login</span>
       </button>
 
-      <button onclick="app.refreshData()" id="btn-sync" class="w-9 h-9 rounded-xl bg-slate-800/90 border border-slate-700/80 text-slate-300 hover:text-white flex items-center justify-center transition active:scale-95" title="Atualizar dados">
+      <button onclick="app.refreshData(true)" id="btn-sync" class="w-9 h-9 rounded-xl bg-slate-800/90 border border-slate-700/80 text-slate-300 hover:text-white flex items-center justify-center transition active:scale-95" title="Atualizar dados">
         <i class="ph ph-arrows-clockwise text-base" id="icon-sync"></i>
       </button>
       
@@ -699,7 +702,7 @@
         this.populateQuizSelector();
       },
 
-      populateQuizSelector(resetSelection = true) {
+      populateQuizSelector(resetSelection = true, shouldRefresh = false) {
         const selector = document.getElementById('funnel-selector');
         if (!selector) return;
 
@@ -714,14 +717,14 @@
             targetId = this.selectedQuizId;
           }
           selector.value = targetId;
-          this.onSelectQuiz(targetId);
+          this.onSelectQuiz(targetId, shouldRefresh);
         } else {
           selector.innerHTML = `<option value="demo">Modo Demonstração</option>`;
           this.onSelectQuiz('demo');
         }
       },
 
-      onSelectQuiz(quizId) {
+      onSelectQuiz(quizId, shouldRefresh = true) {
         this.selectedQuizId = quizId;
         const sheetStatus = document.getElementById('funnel-sheet-status');
 
@@ -754,7 +757,7 @@
             sheetStatus.className = 'shrink-0 text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center gap-1';
             sheetStatus.innerHTML = '<i class="ph ph-link"></i> Planilha OK';
           }
-          this.refreshData();
+          if (shouldRefresh) { this.refreshData(false); }
         } else {
           this.settings.sheetUrl = '';
           if (sheetStatus) {
@@ -961,7 +964,9 @@
         this.renderOrders();
       },
 
-      async refreshData() {
+      async refreshData(reloadQuizzes = false) {
+        if (this.isSyncing) return;
+        this.isSyncing = true;
         const syncBtn = document.getElementById('btn-sync');
         const syncIcon = document.getElementById('icon-sync');
         const statusText = document.getElementById('sync-status-text');
@@ -969,7 +974,7 @@
         if (syncIcon) syncIcon.classList.add('animate-spin-fast');
         if (statusText) statusText.innerText = 'Sincronizando...';
 
-        if (this.currentUser && this.firestore) {
+        if (reloadQuizzes && this.currentUser && this.firestore) {
           try {
             await this.loadQuizzesFromFirestore(this.currentUser.uid, false);
           } catch (e) {
