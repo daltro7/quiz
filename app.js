@@ -5042,6 +5042,7 @@ const App = {
 
         this.saveQuizzesToStorage();
         this.renderFunnelDashboard();
+        this.renderQuizRecoveryOrders();
         
         if (!silent) {
           const count = Object.values(data.stepViews || {}).reduce((a, b) => a + b, 0);
@@ -6120,6 +6121,17 @@ const App = {
     this.updateQuizRecoveryLangButtons();
     this.renderQuizRecoveryStages();
     this.renderQuizRecoveryOrders();
+
+    // Sincroniza automaticamente da planilha se não houver pedidos carregados na memória
+    const sheetUrl = (this.currentQuiz.tracking && (this.currentQuiz.tracking.sheetUrl || this.currentQuiz.tracking.webhookUrl)) || '';
+    const analytics = this.currentQuiz.analytics || {};
+    const hasOrders = (analytics.orders && analytics.orders.length > 0) || 
+                      (analytics.cachedFilters && Object.values(analytics.cachedFilters).some(f => f && f.orders && f.orders.length > 0));
+    if (sheetUrl && !hasOrders) {
+      this.syncMetricsFromGoogleSheet(true).then(() => {
+        this.renderQuizRecoveryOrders();
+      }).catch(err => console.warn('Auto-sync recovery orders:', err));
+    }
   },
 
   toggleQuizRecoveryEnabled(enabled) {
@@ -6340,11 +6352,9 @@ const App = {
     }
   },
 
-  syncQuizRecoveryOrders() {
-    this.syncMetricsFromGoogleSheet();
-    setTimeout(() => {
-      this.renderQuizRecoveryOrders();
-    }, 1500);
+  async syncQuizRecoveryOrders() {
+    await this.syncMetricsFromGoogleSheet(false);
+    this.renderQuizRecoveryOrders();
   },
 
   resolveQuizCustomerName(order) {
@@ -6360,7 +6370,9 @@ const App = {
         return val;
       }
     }
-    const leads = (this.analyticsData && this.analyticsData.recentLeads) || [];
+    const analytics = (this.currentQuiz && this.currentQuiz.analytics) || {};
+    const cached = (analytics.cachedFilters && this.analyticsFilter && analytics.cachedFilters[this.analyticsFilter]) || {};
+    const leads = (cached.leads && cached.leads.length > 0) ? cached.leads : (analytics.leads || []);
     const phone = String(order.whatsapp || order.phone || "").replace(/\D/g, "");
     const email = String(order.email || "").trim().toLowerCase();
     if (leads.length > 0) {
@@ -6385,20 +6397,27 @@ const App = {
     const container = document.getElementById('quiz-recovery-orders-container');
     if (!container || !this.currentQuiz) return;
 
-    const orders = (this.analyticsData && this.analyticsData.orders) ? this.analyticsData.orders : [];
+    const analytics = (this.currentQuiz && this.currentQuiz.analytics) || {};
+    const cached = (analytics.cachedFilters && this.analyticsFilter && analytics.cachedFilters[this.analyticsFilter]) || {};
+    const orders = (cached.orders && cached.orders.length > 0) ? cached.orders : (analytics.orders || []);
     const isMx = this.currentQuiz.recovery && this.currentQuiz.recovery.country === 'MX';
     const ddi = (this.currentQuiz.recovery && this.currentQuiz.recovery.ddi) || (isMx ? '52' : '55');
     const stages = (this.currentQuiz.recovery && this.currentQuiz.recovery.stages) || (isMx ? this.MEXICO_RECOVERY_STAGES : this.BRAZIL_RECOVERY_STAGES);
 
-    const prodTitle = String(this.currentQuiz.productTitle || '').toLowerCase();
+    const prodTitle = String(this.currentQuiz.productTitle || this.currentQuiz.title || '').trim().toLowerCase();
 
-    const quizOrders = orders.filter(o => {
-      const ordProd = String(o.product || '').toLowerCase();
-      if (prodTitle && ordProd && ordProd !== '-') {
+    let quizOrders = orders.filter(o => {
+      const ordProd = String(o.product || '').trim().toLowerCase();
+      if (prodTitle && ordProd && ordProd !== '-' && ordProd !== 'produto' && ordProd !== 'não informado') {
         return ordProd.includes(prodTitle) || prodTitle.includes(ordProd);
       }
       return true;
     });
+
+    // Se o filtro por título de produto excluiu todos os pedidos mas a planilha possui pedidos, exibe todos
+    if (quizOrders.length === 0 && orders.length > 0) {
+      quizOrders = orders;
+    }
 
     const pendingOrders = quizOrders.filter(o => !['approved', 'aprovado', 'paid'].includes(String(o.status || '').toLowerCase()));
     const paidOrders = quizOrders.filter(o => ['approved', 'aprovado', 'paid'].includes(String(o.status || '').toLowerCase()));
