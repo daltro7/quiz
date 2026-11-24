@@ -4975,14 +4975,20 @@ const QuizTemplateEngine = {
 
         // Captura e repassa cookies da Meta para o checkout
         try {
-          const matchFbp = document.cookie.match(/(?:^|;\s*)_fbp=([^;]+)/);
-          if (matchFbp && !p.has('fbp')) p.set('fbp', decodeURIComponent(matchFbp[1]));
+          function getMetaCookie(name) {
+            var v = '; ' + document.cookie;
+            var parts = v.split('; ' + name + '=');
+            if (parts.length === 2) return parts.pop().split(';').shift();
+            return '';
+          }
+          var fbpVal = getMetaCookie('_fbp');
+          if (fbpVal && !p.has('fbp')) p.set('fbp', decodeURIComponent(fbpVal));
 
-          let matchFbc = document.cookie.match(/(?:^|;\s*)_fbc=([^;]+)/);
-          if (!matchFbc && p.has('fbclid')) {
+          var fbcVal = getMetaCookie('_fbc');
+          if (!fbcVal && p.has('fbclid')) {
             p.set('fbc', 'fb.1.' + Date.now() + '.' + p.get('fbclid'));
-          } else if (matchFbc && !p.has('fbc')) {
-            p.set('fbc', decodeURIComponent(matchFbc[1]));
+          } else if (fbcVal && !p.has('fbc')) {
+            p.set('fbc', decodeURIComponent(fbcVal));
           }
 
           if (window.QuizApp && window.QuizApp.sessionId && !p.has('external_id')) {
@@ -5134,8 +5140,8 @@ const QuizTemplateEngine = {
   generateTrackingHead(tracking) {
     let tags = '';
 
-    if (tracking.metaPixelId && tracking.metaPixelId.trim() !== '') {
-      const pixelId = tracking.metaPixelId.trim();
+    const pixelId = ((tracking && (tracking.metaPixelId || tracking.pixelId)) || '').trim();
+    if (pixelId !== '') {
       tags += `
   <script>
     !function(f,b,e,v,n,t,s)
@@ -5459,6 +5465,28 @@ ${raw}
     raw = raw.replace(/(href|src)=["']http:\/\/(fonts\.googleapis\.com|fonts\.gstatic\.com|cdn\.jsdelivr\.net|cdnjs\.cloudflare\.com|cdn\.tailwindcss\.com|unpkg\.com)/gi, '$1="https://$2');
 
     const tracking = (quiz && quiz.tracking) || {};
+
+    // ========================================================
+    // AUTO-PURIFICAÇÃO INTELIGENTE (Deduplicação de Scripts e Pixels)
+    // ========================================================
+    // 1. Remove injeções anteriores do Stealth Guard do QuizForge
+    raw = raw.replace(/<!--\s*QuizForge Stealth Guard[\s\S]*?<\/script>\s*(?:<noscript>[\s\S]*?<\/noscript>)?/gi, '');
+
+    // 2. Remove injeções anteriores do QuizForge Tracking & UTM Preserver
+    raw = raw.replace(/<!--\s*QuizForge Tracking & UTM Preserver[\s\S]*?<\/script>/gi, '');
+
+    // 3. Se houver Pixel configurado no QuizForge, remove pixels legados/duplicados no HTML para evitar eventos repetidos
+    const configuredPixel = (tracking.metaPixelId || tracking.pixelId || '').trim();
+    if (configuredPixel) {
+      raw = raw.replace(/<script[^>]*>[\s\S]*?connect\.facebook\.net\/en_US\/fbevents\.js[\s\S]*?<\/script>\s*(?:<noscript>[\s\S]*?<\/noscript>)?/gi, '');
+      raw = raw.replace(/<!--\s*Meta Pixel Code[\s\S]*?<!--\s*End Meta Pixel Code\s*-->/gi, '');
+      raw = raw.replace(/<!--\s*Meta Pixel[\s\S]*?<!--\s*Fim Meta Pixel\s*-->/gi, '');
+    }
+
+    // 4. Remove scripts manuais legados que quebram links e removem target="_blank"
+    raw = raw.replace(/<script[^>]*>[\s\S]*?a\.removeAttribute\(['"]target['"]\)[\s\S]*?<\/script>/gi, '');
+    raw = raw.replace(/<script[^>]*>[\s\S]*?href\.includes\(["']mivvo\.com\.br["']\)[\s\S]*?document\.location\.search[\s\S]*?<\/script>/gi, '');
+
     const stealthGuard = this.generateStealthGuard(tracking);
     const trackingHead = this.generateTrackingHead(tracking);
     const customHead = tracking.customHeadScripts || '';
@@ -5597,14 +5625,20 @@ ${raw}
             if (isCheckoutLink(href) || link.hasAttribute('data-checkout') || link.classList.contains('quiz-checkout-btn') || link.classList.contains('checkout-btn')) {
               // Captura e repassa cookies da Meta para o checkout (fbc e fbp)
               try {
-                var matchFbp = document.cookie.match(/(?:^|;\s*)_fbp=([^;]+)/);
-                if (matchFbp && !params.has('fbp')) params.set('fbp', decodeURIComponent(matchFbp[1]));
+                function getCookieVal(name) {
+                  var v = '; ' + document.cookie;
+                  var p = v.split('; ' + name + '=');
+                  if (p.length === 2) return p.pop().split(';').shift();
+                  return '';
+                }
+                var fbpCookie = getCookieVal('_fbp');
+                if (fbpCookie && !params.has('fbp')) params.set('fbp', decodeURIComponent(fbpCookie));
 
-                var matchFbc = document.cookie.match(/(?:^|;\s*)_fbc=([^;]+)/);
-                if (!matchFbc && params.has('fbclid')) {
+                var fbcCookie = getCookieVal('_fbc');
+                if (!fbcCookie && params.has('fbclid')) {
                   params.set('fbc', 'fb.1.' + Date.now() + '.' + params.get('fbclid'));
-                } else if (matchFbc && !params.has('fbc')) {
-                  params.set('fbc', decodeURIComponent(matchFbc[1]));
+                } else if (fbcCookie && !params.has('fbc')) {
+                  params.set('fbc', decodeURIComponent(fbcCookie));
                 }
                 if (!params.has('external_id')) {
                   params.set('external_id', sessionId);
@@ -5624,6 +5658,7 @@ ${raw}
           } catch(e) {}
         }
 
+        var isClickingCheckout = false;
         function handleCheckoutClick(e) {
           var target = e.target.closest('a, button, [data-checkout], .quiz-checkout-btn, [class*="checkout"]');
           if (!target) return;
@@ -5635,23 +5670,67 @@ ${raw}
                            (target.className && String(target.className).toLowerCase().indexOf('checkout') !== -1);
 
           if (isCheckout) {
+            // Anti-duplicação: impede múltiplos disparos num único clique
+            if (isClickingCheckout) return;
+            isClickingCheckout = true;
+            setTimeout(function() { isClickingCheckout = false; }, 2000);
+
             // Dispara InitiateCheckout no Pixel da Meta
             if (typeof fbq === 'function' && ${tracking.sendInitiateCheckout !== false ? 'true' : 'false'}) {
               try {
                 fbq('track', 'InitiateCheckout', {
-                  content_name: "${((quiz && quiz.title) || 'Página de Vendas').replace(/"/g, '\\"')}"
+                  content_name: "${((quiz && quiz.title) || 'Página de Vendas').replace(/"/g, '\\"')}",
+                  currency: "BRL"
                 });
               } catch(fbErr) {}
             }
 
-            // Notifica Webhook da Planilha (usa keepalive: true para NUNCA ser abortado pela navegação da página)
+            // Notifica Webhook da Planilha (com atribuição completa para Meta CAPI)
             if (webhookUrl) {
               try {
+                var srcVal = utmObj.src || utmObj.sck || utmObj.SRC || utmObj.SCK || '';
+                var uSource = utmObj.utm_source || utmObj.source || '';
+                var uCampaign = utmObj.utm_campaign || utmObj.campaign || '';
+                var uMedium = utmObj.utm_medium || utmObj.medium || '';
+                var uContent = utmObj.utm_content || utmObj.content || '';
+
+                if (srcVal && (!uSource || !uCampaign)) {
+                  if (srcVal.indexOf('|') !== -1) {
+                    var p = srcVal.split('|');
+                    if (!uCampaign && p[0]) uCampaign = p[0].trim();
+                    if (!uMedium && p[1]) uMedium = p[1].trim();
+                    if (!uContent && p[2]) uContent = p[2].trim();
+                    if (!uSource && p[3]) uSource = p[3].trim();
+                  }
+                  if (!uSource) uSource = srcVal;
+                  if (!uCampaign) uCampaign = srcVal;
+                }
+
+                function getCookieDirect(name) {
+                  var v = '; ' + document.cookie;
+                  var p = v.split('; ' + name + '=');
+                  if (p.length === 2) return p.pop().split(';').shift();
+                  return '';
+                }
+
+                var fbpVal = params.get('fbp') || getCookieDirect('_fbp');
+                var fbcVal = params.get('fbc') || getCookieDirect('_fbc') || (params.has('fbclid') ? ('fb.1.' + Date.now() + '.' + params.get('fbclid')) : '');
+
                 var payload = JSON.stringify({
                   sessionId: sessionId,
                   event: 'InitiateCheckout',
                   quizTitle: "${((quiz && quiz.title) || 'Página de Vendas').replace(/"/g, '\\"')}",
                   data: { stepIndex: 0 },
+                  src: srcVal,
+                  utm_source: uSource,
+                  utm_campaign: uCampaign,
+                  utm_medium: uMedium,
+                  utm_content: uContent,
+                  fbc: fbcVal,
+                  fbp: fbpVal,
+                  fbclid: params.get('fbclid') || '',
+                  client_user_agent: (navigator.userAgent || ''),
+                  pageUrl: window.location.href,
                   utms: utmObj
                 });
 
