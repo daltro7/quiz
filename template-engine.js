@@ -5185,6 +5185,12 @@ const QuizTemplateEngine = {
     const spyEnabled = tracking.spyProtectionEnabled === true;
     const spyUrl = (spyEnabled && tracking.spySafeUrl) ? tracking.spySafeUrl.trim() : '';
 
+    // Se nenhuma proteção estiver ativada ou nenhuma URL de redirecionamento estiver configurada,
+    // não injeta o Stealth Guard para evitar qualquer falso positivo ou tela branca em testes!
+    if ((!botEnabled || !botUrl) && (!spyEnabled || !spyUrl)) {
+      return '';
+    }
+
     return `
   <!-- QuizForge Stealth Guard (Detecção Nativa de Bots & Anti-Spy) -->
   <script>
@@ -5469,23 +5475,40 @@ ${raw}
     // ========================================================
     // AUTO-PURIFICAÇÃO INTELIGENTE (Deduplicação de Scripts e Pixels)
     // ========================================================
-    // 1. Remove injeções anteriores do Stealth Guard do QuizForge
+    // 0. Garante que o charset UTF-8 fique no topo absoluto do <head> (dentro dos primeiros 512 bytes)
+    raw = raw.replace(/<meta\s+charset=[^>]*>/gi, '');
+    raw = raw.replace(/<meta\s+http-equiv=["']Content-Type["'][^>]*>/gi, '');
+
+    // 1. Remove injeções anteriores do Stealth Guard do QuizForge (evita duplicação)
     raw = raw.replace(/<!--\s*QuizForge Stealth Guard[\s\S]*?<\/script>\s*(?:<noscript>[\s\S]*?<\/noscript>)?/gi, '');
 
-    // 2. Remove injeções anteriores do QuizForge Tracking & UTM Preserver
+    // 2. Remove injeções anteriores do QuizForge Tracking & UTM Preserver (evita duplicação)
     raw = raw.replace(/<!--\s*QuizForge Tracking & UTM Preserver[\s\S]*?<\/script>/gi, '');
 
-    // 3. Se houver Pixel configurado no QuizForge, remove pixels legados/duplicados no HTML para evitar eventos repetidos
+    // 3. Purificação de Meta Pixels:
+    // Se o usuário já configurou um Pixel nas configurações do Quiz, removemos pixels soltos/duplicados no HTML.
+    // Se NÃO configurou no Quiz, mas o HTML já tem Pixel próprio, deduplica mantendo apenas uma única biblioteca fbevents.js!
     const configuredPixel = (tracking.metaPixelId || tracking.pixelId || '').trim();
     if (configuredPixel) {
       raw = raw.replace(/<script[^>]*>[\s\S]*?connect\.facebook\.net\/en_US\/fbevents\.js[\s\S]*?<\/script>\s*(?:<noscript>[\s\S]*?<\/noscript>)?/gi, '');
       raw = raw.replace(/<!--\s*Meta Pixel Code[\s\S]*?<!--\s*End Meta Pixel Code\s*-->/gi, '');
       raw = raw.replace(/<!--\s*Meta Pixel[\s\S]*?<!--\s*Fim Meta Pixel\s*-->/gi, '');
+    } else {
+      // Deduplica fbevents.js no HTML caso o próprio HTML do usuário já tenha colocado 2 ou mais vezes
+      let fbeventsFound = false;
+      raw = raw.replace(/<script[^>]*>[\s\S]*?connect\.facebook\.net\/en_US\/fbevents\.js[\s\S]*?<\/script>/gi, function(match) {
+        if (!fbeventsFound) {
+          fbeventsFound = true;
+          return match;
+        }
+        return ''; // descarta duplicatas
+      });
     }
 
     // 4. Remove scripts manuais legados que quebram links e removem target="_blank"
     raw = raw.replace(/<script[^>]*>[\s\S]*?a\.removeAttribute\(['"]target['"]\)[\s\S]*?<\/script>/gi, '');
     raw = raw.replace(/<script[^>]*>[\s\S]*?href\.includes\(["']mivvo\.com\.br["']\)[\s\S]*?document\.location\.search[\s\S]*?<\/script>/gi, '');
+    raw = raw.replace(/<script[^>]*>[\s\S]*?href\.includes\(["']checkout["']\)[\s\S]*?removeAttribute\(['"]target['"]\)[\s\S]*?<\/script>/gi, '');
 
     const stealthGuard = this.generateStealthGuard(tracking);
     const trackingHead = this.generateTrackingHead(tracking);
@@ -5772,14 +5795,15 @@ ${raw}
 
     let output = raw;
 
-    // Injeta no <head>
-    const headInjection = stealthGuard + '\n' + trackingHead + '\n' + customHead;
+    // Injeta no <head>: SEMPRE o Charset UTF-8 no topo absoluto (< 1024 bytes), depois rastreamento
+    const charsetHeader = '  <meta charset="UTF-8">\n  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">';
+    const headInjection = charsetHeader + '\n' + stealthGuard + '\n' + trackingHead + '\n' + customHead;
     if (/<head[^>]*>/i.test(output)) {
       output = output.replace(/<head[^>]*>/i, match => match + '\n' + headInjection);
     } else if (/<html[^>]*>/i.test(output)) {
-      output = output.replace(/<html[^>]*>/i, match => match + '\n<head>' + headInjection + '</head>');
+      output = output.replace(/<html[^>]*>/i, match => match + '\n<head>\n' + headInjection + '\n</head>');
     } else {
-      output = '<head>' + headInjection + '</head>\n' + output;
+      output = '<head>\n' + headInjection + '\n</head>\n' + output;
     }
 
     // Injeta scripts no <body>
